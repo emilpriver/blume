@@ -1,0 +1,39 @@
+# Blume — agent notes
+
+Blume is an open-source, markdown-first docs framework on Astro/Vite, shipped as
+a single package (`packages/blume`). The plan/spec lives in `plan/` (do not
+reformat it).
+
+## Commands
+
+- `bun run check` / `bun run fix` — Ultracite lint + format (oxlint + oxfmt)
+- `bun run typecheck` — tsc across packages
+- `bun run test` — Vitest (`packages/blume/test`)
+- Run the CLI locally: `cd examples/basic && bun ../../packages/blume/bin/blume.mjs <cmd>`
+
+## How it works
+
+The CLI (`src/cli`) loads `blume.config.ts`, scans content into a graph
+(`src/core`), and generates a hidden Astro project under `.blume/`
+(`src/astro/generate.ts` + `templates.ts`). Astro renders via a catch-all page
+that imports shipped components from `blume/...`, the generated data module, and
+user overrides. `.blume/` is regenerated each run; only changed files are
+written (HMR-friendly).
+
+## Module map (packages/blume/src)
+
+`cli` commands · `core` config/content/graph/navigation/manifest/diagnostics ·
+`astro` runtime generation + integration · `components` Astro/React UI ·
+`theme` tokens/CSS/icons/palette · `search` Pagefind · `registry` add + eject ·
+`migrate` migrators · `openapi` import · `ai` llms.txt + Ask AI endpoint.
+
+## Conventions
+
+- Arrow function expressions, sorted object keys, `u`-flag regex with named
+  groups (Ultracite rules). `.ts` import extensions are used everywhere.
+- `.astro` files use PascalCase and are excluded from oxlint; the core theme is
+  React-free (vanilla custom elements). React auto-enables only when the project
+  has `.tsx`/`.jsx` or Ask AI is on.
+- Generated `.blume/` and `plan/` are excluded from lint/format.
+- Commit per milestone; keep the example (`examples/basic`) and docs (`docs/`)
+  building.
