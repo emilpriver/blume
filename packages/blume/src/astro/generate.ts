@@ -1,9 +1,11 @@
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 
 import { dirname, join } from "pathe";
+import { glob } from "tinyglobby";
 
 import type { BlumeProject } from "../core/project-graph.ts";
 import { buildThemeCss } from "../theme/palette.ts";
+import { discoverPages } from "./pages.ts";
 import {
   astroConfigTemplate,
   catchAllPageTemplate,
@@ -13,6 +15,16 @@ import {
   runtimeTsconfigTemplate,
   userComponentsTemplate,
 } from "./templates.ts";
+
+/** Heuristically detect whether the project uses React islands. */
+const detectNeedsReact = async (root: string): Promise<boolean> => {
+  const matches = await glob(["**/*.{tsx,jsx}"], {
+    cwd: root,
+    ignore: ["**/node_modules/**", "**/.blume/**", "**/dist/**"],
+    onlyFiles: true,
+  });
+  return matches.length > 0;
+};
 
 const writeIfChanged = async (
   path: string,
@@ -71,11 +83,17 @@ export const generateRuntime = async (
   const { context, config } = project;
   const out = context.outDir;
   const srcDir = join(out, "src");
+  const dataPath = join(srcDir, "generated", "data.json");
+
+  const [pages, needsReact] = await Promise.all([
+    context.pagesRoot ? discoverPages(context.pagesRoot) : Promise.resolve([]),
+    detectNeedsReact(context.root),
+  ]);
 
   const structural = await Promise.all([
     writeIfChanged(
       join(out, "astro.config.mjs"),
-      astroConfigTemplate({ config, context, needsReact: false })
+      astroConfigTemplate({ config, context, dataPath, needsReact, pages })
     ),
     writeIfChanged(join(out, "package.json"), runtimePackageTemplate()),
     writeIfChanged(join(out, "tsconfig.json"), runtimeTsconfigTemplate()),

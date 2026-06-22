@@ -1,6 +1,7 @@
 import { defineCommand, runMain } from "citty";
 
 import { BLUME_VERSION } from "../core/version.ts";
+import { addCommand } from "./commands/add.ts";
 import { buildCommand } from "./commands/build.ts";
 import { devCommand } from "./commands/dev.ts";
 import { initCommand } from "./commands/init.ts";
@@ -13,6 +14,7 @@ const main = defineCommand({
     version: BLUME_VERSION,
   },
   subCommands: {
+    add: addCommand,
     build: buildCommand,
     dev: devCommand,
     init: initCommand,

@@ -41,6 +41,7 @@ export const devCommand = defineCommand({
     // hot-reloads the generated data module so nav and routes stay in sync.
     const watchTargets = [
       project.context.contentRoot,
+      project.context.pagesRoot,
       project.context.configFile,
       project.context.themeFile,
       project.context.componentsFile,
