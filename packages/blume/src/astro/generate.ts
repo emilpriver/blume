@@ -37,6 +37,7 @@ const buildRuntimeData = (project: BlumeProject): string => {
     config: {
       description: config.description,
       logo: config.logo ?? null,
+      search: { enabled: config.search.provider !== "none" },
       theme: config.theme,
       title: config.title,
     },
@@ -45,6 +46,7 @@ const buildRuntimeData = (project: BlumeProject): string => {
       draft: route.draft,
       hidden: route.hidden,
       id: route.id,
+      indexable: route.indexable,
       path: route.path,
       title: route.title,
     })),

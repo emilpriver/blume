@@ -1,0 +1,157 @@
+---
+import Icon from "../Icon.astro";
+
+const pagefindUrl = `${import.meta.env.BASE_URL}pagefind/pagefind.js`.replace(
+  "//",
+  "/"
+);
+---
+
+<blume-search class="blume-search" data-pagefind-url={pagefindUrl}>
+  <button
+    aria-label="Search"
+    class="blume-search-button"
+    data-blume-search-open
+    type="button"
+  >
+    <Icon name="search" size={16} />
+    <span class="blume-search-button__label">Search</span>
+    <kbd class="blume-search-button__kbd">⌘K</kbd>
+  </button>
+
+  <dialog aria-label="Search docs" class="blume-search-dialog" data-blume-search-dialog>
+    <div class="blume-search-box">
+      <div class="blume-search-input-row">
+        <Icon name="search" size={18} />
+        <input
+          aria-label="Search docs"
+          class="blume-search-input"
+          data-blume-search-input
+          placeholder="Search documentation..."
+          type="search"
+        />
+        <kbd>Esc</kbd>
+      </div>
+      <ul class="blume-search-results" data-blume-search-results></ul>
+      <p class="blume-search-message" data-blume-search-message hidden></p>
+    </div>
+  </dialog>
+
+  <script>
+    class BlumeSearch extends HTMLElement {
+      dialog!: HTMLDialogElement;
+      input!: HTMLInputElement;
+      results!: HTMLElement;
+      message!: HTMLElement;
+      pagefind: { search: (q: string) => Promise<{ results: { data: () => Promise<PagefindDoc> }[] }> } | null =
+        null;
+      loaded = false;
+
+      connectedCallback() {
+        this.dialog = this.querySelector("[data-blume-search-dialog]")!;
+        this.input = this.querySelector("[data-blume-search-input]")!;
+        this.results = this.querySelector("[data-blume-search-results]")!;
+        this.message = this.querySelector("[data-blume-search-message]")!;
+
+        this.querySelector("[data-blume-search-open]")?.addEventListener(
+          "click",
+          () => this.open()
+        );
+
+        document.addEventListener("keydown", (event) => {
+          const inField = this.isField(event.target);
+          if (
+            ((event.key === "k" || event.key === "K") &&
+              (event.metaKey || event.ctrlKey)) ||
+            (event.key === "/" && !inField)
+          ) {
+            event.preventDefault();
+            this.open();
+          }
+        });
+
+        this.input.addEventListener("input", () => this.search());
+        this.dialog.addEventListener("click", (event) => {
+          if (event.target === this.dialog) {
+            this.dialog.close();
+          }
+        });
+      }
+
+      isField(target: EventTarget | null): boolean {
+        const el = target as HTMLElement | null;
+        return Boolean(
+          el &&
+            (el.tagName === "INPUT" ||
+              el.tagName === "TEXTAREA" ||
+              el.isContentEditable)
+        );
+      }
+
+      async open() {
+        this.dialog.showModal();
+        this.input.focus();
+        if (this.loaded) {
+          return;
+        }
+        this.loaded = true;
+        try {
+          this.pagefind = await import(
+            /* @vite-ignore */ this.dataset.pagefindUrl as string
+          );
+        } catch {
+          this.pagefind = null;
+          this.setMessage("Search is available in the production build.");
+        }
+      }
+
+      setMessage(text: string) {
+        this.message.textContent = text;
+        this.message.hidden = !text;
+      }
+
+      async search() {
+        const query = this.input.value.trim();
+        this.results.replaceChildren();
+        if (!query) {
+          this.setMessage("");
+          return;
+        }
+        if (!this.pagefind) {
+          this.setMessage("Search is available in the production build.");
+          return;
+        }
+        const response = await this.pagefind.search(query);
+        const docs = await Promise.all(
+          response.results.slice(0, 8).map((result) => result.data())
+        );
+        this.setMessage(docs.length === 0 ? "No results found." : "");
+        for (const doc of docs) {
+          const item = document.createElement("li");
+          const link = document.createElement("a");
+          link.href = doc.url;
+          link.className = "blume-search-result";
+          const title = document.createElement("span");
+          title.className = "blume-search-result__title";
+          title.textContent = doc.meta?.title ?? doc.url;
+          const excerpt = document.createElement("span");
+          excerpt.className = "blume-search-result__excerpt";
+          excerpt.innerHTML = doc.excerpt;
+          link.append(title, excerpt);
+          item.appendChild(link);
+          this.results.appendChild(item);
+        }
+      }
+    }
+
+    interface PagefindDoc {
+      url: string;
+      excerpt: string;
+      meta?: { title?: string };
+    }
+
+    if (!customElements.get("blume-search")) {
+      customElements.define("blume-search", BlumeSearch);
+    }
+  </script>
+</blume-search>

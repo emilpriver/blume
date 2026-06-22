@@ -9,6 +9,7 @@ import {
   getPagination,
 } from "./nav-utils.ts";
 import NavTree from "./NavTree.astro";
+import Search from "./Search.astro";
 
 interface Props {
   site: { title: string; description?: string };
@@ -16,9 +17,12 @@ interface Props {
   page: { title: string; description?: string; route: string };
   headings: Heading[];
   themeMode: "system" | "light" | "dark";
+  searchEnabled: boolean;
+  indexable: boolean;
 }
 
-const { site, navigation, page, headings, themeMode } = Astro.props;
+const { site, navigation, page, headings, themeMode, searchEnabled, indexable } =
+  Astro.props;
 
 const tocHeadings = headings.filter((h) => h.depth >= 2 && h.depth <= 3);
 const pageTitle = page.title ? `${page.title} - ${site.title}` : site.title;
@@ -76,6 +80,7 @@ const toggleScript = `document.addEventListener("click",(e)=>{const t=e.target.c
         )
       }
       <div class="blume-header__spacer"></div>
+      {searchEnabled && <Search />}
       <button
         aria-label="Toggle color theme"
         class="blume-icon-button"
@@ -113,7 +118,7 @@ const toggleScript = `document.addEventListener("click",(e)=>{const t=e.target.c
             </nav>
           )
         }
-        <article class="blume-content">
+        <article class="blume-content" data-pagefind-body={indexable ? "" : undefined}>
           <slot />
         </article>
         {

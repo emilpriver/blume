@@ -17,12 +17,18 @@ export const buildManifest = (options: {
   graph: ContentGraph;
 }): BlumeManifest => {
   const { context, config, graph } = options;
+  const searchEnabled = config.search.provider !== "none";
+  const { includeHiddenPages } = config.search.indexing;
 
   const routes: RouteManifestEntry[] = graph.pages.map((page) => ({
     contentType: page.contentType,
     draft: page.meta.draft,
     hidden: page.meta.sidebar.hidden,
     id: page.id,
+    indexable:
+      searchEnabled &&
+      !page.meta.search.exclude &&
+      (!page.meta.sidebar.hidden || includeHiddenPages),
     path: page.route,
     sourcePath: page.sourcePath,
     title: page.title,

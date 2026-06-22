@@ -119,11 +119,16 @@ const components = {
 export function getStaticPaths() {
   return data.routes.map((route) => ({
     params: { slug: route.path === "/" ? undefined : route.path.slice(1) },
-    props: { entryId: route.id, route: route.path, title: route.title },
+    props: {
+      entryId: route.id,
+      indexable: route.indexable,
+      route: route.path,
+      title: route.title,
+    },
   }));
 }
 
-const { entryId, route, title } = Astro.props;
+const { entryId, route, title, indexable } = Astro.props;
 const entry = await getEntry("docs", entryId);
 if (!entry) {
   return new Response(null, { status: 404 });
@@ -138,6 +143,8 @@ const frontmatter = entry.data ?? {};
   page={{ title, description: frontmatter.description, route }}
   headings={headings}
   themeMode={data.config.theme.mode}
+  searchEnabled={data.config.search.enabled}
+  indexable={indexable}
 >
   <Content components={components} />
 </RootLayout>

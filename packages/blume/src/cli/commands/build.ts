@@ -2,6 +2,7 @@ import { build } from "astro";
 import { defineCommand } from "citty";
 import { join } from "pathe";
 
+import { buildSearchIndex } from "../../search/build.ts";
 import { logger } from "../log.ts";
 import { prepareProject } from "../prepare.ts";
 
@@ -30,6 +31,14 @@ export const buildCommand = defineCommand({
       root: project.context.outDir,
     });
 
-    logger.success(`Built to ${join(root, "dist")}`);
+    const distDir = join(root, "dist");
+
+    if (project.config.search.provider === "pagefind") {
+      logger.start("Building search index");
+      const indexed = await buildSearchIndex(distDir);
+      logger.success(`Indexed ${indexed} page(s) for search`);
+    }
+
+    logger.success(`Built to ${distDir}`);
   },
 });

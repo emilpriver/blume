@@ -122,6 +122,8 @@ export interface RouteManifestEntry {
   contentType: string;
   hidden: boolean;
   draft: boolean;
+  /** Whether the page should be included in the search index. */
+  indexable: boolean;
 }
 
 /** The generated runtime contract between core and the Astro project. */
