@@ -1,0 +1,33 @@
+---
+import Icon from "../Icon.astro";
+
+type CalloutType = "info" | "note" | "tip" | "success" | "warning" | "danger";
+
+interface Props {
+  type?: CalloutType;
+  title?: string;
+}
+
+const { type = "info", title } = Astro.props;
+
+const iconByType: Record<CalloutType, string> = {
+  danger: "circle-x",
+  info: "info",
+  note: "info",
+  success: "circle-check",
+  tip: "lightbulb",
+  warning: "triangle-alert",
+};
+---
+
+<aside class={`blume-callout blume-callout--${type}`}>
+  <div class="blume-callout__icon">
+    <Icon name={iconByType[type]} size={18} />
+  </div>
+  <div class="blume-callout__body">
+    {title && <p class="blume-callout__title">{title}</p>}
+    <div class="blume-callout__content">
+      <slot />
+    </div>
+  </div>
+</aside>

@@ -1,0 +1,11 @@
+---
+interface Props {
+  title: string;
+}
+
+const { title } = Astro.props;
+---
+
+<div class="blume-tab-panel" data-blume-tab-panel data-title={title} role="tabpanel">
+  <slot />
+</div>

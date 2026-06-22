@@ -1,0 +1,52 @@
+---
+title: Components
+description: A showcase of Blume's built-in MDX components.
+sidebar:
+  order: 1
+---
+
+# Components
+
+Blume ships a set of MDX components you can use in any page.
+
+<Callout type="info" title="Heads up">
+  Callouts support info, tip, success, warning, and danger types.
+</Callout>
+
+<Callout type="warning">This API is experimental.</Callout>
+
+## Cards
+
+<CardGroup cols={2}>
+  <Card title="Quickstart" href="/getting-started" icon="rocket">
+    Install Blume and create your first docs site.
+  </Card>
+  <Card title="Guides" href="/guides" icon="book-open">
+    Step-by-step guides for common tasks.
+  </Card>
+</CardGroup>
+
+## Steps
+
+<Steps>
+  <Step title="Install">Add Blume to your project.</Step>
+  <Step title="Author">Write Markdown in your docs folder.</Step>
+  <Step title="Ship">Run `blume build` and deploy.</Step>
+</Steps>
+
+## Tabs
+
+<Tabs>
+  <Tab title="bun">Run `bun add blume`.</Tab>
+  <Tab title="npm">Run `npm install blume`.</Tab>
+</Tabs>
+
+## Accordion
+
+<Accordion title="What is Blume?">
+  Blume is an open-source, markdown-first docs framework on Astro and Vite.
+</Accordion>
+
+## Badges
+
+Status: <Badge variant="success">Stable</Badge> <Badge variant="warning">Beta</Badge>

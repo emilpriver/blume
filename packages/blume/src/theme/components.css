@@ -1,0 +1,324 @@
+/* Blume built-in content components. Stable global class names for user CSS. */
+
+/* Callout -------------------------------------------------------------- */
+
+.blume-callout {
+  display: flex;
+  gap: 0.75rem;
+  margin: 1.5rem 0;
+  padding: 1rem 1.1rem;
+  border: 1px solid var(--blume-border);
+  border-left-width: 3px;
+  border-radius: var(--blume-radius);
+  background: var(--blume-muted);
+}
+
+.blume-callout__icon {
+  flex-shrink: 0;
+  margin-top: 0.1rem;
+  color: var(--blume-callout-accent, var(--blume-muted-foreground));
+}
+
+.blume-callout__title {
+  margin: 0 0 0.25rem;
+  font-weight: 600;
+}
+
+.blume-callout__content > :first-child {
+  margin-top: 0;
+}
+
+.blume-callout__content > :last-child {
+  margin-bottom: 0;
+}
+
+.blume-callout--info,
+.blume-callout--note {
+  --blume-callout-accent: oklch(0.6 0.13 250);
+  border-left-color: var(--blume-callout-accent);
+}
+
+.blume-callout--tip {
+  --blume-callout-accent: oklch(0.62 0.15 160);
+  border-left-color: var(--blume-callout-accent);
+}
+
+.blume-callout--success {
+  --blume-callout-accent: oklch(0.6 0.16 150);
+  border-left-color: var(--blume-callout-accent);
+}
+
+.blume-callout--warning {
+  --blume-callout-accent: oklch(0.7 0.16 75);
+  border-left-color: var(--blume-callout-accent);
+}
+
+.blume-callout--danger {
+  --blume-callout-accent: oklch(0.58 0.2 25);
+  border-left-color: var(--blume-callout-accent);
+}
+
+/* Cards ---------------------------------------------------------------- */
+
+.blume-card-group {
+  display: grid;
+  grid-template-columns: repeat(var(--blume-card-cols, 2), minmax(0, 1fr));
+  gap: 1rem;
+  margin: 1.5rem 0;
+}
+
+.blume-card {
+  display: block;
+  padding: 1.1rem 1.2rem;
+  border: 1px solid var(--blume-border);
+  border-radius: var(--blume-radius);
+  color: inherit;
+  background: var(--blume-background);
+  transition: border-color 0.15s ease;
+}
+
+a.blume-card:hover {
+  border-color: var(--blume-accent);
+  text-decoration: none;
+}
+
+.blume-card__icon {
+  margin-bottom: 0.6rem;
+  color: var(--blume-accent);
+}
+
+.blume-card__title {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  margin: 0 0 0.35rem;
+  font-weight: 600;
+}
+
+.blume-card__arrow {
+  color: var(--blume-muted-foreground);
+}
+
+.blume-card__body {
+  color: var(--blume-muted-foreground);
+  font-size: 0.9rem;
+}
+
+.blume-card__body > :first-child {
+  margin-top: 0;
+}
+
+.blume-card__body > :last-child {
+  margin-bottom: 0;
+}
+
+@media (max-width: 640px) {
+  .blume-card-group {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+/* Steps ---------------------------------------------------------------- */
+
+.blume-steps {
+  counter-reset: blume-step;
+  margin: 1.5rem 0;
+  padding-left: 1.75rem;
+  border-left: 1px solid var(--blume-border);
+}
+
+.blume-step {
+  position: relative;
+  padding-bottom: 1.5rem;
+}
+
+.blume-step:last-child {
+  padding-bottom: 0;
+}
+
+.blume-step::before {
+  counter-increment: blume-step;
+  content: counter(blume-step);
+  position: absolute;
+  left: -2.6rem;
+  top: -0.15rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.6rem;
+  height: 1.6rem;
+  border-radius: 50%;
+  background: var(--blume-accent);
+  color: var(--blume-accent-foreground);
+  font-size: 0.8rem;
+  font-weight: 600;
+}
+
+.blume-step__title {
+  margin: 0 0 0.4rem;
+  font-weight: 600;
+}
+
+/* Accordion ------------------------------------------------------------ */
+
+.blume-accordion {
+  margin: 1rem 0;
+  border: 1px solid var(--blume-border);
+  border-radius: var(--blume-radius);
+}
+
+.blume-accordion__summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.8rem 1rem;
+  font-weight: 500;
+  cursor: pointer;
+  list-style: none;
+}
+
+.blume-accordion__summary::-webkit-details-marker {
+  display: none;
+}
+
+.blume-accordion__chevron {
+  transition: transform 0.15s ease;
+  color: var(--blume-muted-foreground);
+}
+
+.blume-accordion[open] .blume-accordion__chevron {
+  transform: rotate(180deg);
+}
+
+.blume-accordion__body {
+  padding: 0 1rem 0.9rem;
+}
+
+/* Badge ---------------------------------------------------------------- */
+
+.blume-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.1rem 0.5rem;
+  border-radius: 999px;
+  font-size: 0.75rem;
+  font-weight: 500;
+  background: var(--blume-muted);
+  color: var(--blume-muted-foreground);
+}
+
+.blume-badge--accent {
+  background: color-mix(in oklch, var(--blume-accent) 18%, transparent);
+  color: var(--blume-accent);
+}
+
+.blume-badge--success {
+  background: oklch(0.6 0.16 150 / 0.16);
+  color: oklch(0.5 0.16 150);
+}
+
+.blume-badge--warning {
+  background: oklch(0.7 0.16 75 / 0.18);
+  color: oklch(0.5 0.13 75);
+}
+
+.blume-badge--danger {
+  background: oklch(0.58 0.2 25 / 0.16);
+  color: oklch(0.55 0.2 25);
+}
+
+/* Tabs ----------------------------------------------------------------- */
+
+.blume-tabs-root {
+  display: block;
+  margin: 1.5rem 0;
+}
+
+.blume-tablist {
+  display: flex;
+  gap: 0.25rem;
+  border-bottom: 1px solid var(--blume-border);
+  margin-bottom: 1rem;
+}
+
+.blume-tab-trigger {
+  padding: 0.5rem 0.9rem;
+  border: 0;
+  border-bottom: 2px solid transparent;
+  margin-bottom: -1px;
+  background: transparent;
+  color: var(--blume-muted-foreground);
+  font: inherit;
+  font-size: 0.9rem;
+  cursor: pointer;
+}
+
+.blume-tab-trigger:hover {
+  color: var(--blume-foreground);
+}
+
+.blume-tab-trigger[aria-selected="true"] {
+  color: var(--blume-accent);
+  border-bottom-color: var(--blume-accent);
+}
+
+.blume-tab-panel > :first-child {
+  margin-top: 0;
+}
+
+.blume-tab-panel > :last-child {
+  margin-bottom: 0;
+}
+
+/* Code blocks ---------------------------------------------------------- */
+
+.blume-content pre {
+  position: relative;
+}
+
+.blume-copy-button {
+  position: absolute;
+  top: 0.5rem;
+  right: 0.5rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2rem;
+  height: 2rem;
+  border: 1px solid var(--blume-border);
+  border-radius: 0.375rem;
+  background: var(--blume-background);
+  color: var(--blume-muted-foreground);
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity 0.15s ease;
+}
+
+.blume-content pre:hover .blume-copy-button,
+.blume-copy-button:focus-visible {
+  opacity: 1;
+}
+
+.blume-copy-button[data-copied="true"] {
+  color: oklch(0.6 0.16 150);
+}
+
+/* File tree ------------------------------------------------------------ */
+
+.blume-file-tree {
+  margin: 1.5rem 0;
+  padding: 1rem 1.2rem;
+  border: 1px solid var(--blume-border);
+  border-radius: var(--blume-radius);
+  font-size: 0.9rem;
+}
+
+.blume-file-tree ul {
+  list-style: none;
+  margin: 0;
+  padding-left: 1.1rem;
+}
+
+.blume-file-tree > ul {
+  padding-left: 0;
+}

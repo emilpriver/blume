@@ -1,0 +1,11 @@
+---
+interface Props {
+  cols?: number;
+}
+
+const { cols = 2 } = Astro.props;
+---
+
+<div class="blume-card-group" style={`--blume-card-cols:${cols}`}>
+  <slot />
+</div>

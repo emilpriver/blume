@@ -1,6 +1,7 @@
 ---
 import type { Heading, Navigation } from "../../core/types.ts";
 import "../../theme/base.css";
+import "../../theme/components.css";
 import Icon from "../Icon.astro";
 import {
   findBreadcrumbs,
@@ -164,5 +165,37 @@ const toggleScript = `document.addEventListener("click",(e)=>{const t=e.target.c
       type="button"
     ></button>
     <script is:inline set:html={toggleScript} />
+    <script>
+      import { icons } from "../../theme/icons.ts";
+
+      const svg = (name: string) =>
+        `<svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${icons[name]}</svg>`;
+
+      for (const pre of document.querySelectorAll(".blume-content pre")) {
+        if (pre.querySelector(".blume-copy-button")) {
+          continue;
+        }
+        const button = document.createElement("button");
+        button.type = "button";
+        button.className = "blume-copy-button";
+        button.setAttribute("aria-label", "Copy code");
+        button.innerHTML = svg("copy");
+        button.addEventListener("click", async () => {
+          const text = pre.querySelector("code")?.textContent ?? "";
+          try {
+            await navigator.clipboard.writeText(text);
+          } catch {
+            return;
+          }
+          button.dataset.copied = "true";
+          button.innerHTML = svg("check");
+          setTimeout(() => {
+            button.dataset.copied = "false";
+            button.innerHTML = svg("copy");
+          }, 1500);
+        });
+        pre.appendChild(button);
+      }
+    </script>
   </body>
 </html>

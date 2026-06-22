@@ -1,0 +1,20 @@
+---
+import Icon from "../Icon.astro";
+
+interface Props {
+  title: string;
+  defaultOpen?: boolean;
+}
+
+const { title, defaultOpen = false } = Astro.props;
+---
+
+<details class="blume-accordion" open={defaultOpen}>
+  <summary class="blume-accordion__summary">
+    <span>{title}</span>
+    <Icon class="blume-accordion__chevron" name="chevron-down" size={16} />
+  </summary>
+  <div class="blume-accordion__body">
+    <slot />
+  </div>
+</details>

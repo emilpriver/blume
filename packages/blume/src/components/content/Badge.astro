@@ -1,0 +1,13 @@
+---
+type BadgeVariant = "default" | "accent" | "success" | "warning" | "danger";
+
+interface Props {
+  variant?: BadgeVariant;
+}
+
+const { variant = "default" } = Astro.props;
+---
+
+<span class={`blume-badge blume-badge--${variant}`}>
+  <slot />
+</span>

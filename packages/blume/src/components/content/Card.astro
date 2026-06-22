@@ -1,0 +1,35 @@
+---
+import Icon from "../Icon.astro";
+
+interface Props {
+  title: string;
+  href?: string;
+  icon?: string;
+}
+
+const { title, href, icon } = Astro.props;
+const Tag = href ? "a" : "div";
+const external = href?.startsWith("http");
+---
+
+<Tag
+  class="blume-card"
+  href={href}
+  rel={external ? "noreferrer" : undefined}
+  target={external ? "_blank" : undefined}
+>
+  {
+    icon && (
+      <div class="blume-card__icon">
+        <Icon name={icon} size={20} />
+      </div>
+    )
+  }
+  <p class="blume-card__title">
+    {title}
+    {href && <Icon class="blume-card__arrow" name="arrow-right" size={14} />}
+  </p>
+  <div class="blume-card__body">
+    <slot />
+  </div>
+</Tag>
