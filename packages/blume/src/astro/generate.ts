@@ -1,5 +1,7 @@
-import { mkdir, readFile, writeFile } from "node:fs/promises";
-import { fileURLToPath } from "node:url";
+import { existsSync } from "node:fs";
+import { mkdir, readFile, symlink, writeFile } from "node:fs/promises";
+import { createRequire } from "node:module";
+import { fileURLToPath, pathToFileURL } from "node:url";
 
 import { dirname, join } from "pathe";
 import { glob } from "tinyglobby";
@@ -24,6 +26,41 @@ import {
 
 /** Absolute path to the Blume package `src` directory. */
 const BLUME_SRC = fileURLToPath(new URL("..", import.meta.url));
+/** The Blume package's own `node_modules` (where Astro and friends live). */
+const BLUME_NODE_MODULES = join(BLUME_SRC, "..", "node_modules");
+
+/** Whether Astro resolves from a directory via normal node resolution. */
+const canResolveAstro = (fromDir: string): boolean => {
+  try {
+    createRequire(pathToFileURL(join(fromDir, "_.js")).href).resolve(
+      "astro/package.json"
+    );
+    return true;
+  } catch {
+    return false;
+  }
+};
+
+/**
+ * Make the generated runtime resolve Astro and its integrations. When they are
+ * hoisted into the project (the usual case for published installs), resolution
+ * already works. When they are nested and unreachable (workspaces, strict
+ * package managers), symlink Blume's own dependencies into `.blume`.
+ */
+const ensureDepsLink = async (outDir: string): Promise<void> => {
+  if (canResolveAstro(outDir)) {
+    return;
+  }
+  if (!existsSync(join(BLUME_NODE_MODULES, "astro"))) {
+    return;
+  }
+  const link = join(outDir, "node_modules");
+  if (existsSync(link)) {
+    return;
+  }
+  await mkdir(outDir, { recursive: true });
+  await symlink(BLUME_NODE_MODULES, link, "junction");
+};
 
 /** Read a file's contents, or return an empty string if it is absent. */
 const readOptional = async (path: string | null): Promise<string> => {
@@ -111,6 +148,8 @@ export const generateRuntime = async (
   const srcDir = join(out, "src");
   const dataPath = join(srcDir, "generated", "data.json");
   const themePath = join(srcDir, "generated", "app.css");
+
+  await ensureDepsLink(out);
 
   const askEnabled = config.ai.ask?.enabled ?? false;
   const [pages, detectedReact, userTheme] = await Promise.all([
