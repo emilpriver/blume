@@ -1,182 +1,193 @@
-# 01 — Architecture
+# Architecture
 
-## The core trick: a generated, hidden Next.js app
+## Summary
 
-Blume's central illusion is that the user has no app — only content. In reality,
-Blume materializes a Next.js (App Router) application and runs it. The user never
-opens it, but it's there.
+Blume is a CLI-driven docs product built on Astro and Vite.
 
-When the user runs `blume dev`, Blume:
+The user project contains content and optional customization files. The Blume CLI discovers those inputs, builds a content graph, writes a generated Astro runtime to `.blume/`, and runs Astro for dev or build.
 
-1. **Reads the project** — discovers `content/**/*.{md,mdx}`, loads
-   `blume.config.ts`, `components.tsx`, optional `theme.css`, and `public/`.
-2. **Generates a runtime app** into a hidden `.blume/` directory (gitignored).
-   This is a thin Next.js app whose pages, layout, and component registry are
-   wired to the user's project via path aliases and a generated content manifest.
-3. **Builds a content manifest** — maps every route to a source file plus its
-   frontmatter, headings (TOC), and position in the navigation tree.
-4. **Runs `next dev`** against `.blume/`.
-5. **Watches** the user's project. Content edits flow through Next HMR; structural
-   changes (new files, config, components) regenerate the manifest and, when
-   necessary, restart.
-
+```mermaid
+flowchart LR
+  A["docs/**/*.mdx"] --> B["Blume content graph"]
+  C["blume.config.ts"] --> B
+  D["components.ts"] --> B
+  E["theme.css"] --> B
+  B --> F[".blume Astro project"]
+  F --> G["Astro + Vite"]
+  G --> H["dist/ static"]
+  G --> I["server adapter output"]
 ```
-.blume/                          # generated, gitignored
-├── app/
-│   ├── layout.tsx               # app shell: providers, navbar, sidebar, footer
-│   └── [[...slug]]/page.tsx     # catch-all: slug -> MDX content
-├── blume.manifest.json          # routes, nav tree, TOC, frontmatter
-├── components.generated.ts      # merge(defaultComponents, userComponents)
-├── next.config.mjs              # aliases to user project, MDX setup
-└── tsconfig.json                # paths: @content, @blume/user-*
-```
-
-> **RESOLVED (09-A):** Blume generates a real `.blume/` app (over a prebuilt app
-> fed by virtual modules) for simpler module resolution, debuggability, and a clean
-> `blume eject`. The directory is disposable and rebuilt on demand.
-
-## Why generate instead of ship-and-point?
-
-Next.js App Router resolves routes and components from files on disk, and user
-overrides (`components.tsx`) may import their own dependencies. Generating a real
-app in the user's project root means:
-
-- Node module resolution "just works" — user deps resolve from their own
-  `node_modules`.
-- The app is **inspectable** (great for debugging) and **ejectable** (the basis
-  for `blume eject`).
-- Path aliases (`@content`, `@blume/components`) keep generated code tiny — it
-  mostly re-exports Blume's internals plus the user's files.
-
-The trade-off is a generation step and a `.blume/` directory to manage. We accept
-that; it's how Nextra/Contentlayer-style tools and many meta-frameworks operate.
 
 ## Layers
 
-```
-┌──────────────────────────────────────────────────────────────┐
-│  CLI  (blume dev | build | start | init | eject)               │  02-cli
-├──────────────────────────────────────────────────────────────┤
-│  Project loader   — config, components, theme, env (jiti/      │
-│                     bundle-require to load TS config files)     │  04, 05
-├──────────────────────────────────────────────────────────────┤
-│  Content source   — discovery, routing, frontmatter, TOC,      │
-│                     nav tree, manifest                          │  03
-├──────────────────────────────────────────────────────────────┤
-│  MDX compiler     — remark/rehype, Shiki, built-in components   │  03
-├──────────────────────────────────────────────────────────────┤
-│  App generator    — writes .blume/ (pages, layout, registry)    │  this file
-├──────────────────────────────────────────────────────────────┤
-│  Runtime app      — Next.js: app shell + renderer + registry    │  05, 06, 07
-├──────────────────────────────────────────────────────────────┤
-│  Next.js (dev/build/start)                                      │
-└──────────────────────────────────────────────────────────────┘
-```
+### 1. User project
 
-## Request lifecycle (rendering one page)
+The user owns:
 
-1. Request hits `app/[[...slug]]/page.tsx` (catch-all).
-2. Slug is resolved against `blume.manifest.json` → source file + metadata.
-3. The MDX for that file is rendered from its **build-time-bundled** module
-   (resolved 09-B) — no per-request compilation, which keeps static export viable.
-4. The renderer is handed the **merged component registry**: Blume defaults
-   overlaid with the user's `components.tsx`. Markdown elements (`h1`, `code`, …)
-   and built-in components (`Callout`, `Tabs`, …) resolve through it.
-5. The layout (also overridable) wraps the page with navbar, sidebar, TOC, footer,
-   reading the same manifest for navigation.
+- `docs/` or another configured content root
+- optional `pages/**/*.astro`
+- optional `blume.config.ts`
+- optional `components.ts` or `components.tsx`
+- optional `theme.css`
+- optional public assets
 
-## Component registry & override merging
+No `src/`, `astro.config.mjs`, or app scaffold is required for the default path.
 
-User overrides are authored as two buckets and merged into two registries:
+### 2. Blume core
 
-- **`mdx`** — markdown/HTML primitives (`h1`–`h6`, `p`, `a`, `pre`, `code`,
-  `img`, `table`, …) plus built-in MDX components (`Callout`, `Card`, `Tabs`, …).
-  Fed to the MDX renderer.
-- **`layout`** — app-shell slots (`Navbar`, `Sidebar`, `Toc`, `Footer`, `Logo`,
-  `ThemeToggle`, `PageWrapper`, …). Fed to the layout.
+`@blume/core` owns framework-independent docs logic:
 
-`components.generated.ts` is literally:
+- config loading and validation
+- content discovery
+- frontmatter and meta validation
+- route manifest generation
+- nav graph generation
+- search index inputs
+- diagnostics and error formatting
+- deploy/build mode decisions
 
-```ts
-import { defaultMdx, defaultLayout } from "blume/components";
-import user from "@blume/user-components"; // user's components.tsx default export
+This layer should avoid importing Astro runtime APIs directly.
 
-export const mdxComponents    = { ...defaultMdx,    ...user.mdx };
-export const layoutComponents = { ...defaultLayout, ...user.layout };
-```
+### 3. Blume Astro integration
 
-This is what makes "override anything" true: one file feeds both the markdown
-renderer and the chrome. Details in [05-customization.md](./05-customization.md).
+`@blume/astro` owns the generated Astro project contract:
 
-## RSC vs. client components
+- generated `astro.config.mjs`
+- Vite aliases to user files and Blume packages
+- content and route virtual modules
+- layouts and pages
+- endpoint/action registration
+- adapter configuration
+- dev overlay integration
 
-The runtime app uses React Server Components by default (static-first, minimal
-JS). Default components are server components where possible; interactive ones
-(theme toggle, search, tabs, mobile nav) are client components. **User overrides
-that need interactivity must be client components** (`"use client"`). Per resolved
-09-E, Blume does not auto-wrap: if an override uses hooks/browser APIs without
-`"use client"`, it surfaces a precise, friendly error (and a `blume doctor` check)
-pointing at the file — honest over magical.
+This is the bridge between Blume's docs graph and Astro's rendering model.
 
-## Extensibility & plugins (resolved 09-Y)
+### 4. Blume theme and components
 
-v1 extensibility rides on the seams that already exist:
-- **Content/markdown:** user remark/rehype plugins via `config.mdx`.
-- **UI:** component overrides (`components.tsx`) and the `blume add` registry.
-- **Integrations:** `config.integrations` (analytics, etc.).
+`@blume/theme` and `@blume/components` own:
 
-A **formal plugin API** (lifecycle hooks that can add routes, nav, components, and
-data sources) is intentionally **deferred to post-1.0** — we want real extension
-patterns to emerge before freezing that surface. The architecture keeps the door
-open: the content source, manifest, and registry are the natural hook points a
-future plugin system would target.
+- default docs layout
+- sidebar, tabs, search, TOC, breadcrumbs, pagination
+- callouts, cards, steps, code blocks, accordions, tabs, API blocks
+- CSS variables and Tailwind v4 source styles
+- island wrappers for interactive components
 
-## Production build
+Default components should be Astro-first wherever possible. Interactive components can use React islands when that is the best-supported option.
 
-`blume build`:
-1. Same project load + app generation as dev.
-2. `next build` against `.blume/`.
-3. Output target depends on features used (auto, 09-B2):
-   - **Fully static** (`output: "export"`) when nothing needs a server.
-   - **Standalone Node server** when server features (e.g. Ask AI) are present.
+### 5. Generated runtime
 
-`blume start` serves the built standalone output. Full output modes, env/secrets,
-and platform presets are in [19-deployment.md](./19-deployment.md).
+`.blume/` is a generated Astro project. It is safe to delete and regenerate.
 
-## Loading TypeScript config & component files
+Expected shape:
 
-`blume.config.ts` and `components.tsx` are TypeScript and may use JSX/ESM. Blume
-loads them outside Next via a TS-aware loader (`jiti` or `bundle-require`) so the
-CLI/content layers can read config before the Next app exists. The same files are
-also aliased into `.blume/` for the runtime to import directly.
-
-## Blume's own repository layout
-
-Blume itself is a **Turborepo** monorepo on **bun workspaces**. Toolchain: **tsgo**
-(typecheck + `.d.ts`), **`bun build`** (JS bundling), **ultracite** (oxlint + oxfmt,
-already configured). Full setup in [13-tooling.md](./13-tooling.md).
-
-Published names follow resolved **09-M**: the CLI/core ships as **`blume`** (name
-owned by us; `bin: { blume }`), supporting packages under the **`@blume/*`** scope,
-and the scaffolder as **`create-blume`** (so `npm create blume` works).
-
-```
-blume/                          # monorepo (pnpm + Turborepo)
-├── packages/
-│   ├── blume/              → npm: blume          CLI + core (source, generator)
-│   ├── app/               (→ @blume/app)         Next.js runtime template
-│   ├── mdx/               (→ @blume/mdx)         remark/rehype + compile pipeline
-│   ├── components/        (→ @blume/components)  defaults on shadcn/ui (Radix+TW4)
-│   ├── registry/          (→ @blume/registry)   shadcn registry for `blume add`
-│   ├── theme/             (→ @blume/theme)       default theme / tokens / CSS
-│   └── create-blume/      → npm: create-blume    `npm create blume` scaffolder
-├── examples/
-│   └── starter/            # a sample docs project (also used for dev/dogfood)
-├── docs/                   # Blume's own docs, built with Blume (dogfood)
-└── plan/                   # this planning folder
+```txt
+.blume/
+  astro.config.mjs
+  package.json
+  tsconfig.json
+  blume.manifest.json
+  src/
+    env.d.ts
+    pages/
+      [...slug].astro
+      _og/[slug].png.ts
+      api/
+        ask.ts
+    layouts/
+      root.astro
+    generated/
+      config.ts
+      content.ts
+      components.ts
+      routes.ts
+      theme.css
 ```
 
-> Package **names** are resolved (09-M); exact **boundaries** (e.g. whether
-> `@blume/mdx` and `@blume/components` stay separate or fold into `blume`) can still
-> shift. The split above optimizes for clear ownership and independent iteration.
-> Confirm the `@blume` org/scope is secured (fallback: `blume-*` unscoped).
+The exact files can change, but the rule is stable: generated files are owned by Blume unless the user ejects.
+
+## Request and build flow
+
+### Dev
+
+1. `blume dev` locates the project root.
+2. Config is loaded with a typed loader.
+3. Content, nav, pages, and component overrides are scanned.
+4. `.blume/` is generated or updated.
+5. Astro dev server starts against `.blume/astro.config.mjs`.
+6. Vite watches user content and generated modules.
+7. Blume invalidates only the affected graph segments.
+
+### Static build
+
+1. `blume build` generates the same runtime.
+2. Astro runs in static output mode.
+3. Content pages render to HTML.
+4. Pagefind or the selected local search index is built from output HTML.
+5. `dist/` is written as the deployable artifact.
+
+### Server build
+
+Server mode is enabled when config or features require it:
+
+- Ask AI endpoint
+- authenticated docs
+- feedback persistence
+- dynamic OG images
+- preview routes
+- server actions
+- sessions
+
+Server output uses Astro adapters. Vercel should be the best-supported first-party adapter path.
+
+## Why Astro instead of Next
+
+Blume's core site is content-heavy and static-first. Astro maps to that shape better:
+
+- less client JavaScript by default
+- Vite dev server and plugin ecosystem
+- framework islands instead of an all-React app runtime
+- clean static output
+- server features when needed through adapters
+- distance from the Fumadocs/Next category
+
+Next-specific features have workable Astro equivalents:
+
+| Need | Blume/Astro approach |
+| --- | --- |
+| Dynamic OG images | Astro endpoint using Satori or `@vercel/og` in server mode |
+| AI chat | React island using `@ai-sdk/react` against an Astro endpoint |
+| Server actions | Astro actions or typed endpoints |
+| RSC-style server rendering | Astro server-rendered components and islands |
+| Image optimization | Astro assets/image service plus adapter support |
+| Analytics | Vercel Analytics or user-selected script integration |
+
+## Package boundaries
+
+Suggested packages:
+
+| Package | Responsibility |
+| --- | --- |
+| `blume` | CLI and public command entrypoint |
+| `create-blume` | Project scaffolding |
+| `@blume/core` | Config, content graph, manifests, diagnostics |
+| `@blume/astro` | Astro integration, generated runtime, endpoints |
+| `@blume/mdx` | MDX/Markdoc compilation helpers and component mapping |
+| `@blume/components` | Default component implementations |
+| `@blume/theme` | CSS tokens, layout styles, theme build artifacts |
+| `@blume/search` | Local search indexing and runtime adapters |
+| `@blume/registry` | Add/eject/source registry helpers |
+| `@blume/migrate` | Mintlify, Starlight, Fumadocs migration tools |
+
+## Public API surface
+
+The public surface should stay small:
+
+- CLI commands
+- `defineConfig`
+- `defineComponents`
+- component prop types
+- meta/frontmatter schema
+- registry command format
+- migration commands
+
+Generated runtime internals are not public API until ejected.

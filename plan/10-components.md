@@ -1,160 +1,164 @@
-# 10 — Component Library
+# Components
 
-Blume ships a complete component library so authors get rich docs with **zero
-imports** and **zero setup**. The bar is explicit: **out-of-the-box parity with
-both Mintlify and Fumadocs**, built on **shadcn/ui** (Radix + Tailwind v4), and
-every component overridable via `components.tsx` ([05](./05-customization.md)).
+## Goals
 
-> This doc is the catalogue + rationale. The **exact prop contracts** for every
-> component live in [16-component-api.md](./16-component-api.md).
+Blume should ship a rich docs component system out of the box.
 
-Two families, matching the two override buckets:
+Components should be:
 
-- **`mdx.*`** — components usable inside MDX content (this doc's focus).
-- **`layout.*`** — app-shell slots ([06-navigation.md](./06-navigation.md)).
+- accessible
+- themeable
+- MDX-friendly
+- Astro-first where static
+- island-based where interactive
+- overridable through `components.ts`
+- installable as source through `blume add`
 
-## Content components (`mdx.*`)
+## Implementation stance
 
-### Callouts / admonitions
-`Callout` plus semantic aliases `Note`, `Tip`, `Info`, `Warning`, `Check`,
-`Danger`. Authored as components **or** via markdown directives
-(`> [!NOTE]`, `:::warning`). One `Callout` override restyles them all.
+Default components should live in `@blume/components`.
 
-### Structure & disclosure
-- `Tabs` / `Tab` — labeled tabbed content; URL-syncable, persisted selection.
-- `Steps` / `Step` — numbered procedures (also sugar over ordered lists).
-- `Accordion` / `Accordions` — collapsible sections.
-- `Expandable` — inline expandable rows (great for nested fields).
+Static components should be `.astro` where possible:
 
-### Cards & layout
-- `Card` — title, icon, description, optional `href` (link card).
-- `Cards` / `Columns` — responsive grid wrapper (`columns` count).
-- `Frame` — bordered/captioned media container.
+- layout
+- callouts
+- cards
+- steps
+- code frame shell
+- API tables
+- page header/footer
 
-### Code
-- Fenced code blocks with: titles, line numbers, line/range/word highlight, diff,
-  focus, and a copy button (all via the Shiki pipeline in
-  [03-content-pipeline.md](./03-content-pipeline.md)).
-- `CodeGroup` — tabbed multi-language code blocks.
-- `DynamicCodeBlock` — runtime-provided code (e.g. generated snippets).
-- Twoslash TS hovers (default-on status: **09-S**).
+Interactive components can be React islands:
 
-### API reference *(components in v1; OpenAPI generation post-1.0 — resolved 09-Q)*
-The **components** ship in v1; full **OpenAPI-spec → auto-generated reference** is
-post-1.0.
-- `TypeTable` — document a type's fields (name, type, default, description).
-- `AutoTypeTable` — generate a `TypeTable` from a real TS type/interface.
-- `ParamField` / `ResponseField` — request params / response fields.
-- `RequestExample` / `ResponseExample` — paired example panels.
-- `Panel` — right-rail example container for reference pages.
+- search modal
+- tabs when client state is needed
+- API playground
+- Ask AI
+- feedback widget
+- theme toggle
 
-### Media & misc
-- `Mermaid` — diagrams from ```mermaid``` fences (client-rendered).
-- `ImageZoom` — click-to-zoom images (could be the default `img` behavior).
-- `Tooltip` — inline hover tooltips.
-- `Icon` — render an icon by Lucide name (`<Icon name="rocket" />`) or pass any
-  React node for custom/brand icons (resolved 09-I). Overridable.
-- `Update` — changelog/release entry block.
-- `Banner` — site/page-level announcement bar (also a `layout` slot).
-- `InlineTOC` — inline table of contents for long pages.
-- `GithubInfo` — repo stars/info card.
-- `Snippet` — reusable MDX partial include (`_`-prefixed files, see
-  [03](./03-content-pipeline.md)).
+The component registry can use shadcn-style source distribution, but the components are Blume-owned and Astro-aware.
 
-### Landing / home page *(resolved 09-U)*
-A small set of primitives for the optional first-class landing/home page — enough
-for a polished entry page, not a full marketing-site system:
-- `Hero` — headline, subtitle, CTAs, optional visual.
-- `FeatureGrid` / reuse of `Cards`/`Columns` — feature highlights.
-- `CTA` — call-to-action band.
-A page opts into the full-bleed landing layout via frontmatter (`layout: "landing"`,
-see [03-content-pipeline.md](./03-content-pipeline.md)); the rest of the docs chrome
-(narrow column, TOC) is suppressed.
+## Core components
 
-## Parity matrix (out-of-the-box)
+### Layout
 
-✅ shipped · ⚠️ scope/decision pending · — n/a
+- `DocsLayout`
+- `Header`
+- `Sidebar`
+- `MobileNav`
+- `TableOfContents`
+- `Breadcrumbs`
+- `Pagination`
+- `Footer`
 
-| Component | Mintlify | Fumadocs | Blume |
-| --- | :---: | :---: | :---: |
-| Callout / Note / Warning / Info / Tip / Check / Danger | ✅ | ✅ | ✅ |
-| Accordion(s) / AccordionGroup | ✅ | ✅ | ✅ |
-| Tabs / Tab | ✅ | ✅ | ✅ |
-| Steps / Step | ✅ | ✅ | ✅ |
-| Card / Cards / CardGroup / Columns | ✅ | ✅ | ✅ |
-| Frame | ✅ | — | ✅ |
-| CodeGroup | ✅ | ✅ | ✅ |
-| Code features (title, highlight, diff, copy) | ✅ | ✅ | ✅ |
-| Twoslash (TS hovers) | — | ✅ | ✅ |
-| TypeTable | — | ✅ | ✅ |
-| AutoTypeTable | — | ✅ | ✅ |
-| ParamField / ResponseField | ✅ | — | ✅ |
-| RequestExample / ResponseExample / Panel | ✅ | — | ✅ |
-| Expandable | ✅ | — | ✅ |
-| Files / File / Folder | — | ✅ | ✅ |
-| Mermaid | ✅ | ✅ | ✅ |
-| Math / LaTeX | ✅ | ✅ | ✅ |
-| ImageZoom | — | ✅ | ✅ |
-| Tooltip | ✅ | — | ✅ |
-| Icon | ✅ | — | ✅ |
-| Update / changelog | ✅ | — | ✅ |
-| Banner | — | ✅ | ✅ |
-| InlineTOC | — | ✅ | ✅ |
-| GithubInfo | — | ✅ | ✅ |
-| Snippet / reusable include | ✅ | — | ✅ |
-| Full OpenAPI → API reference generation | ✅ | partial | ⏳ post-1.0 (09-Q) |
+### Content
 
-## Prop API conventions — ✅ RESOLVED (09-R): own API + codemods
+- `Callout`
+- `Card`
+- `CardGroup`
+- `Steps`
+- `Accordion`
+- `Tabs`
+- `Badge`
+- `CodeBlock`
+- `CodeGroup`
+- `FileTree`
+- `Icon`
+- `Video`
+- `Frame`
 
-Blume designs its **own** clean, consistent prop API (one mental model across all
-components — e.g. a single `Callout` `type` enum, uniform `icon`/`title`/`href` on
-cards). To keep migration friction low, Blume ships **codemods**:
+### API/reference
 
-```
-blume migrate mintlify   # rewrites Mintlify MDX/components to Blume's API
-blume migrate fumadocs   # rewrites Fumadocs MDX/components to Blume's API
+- `Endpoint`
+- `ParameterTable`
+- `ResponseExample`
+- `RequestExample`
+- `SchemaViewer`
+- `AuthMethod`
+- `CodeSamples`
+
+### Product/docs utilities
+
+- `Search`
+- `AskAI`
+- `Feedback`
+- `EditOnGitHub`
+- `LastUpdated`
+- `VersionSelector`
+- `LanguageSelector`
+
+## MDX usage
+
+```mdx
+<Callout type="warning" title="Heads up">
+  This API is experimental.
+</Callout>
+
+<CardGroup cols={2}>
+  <Card title="Quickstart" href="/quickstart" />
+  <Card title="API Reference" href="/api" />
+</CardGroup>
 ```
 
-The codemods handle component renames, prop renames, and admonition-syntax
-differences where mechanically possible, and flag the rest. This gives us design
-freedom without punishing switchers — a core GTM lever. See [02-cli.md](./02-cli.md).
+## Accessibility requirements
 
-## Built on shadcn/ui
+Every interactive component must define:
 
-Each component composes shadcn/ui primitives, e.g.:
+- keyboard behavior
+- focus management
+- ARIA roles/labels where needed
+- reduced motion behavior
+- server-rendered fallback where possible
 
-| Blume component | shadcn primitives |
-| --- | --- |
-| `Tabs` | `tabs` |
-| `Accordion(s)` | `accordion` |
-| `Tooltip` | `tooltip`, `hover-card` |
-| `Card(s)` | `card` |
-| `CodeGroup` | `tabs` + code block |
-| `Callout` | `alert` |
-| `Expandable` | `collapsible` |
-| `TypeTable` / fields | `table` |
+## Styling requirements
 
-Because components are shadcn-based, the override and **eject** stories are
-coherent: a Blume component is a shadcn-style component you can pull into your own
-project and edit — see the registry question in **09-P**.
+Components should use:
 
-## Overriding & composing
+- CSS variables for tokens
+- stable class names for user CSS
+- minimal generated CSS
+- no dependency on user Tailwind config
 
-All components live in the `mdx` registry. Override any of them in
-`components.tsx`:
+## Override model
 
-```tsx
+```ts
+import CustomCard from "./components/custom-card.astro";
+import Search from "./components/search.tsx";
 import { defineComponents } from "blume";
-import { Callout as DefaultCallout } from "blume/components";
 
 export default defineComponents({
   mdx: {
-    Callout: (props) => <DefaultCallout {...props} className="rounded-2xl" />,
-    TypeTable: MyTypeTable,
+    Card: CustomCard,
+  },
+  layout: {
+    Search: {
+      component: Search,
+      client: "load",
+    },
   },
 });
 ```
 
-Adding **brand-new** MDX components (not just overriding) uses the same mechanism —
-any extra key in `mdx` becomes available in MDX globally. Per-section scoping is a
-post-1.0 idea ([05](./05-customization.md)).
+## Source install model
+
+`blume add code-group` should install:
+
+- component source
+- any island source
+- CSS if needed
+- component registration patch
+- usage docs or comments only when useful
+
+Source installs should be easy to diff and remove.
+
+## Component quality bar
+
+Before public beta:
+
+- visual tests for default components
+- keyboard tests for interactive components
+- dark/light coverage
+- responsive coverage
+- MDX rendering fixtures
+- override fixtures

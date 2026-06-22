@@ -1,61 +1,77 @@
-# Blume — Planning
+# Blume plan
 
-Blume is an open-source framework for building documentation websites. You drop
-MDX files in a folder, run `blume dev`, and Blume constructs and runs a Next.js
-app around your content — you never write or maintain frontend/backend code. But
-unlike a hosted product, **every component is yours to override**.
+This folder is the working product and architecture plan for Blume.
 
-> Mintlify's DX. Fumadocs' control. Fully open source.
+Blume is an open-source, markdown-first documentation system:
 
-## How this plan is organized
+- drop Markdown, MDX, or Markdoc-style content into a project
+- run `blume dev`
+- Blume creates and runs an Astro/Vite docs runtime around that content
+- get production-grade docs UI, navigation, search, theming, and components by default
+- customize components, layouts, routes, and server features only when the project needs it
 
-Each file is a self-contained slice we can iterate on independently. Read them in
-order for the full picture, or jump to the area you're working on.
+The guiding product sentence:
 
-| File | Topic |
+> Mintlify's authoring DX, Astro/Vite performance, and full open-source ownership.
+
+## Decided direction
+
+The plan is now centered on Astro + Vite, with Blume owning the docs layer.
+
+Blume should not be a thin wrapper around Starlight, Fumadocs, or Next.js. Those projects are useful references, but Blume's core value is the productized docs experience: content conventions, component system, theme, navigation, search, AI hooks, and deploy behavior that work without boilerplate.
+
+Astro gives Blume the default shape it wants:
+
+- static-first output for most docs
+- Vite dev speed and ecosystem gravity
+- islands for interactive React/Vue/Svelte/Solid components
+- server routes, actions, middleware, sessions, and adapters when dynamic features are needed
+- a clean path to Vercel through `@astrojs/vercel`
+
+## Plan index
+
+| File | Purpose |
 | --- | --- |
-| [00-vision.md](./00-vision.md) | What Blume is, who it's for, positioning vs Mintlify & Fumadocs, principles |
-| [01-architecture.md](./01-architecture.md) | How `blume dev` constructs and runs the Next.js app; the runtime model; Blume's own repo layout |
-| [02-cli.md](./02-cli.md) | `blume` CLI commands, flags, behavior |
-| [03-content-pipeline.md](./03-content-pipeline.md) | File discovery, routing, frontmatter, MDX compilation, TOC, search index |
-| [04-configuration.md](./04-configuration.md) | `blume.config.ts` — `defineConfig` schema |
-| [05-customization.md](./05-customization.md) | `components.tsx` — `defineComponents`, overriding markdown + app-shell slots |
-| [06-navigation.md](./06-navigation.md) | Sidebar, tabs, TOC, breadcrumbs, pager, search UX |
-| [07-theming.md](./07-theming.md) | Design tokens, dark mode, styling strategy, `theme.css` |
-| [08-roadmap.md](./08-roadmap.md) | Milestones from skeleton to 1.0 |
-| [09-open-questions.md](./09-open-questions.md) | Decision log — 37 resolved; only `K` (loader) and `N` (eject contract) remain |
-| [10-components.md](./10-components.md) | The component library — shadcn/ui-based, Mintlify+Fumadocs parity, override matrix |
-| [11-ai.md](./11-ai.md) | AI-native features — llms.txt, raw markdown, copy/open-in-LLM, Ask AI (BYO provider) |
-| [12-internals.md](./12-internals.md) | Concrete contracts — config types, registry, manifest schema, `.blume/` generator output |
-| [13-tooling.md](./13-tooling.md) | Developing Blume itself — Turborepo, bun, tsgo, ultracite (oxlint/oxfmt) |
-| [14-quality.md](./14-quality.md) | Testing, accessibility (WCAG 2.2 AA), release/changesets, and known technical constraints |
-| [15-content-types.md](./15-content-types.md) | Custom React pages, content collections (blog/changelog), typed frontmatter, feeds |
-| [16-component-api.md](./16-component-api.md) | Exact prop contracts for every stdlib component (the buildable "own API") |
-| [17-meta-schema.md](./17-meta-schema.md) | The per-folder `meta.json` schema — nav ordering, groups, frontmatter defaults |
-| [18-errors.md](./18-errors.md) | Error handling & the branded dev overlay — categories, severity, codes, UX |
-| [19-deployment.md](./19-deployment.md) | Deploying — output modes, env/secrets, platform presets (Vercel/Netlify/CF/Node/static) |
+| `00-vision.md` | Product thesis, positioning, non-goals, and success criteria |
+| `01-architecture.md` | Astro/Vite runtime architecture and package boundaries |
+| `02-cli.md` | CLI commands, generated project lifecycle, dev/build behavior |
+| `03-content-pipeline.md` | Content discovery, validation, compilation, routing, assets |
+| `04-configuration.md` | `blume.config.ts`, config precedence, typing, defaults |
+| `05-customization.md` | Components, pages, layouts, slots, islands, eject model |
+| `06-navigation.md` | Sidebar, tabs, groups, page metadata, generated nav |
+| `07-theming.md` | Design tokens, Tailwind v4, CSS variables, dark mode |
+| `08-roadmap.md` | Milestones from prototype to public beta |
+| `09-open-questions.md` | Decisions, risks, and product/technical unknowns |
+| `10-components.md` | Built-in component inventory and implementation strategy |
+| `11-ai.md` | Ask AI, generated docs, LLM-friendly outputs, MCP hooks |
+| `12-internals.md` | Internal types, generated files, manifests, runtime contracts |
+| `13-tooling.md` | Monorepo, package manager, linting, tests, release workflow |
+| `14-quality.md` | Testing strategy, performance budgets, compatibility matrix |
+| `15-content-types.md` | Docs, API reference, guides, examples, changelogs |
+| `16-component-api.md` | Public component contracts and override API |
+| `17-meta-schema.md` | Frontmatter and meta schema reference |
+| `18-errors.md` | Error model, diagnostics, overlay, doctor output |
+| `19-deployment.md` | Static/server builds, Vercel, adapters, search, redirects |
 
-## Status
+## Core architecture in one diagram
 
-The product shape, scope, defaults, and tooling are **settled** — see the decision
-log in [09-open-questions.md](./09-open-questions.md) (37 resolved; only `K` config
-loader and `N` eject contract remain, both minor). The plan is detailed enough to
-build against; [12-internals.md](./12-internals.md) holds the concrete contracts.
-Next natural step: scaffold **M0** ([08-roadmap.md](./08-roadmap.md)).
-
-## The mental model in one diagram
-
-```
-User's project                         Blume (the framework)
-──────────────                         ─────────────────────
-content/**/*.mdx        ─┐
-blume.config.ts          ├──►  blume dev  ──►  generates + runs a Next.js app
-components.tsx           │                      (content source + app shell +
-theme.css (optional)    ─┘                       merged component registry)
-public/                                                  │
-                                                         ▼
-                                              http://localhost:3000
+```mermaid
+flowchart TD
+  A["User project"] --> B["content/ docs/ pages/ blume.config.ts"]
+  B --> C["Blume CLI"]
+  C --> D["Content graph + route manifest"]
+  C --> E["Generated .blume Astro/Vite runtime"]
+  E --> F["Astro dev/build"]
+  F --> G["Static dist/ or server adapter output"]
 ```
 
-The user owns the left column. Blume owns everything on the right — and exposes
-it for override.
+## North-star constraints
+
+- Zero-boilerplate authoring is the default path.
+- Generated files are implementation detail until the user chooses to eject.
+- Astro/Vite is the runtime; Blume is the docs product.
+- Static output must be excellent before dynamic output gets fancy.
+- React is first-class for interactive islands, but the core theme should not require React.
+- The project should feel native on Vercel without being locked to Vercel.
+- Customization should be source-level and inspectable, not hidden plugin magic.
+- Migration from Mintlify, Starlight, and Fumadocs should be a serious adoption path.

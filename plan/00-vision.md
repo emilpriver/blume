@@ -1,75 +1,94 @@
-# 00 — Vision & Positioning
+# Vision
 
-## What Blume is
+## Product thesis
 
-Blume is a documentation framework for the web. The author writes MDX files,
-runs `blume dev`, and gets a complete, polished documentation site — navigation,
-search, theming, dark mode, syntax highlighting — without writing any
-application code. The framework constructs the Next.js app around the content at
-dev/build time.
+Blume is an open-source documentation system for teams who want Mintlify-level authoring speed without accepting a hosted black box or a narrow runtime bet.
 
-The difference from a hosted product: Blume is open source and **ejectable at the
-component level**. Any element — from an `<h1>` in the markdown renderer to the
-entire sidebar — can be replaced with your own React component via a single
-`components.tsx` file.
+The user should be able to:
 
-## Who it's for
+1. Add a `docs/` folder or point Blume at existing Markdown.
+2. Run `blume dev`.
+3. Get a polished docs site with navigation, search, code blocks, API reference affordances, and content-aware metadata.
+4. Add custom components, custom pages, AI, analytics, and server routes only when the project grows into them.
 
-- **Teams who want Mintlify's "just write content" experience** but need to own
-  their stack, self-host, or customize beyond what a hosted config allows.
-- **Open-source projects** that want great docs without adopting and maintaining
-  a full Next.js app.
-- **Design-conscious teams** who will eventually want to override components and
-  match their brand precisely.
+The product should feel like a docs tool first, not a framework starter.
 
 ## Positioning
 
-| | Mintlify | Fumadocs | **Blume** |
-| --- | --- | --- | --- |
-| Get started | Drop MDX, hosted | Scaffold a Next.js app | **Drop MDX, run `blume dev`** |
-| You manage a Next.js app? | No | Yes | **No (it's generated/hidden)** |
-| Customization model | Config + limited theming | Own all the code | **Override any component via `components.tsx`** |
-| Open source | No | Yes | **Yes** |
-| Hosting | Hosted (paid) | Self-host anywhere | **Self-host anywhere** |
-| Lock-in | High | None | **None (ejectable)** |
+| Compared to | Blume should win on |
+| --- | --- |
+| Mintlify | open source, portable builds, local ownership, deeper customization |
+| Starlight | more batteries-included product layer, richer components, stronger migration story |
+| Fumadocs | Astro/Vite distance, faster static-first default, less Next-specific surface area |
+| Nextra | modern content model, generated runtime, stronger component/theming system |
+| Docusaurus | lighter runtime, better Markdown-first DX, less boilerplate |
+| Raw Astro | docs product features without assembling integrations by hand |
 
-The wedge: **Mintlify-grade zero-config DX + Fumadocs-grade control, with no
-hosting lock-in.**
+The short pitch:
 
-## Principles
+> Blume is the docs engine I would want if Mintlify had been open source and built on Vite.
 
-1. **Content is just files.** MDX in a folder. Git-friendly. No database, no CMS.
-2. **Convention over configuration.** A folder of MDX renders beautifully with
-   zero config. Configuration is additive, never required to start.
-3. **Progressive disclosure of power.** The complexity ladder is opt-in:
-   `nothing` → `blume.config.ts` → `components.tsx` → `theme.css` → deep overrides.
-   You only meet the next rung when you need it.
-4. **The framework owns the shell; you own the content.** And when you want it,
-   you own the shell too — one component at a time, defaults intact for the rest.
-5. **No lock-in.** Blume is open source (**MIT**). Overrides are plain React. There
-   is a path to fully eject into a regular Next.js app.
-6. **Beautiful by default.** The default theme should be good enough to ship as-is.
-7. **Fast.** Static-first output, instant HMR in dev, minimal client JS.
-8. **AI-native.** Docs are first-class context for LLMs — llms.txt, raw markdown,
-   copy/open-in-LLM, and an optional Ask AI ship in the box ([11-ai.md](./11-ai.md)).
+## Product principles
 
-## Non-goals (initially)
+- Content first: Markdown, MDX, and structured frontmatter remain the source of truth.
+- No app boilerplate: users should not need to understand Astro to start.
+- Own the docs layer: use Astro/Vite as infrastructure, not as product identity.
+- Static by default: docs should be fast, cacheable, and cheap to host.
+- Dynamic when needed: AI chat, authenticated docs, feedback, OG images, preview routes, and integrations can use Astro server features.
+- Customization without forking: component overrides, layouts, pages, CSS tokens, and registry installs should cover most real-world needs.
+- Eject without punishment: an ejected project should become a normal Astro project that can keep receiving Blume packages.
+- Vercel-friendly: support analytics, speed insights, Blob, Edge Config, OG image generation, and serverless deploy paths cleanly.
 
-- Being a general-purpose website builder. Blume is for **docs** — though an
-  optional, first-class **landing/home page** is supported (resolved 09-U), it is
-  not a full marketing-site system.
-- A hosted/paid control plane, including **hosted AI inference**. Ask AI is
-  bring-your-own-provider; the OSS framework is the core.
-- Supporting non-MDX content sources at launch (CMS, Notion, etc. are later).
-- Framework-agnostic rendering. Blume targets **Next.js (App Router)** under the
-  hood. That's an implementation detail users shouldn't need to touch — but it's
-  the substrate, not Vite/Astro/etc.
+## Non-goals
 
-## The "aha" moment we're designing for
+- Blume is not a generic site builder.
+- Blume is not a long-term wrapper around Starlight.
+- Blume is not a Next.js/Fumadocs clone with different defaults.
+- Blume does not need React Server Components for its core docs model.
+- Blume should not require Tailwind in the user's app to render the default theme.
+- Blume should not force hosted search, hosted AI, or hosted analytics.
 
-1. `npx blume init` → a folder with two MDX files and nothing else.
-2. `blume dev` → a real, searchable, dark-mode docs site at localhost.
-3. Add `components.tsx` with one override → that component changes everywhere,
-   in both the chrome and the markdown, with no rebuild ceremony.
+## Runtime stance
 
-If those three steps feel magical, Blume wins.
+Blume generates a hidden Astro project under `.blume/` and drives Astro/Vite through the CLI.
+
+Users can ignore Astro at first. When they need customization, they can add:
+
+- `blume.config.ts` for project configuration
+- `components.ts` or `components.tsx` for component overrides
+- `theme.css` for tokens and CSS
+- `pages/**/*.astro` for custom pages
+- framework components such as React islands inside MDX or `.astro` pages
+
+The hidden runtime can be ejected into an ordinary Astro project later.
+
+## What must feel magical
+
+- `blume dev` should work from a folder of docs.
+- Missing nav should be inferred from files and metadata.
+- Search should work without a hosted service.
+- API reference blocks should look good without hand-tuning.
+- Frontmatter errors should point to the exact file, key, and fix.
+- Theme changes should hot reload.
+- Adding a React island should feel normal for React users.
+- Static deploys should be boring.
+
+## What should stay explicit
+
+- Server-only features should be configured intentionally.
+- AI should require a clear model/auth/runtime choice.
+- Authenticated docs should be a server-mode feature.
+- Deep theme replacement should be source-level and visible.
+- Ejecting should be a one-way ownership step, even if Blume packages remain usable.
+
+## Success criteria
+
+Blume is successful when:
+
+- a user can migrate a small Mintlify docs site in under 10 minutes
+- a user can build and deploy a static docs site without writing app boilerplate
+- a user can add one custom interactive component without learning Blume internals
+- a user can inspect the generated Astro project and understand the runtime
+- the default site scores well on Core Web Vitals
+- startup time and HMR feel Vite-native
+- open-source contributors can work on components and theme without a hosted platform

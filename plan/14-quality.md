@@ -1,80 +1,137 @@
-# 14 — Quality, Process & Constraints
+# Quality
 
-The non-feature concerns that keep Blume trustworthy: how we test it, our
-accessibility bar, how we release it, and the technical constraints we've
-acknowledged. These are committed approaches (resolved 09-AC), not open questions —
-the few genuinely-loose bits are flagged.
+## Quality goals
 
-## Testing
+Blume should feel reliable despite generating a hidden runtime.
 
-Test runner is **vitest** (already enabled via the ultracite `vitest` oxlint
-preset — see [13-tooling.md](./13-tooling.md)).
+Quality areas:
 
-- **Unit** — content source (discovery/routing/frontmatter), TOC + nav-tree
-  assembly, manifest generation, registry merge, each Blume remark/rehype plugin,
-  variable/snippet substitution.
-- **Integration** — generate `.blume/` for fixture projects in `examples/` and
-  snapshot the manifest + key generated files; render pages and assert output
-  (components resolve, overrides win, frontmatter applied).
-- **E2E** — **Playwright** against a built site: navigation, ⌘K search, dark mode,
-  links, landing page, server-mode Ask AI, llms.txt / raw `.md` endpoints.
-- **Visual regression** — snapshot the default theme (the docs.x.ai look) across
-  representative pages/components in light + dark to catch unintended drift.
-- **Fixtures = dogfood** — the `examples/` projects double as test fixtures and as
-  real docs we look at; Blume's own `docs/` site is the ultimate fixture.
+- correctness
+- diagnostics
+- performance
+- accessibility
+- compatibility
+- migration safety
+- deploy predictability
 
-## Accessibility — WCAG 2.2 AA
+## Test strategy
 
-A hard bar for the default theme and component library:
+### Unit tests
 
-- Built on Radix/shadcn primitives, which provide accessible roles, focus
-  management, and keyboard behavior; overrides docs stress preserving it.
-- **Keyboard:** full keyboard navigation, visible focus (`:focus-visible`), focus
-  trapping in dialogs (search, Ask AI, mobile nav), a **skip-to-content** link.
-- **Motion & contrast:** honor `prefers-reduced-motion`; verify contrast in the
-  **dark-first** docs.x.ai palette (high-contrast monochrome helps here, but it's
-  checked, not assumed).
-- **CI gate:** automated a11y checks (axe via Playwright) run in the test suite.
+Cover:
 
-## Release & publishing
+- config loading and merging
+- schema validation
+- route normalization
+- nav graph generation
+- link extraction
+- diagnostics formatting
+- manifest generation
 
-- **changesets** for versioning the monorepo.
-- **`blume` + `@blume/*` released together** (fixed/synced versioning) so the CLI
-  and its packages never drift out of compatibility.
-- **npm provenance**; publish from CI on a tagged release.
-- Changelog generated from changesets, which cut **GitHub Releases** — and those can
-  auto-populate a docs changelog collection via `source: { type: "github" }`
-  (resolved 09-AM, [15](./15-content-types.md)). Blume dogfoods this on its own docs;
-  users can opt out and write changelog MD by hand.
+### Integration tests
 
-## Technical constraints (acknowledged)
+Each fixture should run:
 
-### Static export + images
-`next/image` optimization needs a server or a loader; under `output: "export"`
-images are unoptimized by default. **Direction:** Blume runs a build-time image
-step (precompute dimensions, optionally emit responsive sizes) so `img` / `Frame` /
-`ImageZoom` look right on static hosts, with a documented opt-in custom loader for
-teams that have one. Final mechanism settled in M2/M7. (This is the static-export
-image strategy referenced from [03-content-pipeline.md](./03-content-pipeline.md).)
+```bash
+blume build
+```
 
-### Build performance at scale
-Per-page MDX bundling + a content map could get heavy for thousand-page sites.
-Levers: bundler + Next incremental caching, Turborepo cache, and an **incremental
-manifest** (only re-process changed files on watch/rebuild). Track build time as an
-explicit budget; revisit if large-site builds regress.
+Then assert:
 
-### MDX trust model
-MDX executes arbitrary JS at build/render. This is safe under the normal model —
-**the docs author is trusted** (it's their repo). For untrusted/community-submitted
-content it's a code-execution vector; that's a documented caveat, and sandboxing is
-out of scope for v1.
+- `.blume/` generated as expected
+- Astro build succeeds or fails with expected diagnostics
+- output routes exist
+- search index exists when enabled
+- assets are copied or processed
 
-### Private / authenticated docs
-v1 leaves auth to the **host** (Vercel password, Cloudflare Access, a reverse
-proxy) — it conflicts with static-first. Built-in auth (password or SSO) is
-**post-1.0** and would imply server output. Noted, not built.
+### Browser tests
 
-## Still loose (small)
-- Exact static-export image mechanism (build-time pipeline vs unoptimized + loader)
-  — decided in M2/M7.
-- Whether visual-regression runs on every PR or nightly (cost vs coverage).
+Use Playwright for:
+
+- navigation
+- mobile sidebar
+- search modal
+- tabs/accordions
+- theme toggle
+- code copy
+- Ask AI UI shell
+- custom page rendering
+
+### Visual tests
+
+Cover:
+
+- docs homepage
+- content page
+- API reference page
+- dark mode
+- mobile layout
+- component gallery
+
+## Performance budgets
+
+Default static docs should target:
+
+- minimal client JavaScript
+- no hydration for static content pages
+- fast first load
+- fast Vite HMR
+- bounded search payload
+
+Budgets should be measured against fixture sites.
+
+## Accessibility checks
+
+Automate:
+
+- axe checks
+- keyboard navigation
+- focus trap behavior
+- contrast checks where practical
+- reduced motion snapshots
+
+Manual review still needed for complex interactions.
+
+## Compatibility matrix
+
+Track:
+
+- Node versions
+- Astro versions
+- Vite versions
+- package managers
+- Vercel static/server deploys
+- Node adapter deploy
+- common monorepo layouts
+
+## Migration quality
+
+Migration tools should:
+
+- never silently discard content
+- produce a diff
+- preserve frontmatter where possible
+- annotate unsupported syntax
+- provide a checklist
+
+## Diagnostics quality
+
+Every error should answer:
+
+- what happened
+- where it happened
+- why it happened
+- how to fix it
+
+Generated runtime stack traces should be remapped to user files whenever possible.
+
+## Release gates
+
+Before beta:
+
+- core fixtures pass
+- component gallery passes visual tests
+- migration fixtures pass
+- static Vercel deploy works
+- server Vercel deploy works for Ask AI
+- docs site builds with Blume itself

@@ -1,110 +1,181 @@
-# 06 — Navigation
+# Navigation
 
-Navigation is auto-derived from the filesystem by default and refinable via
-`meta.json` and frontmatter, with `blume.config.ts` available for full control.
-The ladder mirrors Blume's overall philosophy: zero-config first, explicit when
-you want it.
+## Goals
 
-## Sources of truth (precedence)
+Navigation should work without manual configuration, but allow precise control for larger docs.
 
-1. **Filesystem** — folders and files define structure and default order
-   (alphabetical, then `order` frontmatter).
-2. **`meta.json`** (per folder) — labels, ordering, grouping, icons, inclusion of
-   external links and dividers.
-3. **`blume.config.ts` `navigation`** — explicit override; wins on conflict.
+Blume needs:
 
-## `meta.json` (per folder)
+- generated sidebars
+- tabs/top-level sections
+- page order
+- groups
+- links
+- hidden pages
+- versioned docs
+- API reference sections
+- breadcrumbs
+- previous/next pagination
 
-```jsonc
+## Sources
+
+Navigation is derived from:
+
+1. file system
+2. folder meta files
+3. page frontmatter
+4. `blume.config.ts`
+
+## File-system defaults
+
+```txt
+docs/
+  index.mdx
+  getting-started.mdx
+  guides/
+    index.mdx
+    deploy.mdx
+```
+
+Default nav:
+
+- Introduction
+- Getting Started
+- Guides
+  - Overview
+  - Deploy
+
+## Folder meta
+
+Supported files:
+
+```txt
+docs/guides/_meta.json
+docs/guides/_meta.yaml
+```
+
+Example:
+
+```json
 {
-  "title": "Getting Started",     // group label for this folder in the sidebar
-  "icon": "rocket",
-  "order": 1,
-  "pages": [                       // explicit order; "*" = "everything else here"
-    "introduction",
-    "quickstart",
-    "---",                        // divider
-    { "label": "Changelog", "href": "https://..." },  // external link
-    "*"
-  ]
+  "title": "Guides",
+  "order": 2,
+  "icon": "BookOpen",
+  "pages": ["index", "deploy", "customization"]
 }
 ```
 
-If a folder has no `meta.json`, its pages are ordered by frontmatter `order`, then
-title, then filename. The **full `meta.json` schema** (resolution rules,
-`frontmatterDefaults`, dividers, link items, `$schema`) is in
-[17-meta-schema.md](./17-meta-schema.md).
+## Page frontmatter
 
-## Sidebar
+```yaml
+---
+title: Deploy
+description: Deploy Blume docs to Vercel.
+sidebar:
+  label: Deployment
+  order: 3
+  icon: Rocket
+---
+```
 
-- **Groups** — from folders or `meta.json` `title`.
-- **Collapsible sections**, nested arbitrarily deep. Default behavior:
-  **multi-expand with persisted state** (multiple groups open at once, remembered
-  across navigation) — `config.sidebar.expand` / `persist` (resolved 09-AD).
-- **Active trail** highlighting from the manifest.
-- **Icons** (Lucide name string, or a React node) and **badges** (e.g. `New`,
-  `Beta`) via frontmatter/meta (resolved 09-I).
-- **External links** with an indicator.
-- The whole `Sidebar` (and `SidebarItem`) is overridable in `components.tsx`.
+## Config navigation
 
-## Tabs (top-level sections)
+```ts
+navigation: {
+  tabs: [
+    {
+      label: "Docs",
+      path: "/",
+    },
+    {
+      label: "API",
+      path: "/api",
+    },
+  ],
+  sidebar: [
+    "index",
+    {
+      label: "Guides",
+      items: ["guides/deploy", "guides/customization"],
+    },
+  ],
+}
+```
 
-Optional Mintlify-style tabs for large docs split into areas (Guides / API /
-SDKs). Defined in `config.navigation.tabs`, each pointing at a path prefix. The
-sidebar swaps to the active tab's subtree.
+## Icons
 
-## Right-rail TOC
+Icon inputs should support:
 
-- Built from page headings in the manifest (`h2`–`h3` default depth).
-- Active-heading highlight via IntersectionObserver (client component).
-- Hidden on `full: true` pages.
-- Overridable as `Toc`.
+- Lucide icon names
+- built-in Blume icon names
+- component overrides
+- no icon
 
-## Breadcrumbs
+Use serializable names in frontmatter and component references in config/overrides.
 
-Derived from the active trail. Overridable as `Breadcrumbs`. Off by default on the
-home route.
+## Ordering rules
 
-## Pager (prev / next)
+Order priority:
 
-Sequential previous/next links computed from the flattened, ordered nav tree.
-Overridable as `Pager`.
+1. explicit config order
+2. `_meta` page list
+3. frontmatter `sidebar.order`
+4. file-system order
+5. title sort only if configured
 
-## Page metadata footer (git-derived — resolved 09-AB)
+File-system order should support numeric prefixes:
 
-Below the content, a metadata footer shows (all toggleable via `config.git`):
-- **Last updated** — from the file's git history (commit date), computed at build.
-- **Edit on GitHub** — link built from `config.git.editUrl` (the `EditOnGithub`
-  slot).
-- **Contributors** — avatars of people who touched the file, from git history.
+```txt
+01-introduction.mdx
+02-installation.mdx
+```
 
-Computed at build from the repo; degrades gracefully when not in a git checkout.
-Overridable via the `PageMeta` / `EditOnGithub` layout slots.
+The URL should omit numeric prefixes by default.
 
-A **feedback widget** ("Was this helpful?", optional comment) also sits in this
-footer when `config.feedback.enabled` (resolved 09-AJ). It stays static-friendly by
-emitting analytics events, with an optional webhook for raw responses. Overridable
-as the `Feedback` slot.
+## Hidden pages
 
-## Mobile navigation
+```yaml
+---
+sidebar:
+  hidden: true
+---
+```
 
-Collapsible drawer for sidebar + tabs; search and theme toggle accessible.
-`MobileNav` overridable. All interactive bits are client components.
+Hidden pages:
 
-## Search UX
+- still build
+- still have URLs
+- can optionally be excluded from search
+- are not included in previous/next pagination
 
-- `SearchButton` opens a command-palette dialog (⌘K).
-- Backed by the search index from [03-content-pipeline.md](./03-content-pipeline.md).
-- Keyboard navigable; results grouped by section; highlights matched headings.
-- Default provider is **Pagefind** (static, zero-infra); pluggable via an adapter
-  for Algolia/Orama/others (resolved 09-G).
+## Versioned docs
 
-## Versioning & i18n (post-1.0, but seam designed now — resolved 09-O)
+Potential convention:
 
-Built post-1.0, but the **manifest/nav schema reserves a `version`/`locale`
-dimension in v1** so we never retrofit:
-- **Versions** — a version switcher that scopes the content root/manifest.
-- **Locales** — a locale switcher; content under locale-prefixed roots.
-Concretely: manifest route keys and the nav tree are designed to be addressable by
-an optional `(version, locale)` tuple from day one, even though only a single
-default version/locale ships in v1.
+```txt
+docs/
+  v1/
+  v2/
+```
+
+Config:
+
+```ts
+versions: {
+  current: "v2",
+  versions: ["v2", "v1"],
+}
+```
+
+Versioning can be post-v1, but the nav graph should not make it hard later.
+
+## Diagnostics
+
+Navigation diagnostics should catch:
+
+- missing pages referenced in nav config
+- duplicate routes
+- duplicate labels at same level
+- hidden pages referenced by pagination
+- invalid icon names
+- impossible version config

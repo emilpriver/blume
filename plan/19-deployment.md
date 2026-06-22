@@ -1,109 +1,178 @@
-# 19 — Deployment
+# Deployment
 
-How a Blume site ships: what `blume build` emits, how output mode is chosen, env &
-secrets, and per-platform presets. Builds on the output decision (resolved 09-B2)
-and the server-only Ask AI decision (resolved 09-Z).
+## Goals
 
-## Output modes (recap)
+Blume should deploy cleanly as static docs by default and support server features when needed.
 
-`config.output: "auto"` (default) picks per detected features:
+Primary target:
 
-- **`static`** — pure static export (Next `output: "export"`). Emits HTML/JS/CSS +
-  the Pagefind index + `llms.txt`/raw `.md` + RSS/Atom feeds + sitemap/robots.
-  Hostable on any CDN/static host, zero infra.
-- **`server`** — Next **standalone** Node server. Used when a **server feature** is
-  present.
+- static `dist/` output
 
-`auto` chooses `static` unless a server feature is detected; force with
-`output: "static" | "server"`.
+First-class server target:
 
-### What requires `server`
-- **Ask AI** (`ai.askAI.enabled`) — server-only by design (09-Z); its route holds
-  the provider key.
-- Any future runtime/dynamic feature.
+- Vercel through `@astrojs/vercel`
 
-### What does NOT require server (stays static)
-- **Changelog from GitHub Releases** (09-AM) — fetched at **build time**, baked in.
-- llms.txt / raw `.md` / copy / open-in-LLM, search, feeds, git metadata,
-  structured data, feedback widget (emits analytics events client-side).
+Other targets should follow Astro adapter support.
 
-## What `blume build` emits
+## Output modes
 
-| Mode | Output | Served by |
-| --- | --- | --- |
-| static | `.blume/out/` (static site + search index + feeds + llms.txt) | any static host / CDN |
-| server | Next standalone (`.blume/.next/standalone` + static assets) | `blume start` (Node) |
+### Static
 
-The build logs the chosen mode and **why** (e.g. "server: `ai.askAI` enabled").
-`blume start` serves the standalone server; for static, any static file server works.
+```ts
+deployment: {
+  output: "static",
+}
+```
 
-## Environment & secrets
+Build:
 
-Two distinct classes — keep them separate:
+```bash
+blume build
+```
 
-- **Build-time / public** — read during build, may end up in client output:
-  `GITHUB_TOKEN` (changelog fetch + git metadata rate limits), public analytics keys,
-  `config.variables`, SEO values. Baked into the build.
-- **Runtime / server-only secrets** — read on the server at request time, **never**
-  shipped to the client and **never** `NEXT_PUBLIC_*`: the **AI provider key**
-  (e.g. `ANTHROPIC_API_KEY`) used by the Ask AI route (09-Z).
+Output:
 
-Notes:
-- Enabling Ask AI means a **server deploy** + the provider key in the server env.
-- `.env` lives per-package, not at the repo root (Turborepo best practice,
-  [13-tooling.md](./13-tooling.md)); `blume doctor` lists required env vars.
+```txt
+dist/
+```
 
-## Platform presets
+Static mode supports:
 
-| Platform | static | server / Ask AI | Notes |
-| --- | :---: | :---: | --- |
-| **Vercel** | ✅ | ✅ (Functions/Edge) | Zero-config framework preset detects Blume; per-PR preview deploys |
-| **Netlify** | ✅ | ✅ (Netlify Functions) | Static publish dir or Next runtime for server |
-| **Cloudflare Pages** | ✅ | ✅ (Pages Functions, edge runtime) | Ask AI route runs on Workers |
-| **Node / Docker** | ✅ | ✅ | `blume build` + `blume start`; Dockerfile shipped |
-| **Static hosts** (GitHub Pages, S3/CloudFront, any CDN) | ✅ | ❌ | static only — Ask AI unavailable |
+- docs pages
+- custom static pages
+- local search
+- sitemap
+- RSS/changelog outputs
+- `llms.txt`
+- prerendered OG images if configured
 
-**Ask AI route** is a Next Route Handler (`app/api/ask/route.ts` in the generated
-app). It deploys as a serverless/edge function on Vercel/Netlify/Cloudflare and is
-served by the Node process in standalone mode. On pure static hosts there's no
-function, so Ask AI is simply off (all other AI features still ship).
+### Server
 
-Blume publishes a **Vercel framework preset** so `vercel deploy` is zero-config;
-other platforms get a short guide + the standalone server / static `out/` as needed.
+```ts
+deployment: {
+  output: "server",
+  adapter: "vercel",
+}
+```
 
-## Subpath, URLs, redirects, headers
+Server mode supports:
 
-- **Base path** — deploy under a subdirectory via `config.basePath` (e.g. `/docs`);
-  links and assets respect it.
-- **Trailing slash** — `config.trailingSlash` (default clean URLs, no trailing slash).
-- **Redirects** — `config.redirects` ([04](./04-configuration.md)) emit as **Next
-  redirects** in server mode and as **platform redirect files** in static mode
-  (`vercel.json`, Netlify/Cloudflare `_redirects`), with a meta-refresh fallback.
-- **Headers/caching** — hashed assets served immutable; HTML revalidated. Platform
-  adapters set sane defaults.
+- everything in static mode
+- Ask AI endpoint
+- dynamic OG images
+- authenticated docs
+- feedback persistence
+- request-aware middleware
+- Astro actions/endpoints
 
-## Images
+## Vercel
 
-- **Static mode:** `next/image` optimization needs no server, so Blume runs the
-  build-time image step (precompute sizes) / `unoptimized` + optional custom loader
-  — the static-export image strategy tracked in [14-quality.md](./14-quality.md).
-- **Server mode:** full `next/image` on-demand optimization is available.
+Vercel should be the most polished deployment path.
 
-## CI & previews
+Support:
 
-- Build only what changed: `turbo run build --affected` ([13](./13-tooling.md)).
-- Deploy the `out/` (static) or standalone artifact.
-- Per-PR **preview deploys** via the platform (Vercel/Netlify/Cloudflare native);
-  CI gate runs `ultracite check` + tests ([14](./14-quality.md)).
+- `@astrojs/vercel`
+- static output for simple docs
+- server output for dynamic features
+- Vercel Analytics
+- Speed Insights
+- AI SDK through Vercel AI Gateway
+- optional Blob/Edge Config integrations where useful
 
-## Private / authenticated docs
+Blume should avoid requiring Vercel for static docs.
 
-v1 is **host-level**: Vercel password protection, Cloudflare Access, or a reverse
-proxy. Built-in auth (password/SSO) is post-1.0 and implies server mode
-([14-quality.md](./14-quality.md)).
+## Adapters
 
-## Deploy targets summary
+Supported adapter config:
 
-- **Just docs, zero infra** → `static` → any CDN (cheapest, simplest).
-- **Docs + Ask AI** → `server` → Vercel/Netlify/Cloudflare/Node.
-- **Self-host** → `blume build` (server) + `blume start`, or the shipped Dockerfile.
+```ts
+deployment: {
+  output: "server",
+  adapter: "node",
+}
+```
+
+Potential adapters:
+
+- `vercel`
+- `node`
+- `netlify`
+- `cloudflare`
+
+Adapter support should be documented with a compatibility matrix.
+
+## Redirects
+
+Config:
+
+```ts
+redirects: [
+  { from: "/old", to: "/new", status: 301 },
+]
+```
+
+Static mode:
+
+- emit platform files where supported
+- emit manifest for hosts that need manual wiring
+
+Server mode:
+
+- Astro middleware or endpoint handling
+
+## Images and OG
+
+Images:
+
+- Astro assets for local images
+- public assets for pass-through files
+- remote images only through explicit allowlist/config
+
+OG:
+
+- static builds can prerender known route images
+- server builds can expose a dynamic endpoint
+- Vercel can use `@vercel/og` or Satori-compatible rendering
+
+## Search deploy
+
+Pagefind flow:
+
+1. Astro builds HTML.
+2. Blume runs Pagefind against `dist/`.
+3. Search assets are copied into output.
+4. Search island loads the local index.
+
+Server mode should still support static search assets unless a hosted provider is configured.
+
+## Environment variables
+
+Server features may require env vars.
+
+Examples:
+
+- `VERCEL_OIDC_TOKEN` for Vercel AI Gateway in Vercel environments
+- analytics keys
+- feedback storage credentials
+
+Build should fail fast for required env vars when a feature is enabled.
+
+## Preview
+
+`blume preview`:
+
+- serves static `dist/` for static builds
+- delegates to adapter preview for server builds where possible
+
+## Deployment diagnostics
+
+Build should explain:
+
+- selected output mode
+- selected adapter
+- server-only features
+- search provider
+- generated redirects
+- generated sitemap
+- missing env vars
+- incompatible config

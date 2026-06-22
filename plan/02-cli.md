@@ -1,130 +1,187 @@
-# 02 — CLI
+# CLI
 
-The `blume` CLI is the only interface most users touch. It's a Node binary
-distributed on npm, runnable via `npx blume@latest` or installed as a dev
-dependency.
+## Goals
+
+The CLI should make Blume feel like a docs tool, not an Astro starter.
+
+Core loop:
+
+```bash
+blume dev
+blume build
+blume preview
+```
+
+The CLI owns project discovery, content graph generation, `.blume/` generation, and calling Astro.
 
 ## Commands
 
+### `blume init`
+
+Creates the minimum project surface:
+
+```txt
+docs/
+  index.mdx
+blume.config.ts
+```
+
+Flags:
+
+- `--template docs|api|sdk|changelog`
+- `--content-dir <dir>`
+- `--package-manager bun|pnpm|npm|yarn`
+- `--yes`
+
+`init` should not scaffold an Astro app unless `--eject` is passed.
+
 ### `blume dev`
-Start the development server. Generates `.blume/`, builds the manifest, runs
-`next dev`, and watches the project for changes.
 
-```
-blume dev [--port <n>] [--host <addr>] [--open] [--content <dir>] [--config <path>]
-```
+Runs the generated Astro/Vite dev server.
 
-- `--port` (default `3000`)
-- `--host` (default `localhost`)
-- `--open` — open the browser
-- `--content` — content directory override
-- `--config` — path to `blume.config.ts`
+Responsibilities:
+
+1. detect project root
+2. load and validate config
+3. scan content and custom pages
+4. generate `.blume/`
+5. start Astro dev against `.blume/astro.config.mjs`
+6. bridge Blume diagnostics into the Astro/Vite overlay
+
+Useful flags:
+
+- `--host`
+- `--port`
+- `--open`
+- `--content-dir`
+- `--strict`
+- `--debug`
+
+Watch behavior:
+
+- content edits update the content graph and Vite module cache
+- frontmatter edits revalidate the page and nav graph
+- config edits regenerate runtime modules
+- theme edits hot reload CSS
+- route-shape changes may restart Astro only when necessary
 
 ### `blume build`
-Production build. Generates `.blume/`, runs `next build`. Chooses output mode
-(static export vs. standalone server) based on detected features, overridable in
-config.
 
-```
-blume build [--content <dir>] [--config <path>] [--output static|server]
-```
+Builds the docs site.
 
-### `blume start`
-Serve the production build (standalone server output).
+Default output:
 
-```
-blume start [--port <n>] [--host <addr>]
+```txt
+dist/
 ```
 
-### `blume init`
-Scaffold a new Blume project with a **small but showcase-y starter** (resolved
-09-J/starter): a landing home page (`layout: "landing"`), a couple of doc pages
-exercising callouts/tabs/code, a minimal `blume.config.ts`, a commented
-`components.tsx`, a `.gitignore` (with `.blume/`), and `package.json` wiring. Teaches
-the value by example without bloat. Backed by `create-blume`.
+Responsibilities:
 
-```
-blume init [dir] [--template <name>] [--pm npm|pnpm|yarn|bun]
-```
+- generate `.blume/`
+- run Astro build
+- generate local search index
+- copy public assets
+- emit route manifest and diagnostics
+- fail on broken links in strict mode
 
-`npm create blume@latest` is the canonical entry point; `blume init` is the same
-flow for users who already have the CLI. A single default template ships first;
-`--template` leaves room for more later.
+Flags:
+
+- `--output static|server`
+- `--adapter vercel|node|netlify|cloudflare`
+- `--base <path>`
+- `--strict`
+- `--analyze`
+
+### `blume preview`
+
+Previews the last build output.
+
+For static output, this can serve `dist/`.
+
+For server output, this should delegate to the selected adapter's preview behavior when possible.
 
 ### `blume add`
-Copy a default component's source into the user's project for deep customization,
-via Blume's **shadcn-compatible registry** (resolved 09-P). The copied component
-becomes editable, shadcn-style source the user owns; Blume wires it into the `mdx`
-or `layout` registry automatically.
 
-```
-blume add <component...>     # e.g. blume add callout card tabs
-blume add --list             # browse available components
-```
+Installs source-level components, templates, or integrations.
 
-Backed by `blume-registry` ([01-architecture.md](./01-architecture.md)); compatible
-with the shadcn CLI's registry format, so `npx shadcn add` can also consume it.
+Examples:
 
-### `blume migrate`
-Run codemods to convert existing docs from another tool to Blume's component/prop
-API (resolved 09-R). See [10-components.md](./10-components.md).
-
-```
-blume migrate mintlify [--dry-run]
-blume migrate fumadocs [--dry-run]
+```bash
+blume add feedback
+blume add ask-ai
+blume add api-reference
+blume add theme-linear
 ```
 
-Handles component renames, prop renames, and admonition-syntax differences where
-mechanical; flags anything that needs a human.
+This should follow a shadcn-style source registry model, but the default registry should be Blume-owned and Astro-first.
 
 ### `blume eject`
-Materialize `.blume/` into a real, owned Next.js app and detach from the managed
-runtime. One-way door. This is the escape hatch that guarantees no lock-in.
 
-```
-blume eject [--dir <dir>]
-```
+Copies the generated runtime into the user project as an owned Astro app.
 
-> Ejection is a v1+ feature but is a first-class design constraint from day one —
-> the generated app must be clean enough to hand over. See [09-open-questions.md](./09-open-questions.md).
+After eject:
+
+- user has `astro.config.mjs`
+- user has `src/pages`, `src/layouts`, and generated runtime files promoted to source
+- `blume dev` is no longer required
+- Blume packages can still be imported directly
+- future Blume updates may require manual merge work
+
+`eject` should print a clear diff and ask for confirmation.
 
 ### `blume doctor`
-Diagnostics: Node/Next versions, config validity, broken links, orphaned files,
-duplicate routes, missing frontmatter, client/server override mismatches.
 
-### `blume info`
-Print resolved configuration, content root, route count, and versions. Useful for
-bug reports.
+Checks:
 
-## Global flags
+- Node version
+- package manager
+- Astro/Vite compatibility
+- missing peer integrations
+- invalid config
+- duplicate routes
+- broken nav references
+- missing assets
+- invalid component override files
+- server-only features used in static output
 
-- `--verbose` / `-v` — debug logging
-- `--cwd <dir>` — run as if in a different directory
-- `--no-color`
-- `--version`, `--help`
+### `blume migrate`
 
-## Behavior notes
+Migration targets:
 
-- **First run** generates `.blume/` and installs/links the runtime. Subsequent
-  runs reuse and reconcile it.
-- **`.blume/` is disposable.** Deleting it is always safe; `blume dev` rebuilds it.
-- **Watch granularity:**
-  - MDX content change → Next HMR, no manifest rebuild needed for body edits.
-  - Frontmatter / new / moved / deleted files → manifest rebuild (fast).
-  - `blume.config.ts` / `components.tsx` / `theme.css` → regenerate registry/config;
-    restart the Next process only if required.
-- **Errors** surface in a Blume-branded overlay (wrapping Next's) with the
-  offending file path and a content-author-friendly message — not a webpack stack.
-  Full categories, severity model, codes, and overlay anatomy in
-  [18-errors.md](./18-errors.md).
+```bash
+blume migrate mintlify
+blume migrate starlight
+blume migrate fumadocs
+```
 
-## Implementation
+The migrator should preserve content first and warn before changing semantics.
 
-- Arg parsing: a small library (`cac` or `commander`) — low priority which.
-- The CLI orchestrates the library packages; it holds no rendering logic itself.
-- Telemetry: **off by default**, opt-in only, clearly disclosed. (OSS trust.)
+## Generated runtime lifecycle
 
-> **RESOLVED (09-J):** the **first public release** (through M7) ships `dev`,
-> `build`, `start`, `init`, plus `add` (registry) and `migrate` (codemods) from
-> M5.5. `eject`, `doctor`, `info` follow in M8. The earliest dev skeleton (M0) only
-> needs `dev`.
+`.blume/` should be deterministic:
+
+- safe to delete
+- regenerated by `dev` and `build`
+- ignored by default
+- readable for debugging
+- never the source of user-authored truth before eject
+
+The CLI should hash inputs and avoid rewriting files that have not changed so Vite HMR stays fast.
+
+## Error style
+
+CLI errors should be specific and actionable:
+
+```txt
+Invalid frontmatter in docs/api/auth.mdx
+
+Field: sidebar.order
+Expected: number
+Received: "first"
+
+Fix:
+  sidebar:
+    order: 1
+```
+
+Use file paths, line/column when available, schema paths, and suggested fixes.
