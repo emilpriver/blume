@@ -3,7 +3,7 @@ import { describe, expect, it } from "vitest";
 import { calloutTypeFor } from "../src/markdown/directives.ts";
 import { toPackageCommands } from "../src/markdown/package-commands.ts";
 
-describe("calloutTypeFor", () => {
+describe(calloutTypeFor, () => {
   it("passes through canonical callout types", () => {
     expect(calloutTypeFor("note")).toBe("note");
     expect(calloutTypeFor("warning")).toBe("warning");
