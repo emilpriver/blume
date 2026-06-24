@@ -249,6 +249,15 @@ blume-tabs pre,
   background: var(--blume-code-background);
 }
 
+/* Code blocks inside tabs sit flush; the tab container owns the frame. These
+   rules are unlayered like the base \`pre\` styles, so they win over Tailwind's
+   layered utilities (which a class on the panel cannot). */
+blume-tabs [data-blume-tab-panel] > pre {
+  border: 0;
+  border-radius: 0;
+  margin: 0;
+}
+
 blume-tabs pre[data-language],
 .not-prose pre[data-language] {
   padding-top: 1rem;
