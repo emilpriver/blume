@@ -1,68 +1,303 @@
 ---
 title: Components
-description: The built-in MDX component library.
+description: The built-in JSX components — cards, steps, tabs, accordions, badges, file trees, and API-reference blocks — usable in any MDX page.
 ---
 
 # Components
 
-Blume ships an accessible, themeable component set available in any MDX page —
-no imports required.
+Blume ships an accessible, themeable component set available in any `.mdx` page
+with **no imports**. Each one is shown below with a live preview and its source.
+Components are vanilla and React-free; React only switches on if you add your own
+island.
 
-## Callout
+## Card and CardGroup
 
-:::note[Info]
-Use for neutral context.
-:::
-
-:::warning
-Use for warnings.
-:::
-
-:::success
-Use for confirmations.
-:::
-
-```mdx
-:::warning[Heads up]
-This API is experimental.
-:::
-```
-
-## Cards
+Cards link to a destination with an icon, title, and short blurb. Group them with
+`CardGroup` for a responsive grid. Reach for them on landing pages, section
+indexes, and “next steps” — anywhere you’re guiding the reader onward.
 
 <CardGroup cols={2}>
-  <Card title="Guides" href="/guides/configuration" icon="book-open">
-    Task-focused walkthroughs.
+  <Card title="Quickstart" href="/quickstart" icon="rocket">
+    Install Blume and ship your first page.
   </Card>
-  <Card title="CLI" href="/reference/cli" icon="rocket">
-    Command reference.
+  <Card title="Components" href="/reference/components" icon="folder">
+    Browse the component library.
   </Card>
 </CardGroup>
 
+```mdx
+<CardGroup cols={2}>
+  <Card title="Quickstart" href="/quickstart" icon="rocket">
+    Install Blume and ship your first page.
+  </Card>
+  <Card title="Components" href="/reference/components" icon="folder">
+    Browse the component library.
+  </Card>
+</CardGroup>
+```
+
+`Card` takes `title`, an optional `href` (omit it for a non-clickable card), and
+an `icon` from Blume's built-in icon set. `CardGroup` takes `cols` (default `2`).
+
 ## Steps
 
+A numbered vertical sequence for ordered instructions — installs, setup flows,
+and tutorials where the order matters. Each `Step` takes a `title`.
+
 <Steps>
-  <Step title="Install">Add Blume.</Step>
-  <Step title="Write">Author Markdown.</Step>
-  <Step title="Ship">Build and deploy.</Step>
+  <Step title="Install Blume">Add the package to your project.</Step>
+  <Step title="Write a page">
+    Drop an `.mdx` file into your content folder.
+  </Step>
+  <Step title="Ship it">Run `blume build` and deploy `dist/`.</Step>
 </Steps>
+
+```mdx
+<Steps>
+  <Step title="Install Blume">Add the package to your project.</Step>
+  <Step title="Write a page">
+    Drop an `.mdx` file into your content folder.
+  </Step>
+  <Step title="Ship it">Run `blume build` and deploy `dist/`.</Step>
+</Steps>
+```
 
 ## Tabs
 
+Switch between equivalent content in place — language variants, OS-specific
+commands, or alternative approaches — without stacking everything on the page.
+Each `Tab` takes a `title`.
+
 <Tabs>
-  <Tab title="bun">`bun add blume`</Tab>
-  <Tab title="npm">`npm install blume`</Tab>
+  <Tab title="macOS">Use Homebrew to install the toolchain.</Tab>
+  <Tab title="Windows">Use winget to install the toolchain.</Tab>
 </Tabs>
+
+```mdx
+<Tabs>
+  <Tab title="macOS">Use Homebrew to install the toolchain.</Tab>
+  <Tab title="Windows">Use winget to install the toolchain.</Tab>
+</Tabs>
+```
 
 ## Accordion
 
-<Accordion title="Is the core theme React-free?">
+Collapse supplementary detail — FAQs, optional steps, or long examples — so it's
+available without crowding the page. Set `defaultOpen` to start expanded.
+
+<Accordion title="Is the core theme really React-free?">
   Yes. Interactive bits like tabs and search are vanilla custom elements. React
   is only enabled when you add an island.
 </Accordion>
 
+```mdx
+<Accordion title="Is the core theme really React-free?">
+  Yes. Interactive bits like tabs and search are vanilla custom elements. React
+  is only enabled when you add an island.
+</Accordion>
+```
+
+## Badge
+
+A small inline label for status or metadata — version tags, “new” or “beta”
+markers, stability levels. The `variant` tunes the color to the meaning.
+
+### Default
+
+Neutral metadata with no particular emphasis.
+
+<Badge>Stable</Badge>
+
+```mdx
+<Badge>Stable</Badge>
+```
+
+### Accent
+
+Draws the eye using your theme accent — good for “new” or featured markers.
+
+<Badge variant="accent">New</Badge>
+
+```mdx
+<Badge variant="accent">New</Badge>
+```
+
+### Success
+
+A positive or passing state.
+
+<Badge variant="success">Passing</Badge>
+
+```mdx
+<Badge variant="success">Passing</Badge>
+```
+
+### Warning
+
+Something to use with caution, such as an experimental feature.
+
+<Badge variant="warning">Beta</Badge>
+
+```mdx
+<Badge variant="warning">Beta</Badge>
+```
+
+### Danger
+
+A negative or breaking state, such as a deprecation.
+
+<Badge variant="danger">Deprecated</Badge>
+
+```mdx
+<Badge variant="danger">Deprecated</Badge>
+```
+
+## File tree
+
+Illustrate a project or folder layout. Wrap a normal Markdown list and Blume
+styles it as a tree — handy for explaining structure in setup and config guides.
+
+<FileTree>
+
+- docs/
+  - index.mdx
+  - guides/
+    - configuration.mdx
+- blume.config.ts
+
+</FileTree>
+
+```mdx
+<FileTree>
+
+- docs/
+  - index.mdx
+  - guides/
+    - configuration.mdx
+- blume.config.ts
+
+</FileTree>
+```
+
 ## API reference
 
-`Endpoint`, `ParameterTable`, `RequestExample`, `ResponseExample`, and
-`AuthMethod` power API docs. Generate them from an OpenAPI spec with
-`blume import openapi`.
+These components power API documentation. Blume generates them for you from a
+spec with `blume import openapi`, but you can also write them by hand.
+
+### Endpoint
+
+A method-and-path header for an API operation. The method is color-coded by verb.
+
+<Endpoint method="POST" path="/v1/pets" />
+
+```mdx
+<Endpoint method="POST" path="/v1/pets" />
+```
+
+### Parameter table
+
+Document request parameters — name, type, whether they're required, and a
+description. Pass a `parameters` array.
+
+<ParameterTable
+  parameters={[
+    {
+      name: "name",
+      type: "string",
+      required: true,
+      description: "The pet's name.",
+    },
+    { name: "tag", type: "string", description: "An optional category." },
+  ]}
+/>
+
+```mdx
+<ParameterTable
+  parameters={[
+    {
+      name: "name",
+      type: "string",
+      required: true,
+      description: "The pet's name.",
+    },
+    { name: "tag", type: "string", description: "An optional category." },
+  ]}
+/>
+```
+
+### Request example
+
+Show an example request body or call, framed in a titled panel. Defaults the
+title to “Request”.
+
+<RequestExample title="Request">
+
+```json
+{
+  "name": "Rex",
+  "tag": "dog"
+}
+```
+
+</RequestExample>
+
+````mdx
+<RequestExample title="Request">
+
+```json
+{
+  "name": "Rex",
+  "tag": "dog"
+}
+```
+
+</RequestExample>
+````
+
+### Response example
+
+Show an example response, usually paired with a request example. Use the title to
+label the status, like “201 — Created”.
+
+<ResponseExample title="201 — Created">
+
+```json
+{
+  "id": 1,
+  "name": "Rex"
+}
+```
+
+</ResponseExample>
+
+````mdx
+<ResponseExample title="201 — Created">
+
+```json
+{
+  "id": 1,
+  "name": "Rex"
+}
+```
+
+</ResponseExample>
+````
+
+### Auth method
+
+Note the authentication scheme an endpoint expects, with an optional name and
+description.
+
+<AuthMethod
+  type="Bearer"
+  name="Authorization"
+  description="Pass your API key as a bearer token."
+/>
+
+```mdx
+<AuthMethod
+  type="Bearer"
+  name="Authorization"
+  description="Pass your API key as a bearer token."
+/>
+```
