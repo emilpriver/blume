@@ -208,7 +208,7 @@ const aiConfigSchema = z
     ask: z
       .object({
         enabled: z.boolean().default(false),
-        model: z.string().default("openai/gpt-4.1-mini"),
+        model: z.string().default("openai/gpt-5.5"),
       })
       .strict()
       .optional(),
