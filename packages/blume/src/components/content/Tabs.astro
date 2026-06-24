@@ -5,7 +5,7 @@
   class="not-prose my-6 block overflow-hidden rounded-blume border border-border bg-background"
 >
   <div
-    class="flex gap-1 overflow-x-auto border-border border-b bg-muted/35 px-3 py-2"
+    class="flex gap-4 overflow-x-auto border-border border-b px-3"
     data-blume-tablist
     role="tablist"
   >
@@ -17,7 +17,7 @@
 
 <script>
   const TRIGGER_CLASS =
-    "inline-flex h-7 shrink-0 cursor-pointer items-center rounded-full border-0 bg-transparent px-3 font-medium text-muted-foreground text-xs transition-colors hover:bg-muted hover:text-foreground aria-[selected=true]:bg-background aria-[selected=true]:text-foreground";
+    "-mb-px inline-flex shrink-0 cursor-pointer items-center border-transparent border-b-2 bg-transparent px-1 py-2.5 font-medium text-muted-foreground text-xs transition-colors hover:text-foreground aria-[selected=true]:border-accent aria-[selected=true]:text-foreground";
 
   class BlumeTabs extends HTMLElement {
     connectedCallback() {
