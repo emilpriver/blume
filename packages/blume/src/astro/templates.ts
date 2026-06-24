@@ -101,7 +101,7 @@ export const astroConfigTemplate = (options: {
 import { defineConfig } from "astro/config";
 import mdx from "@astrojs/mdx";
 import tailwindcss from "@tailwindcss/vite";
-import { blumeMdxProcessor } from "blume/markdown";
+import { blumeMarkdownProcessor, blumeMdxProcessor } from "blume/markdown";
 ${reactImport}${blumeImport}${adapterImport}
 export default defineConfig({
   root: ${JSON.stringify(context.outDir)},
@@ -111,6 +111,7 @@ export default defineConfig({
   output: ${JSON.stringify(deployment.output)},${adapterOption}${siteOption}${baseOption}${redirectsOption}
   integrations: [${integrations.join(", ")}],
   markdown: {
+    processor: blumeMarkdownProcessor(),
     shikiConfig: {
       themes: {
         light: "github-light",
