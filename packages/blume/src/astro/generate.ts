@@ -10,7 +10,7 @@ import {
 import { createRequire } from "node:module";
 import { fileURLToPath, pathToFileURL } from "node:url";
 
-import { dirname, join } from "pathe";
+import { dirname, join, relative } from "pathe";
 import { glob } from "tinyglobby";
 
 import { buildRawMarkdown } from "../ai/markdown.ts";
@@ -123,12 +123,27 @@ const writeIfChanged = async (
 
 /** Serialize the content graph into the data module the runtime consumes. */
 export const buildRuntimeData = (project: BlumeProject): string => {
-  const { config, graph, manifest } = project;
+  const { config, context, graph, manifest } = project;
+  const { github } = config;
+  const repoUrl = github
+    ? `https://github.com/${github.owner}/${github.repo}`
+    : null;
+  const editBase = github ? `${repoUrl}/edit/${github.branch}` : null;
+
+  const editUrlFor = (sourcePath: string): string | null => {
+    if (!editBase) {
+      return null;
+    }
+    const rel = relative(context.root, sourcePath).split("\\").join("/");
+    return `${editBase}/${github?.dir ? `${github.dir}/${rel}` : rel}`;
+  };
+
   const data = {
     config: {
       description: config.description,
       logo: config.logo ?? null,
       og: { enabled: config.og.enabled },
+      repoUrl,
       search: {
         enabled: config.search.provider !== "none",
         provider: config.search.provider,
@@ -140,6 +155,7 @@ export const buildRuntimeData = (project: BlumeProject): string => {
     navigation: graph.navigation,
     routes: manifest.routes.map((route) => ({
       draft: route.draft,
+      editUrl: editUrlFor(route.sourcePath),
       hidden: route.hidden,
       id: route.id,
       indexable: route.indexable,

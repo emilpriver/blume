@@ -3,10 +3,16 @@ import Icon from "../Icon.astro";
 
 interface Props {
   route: string;
+  editUrl?: string | null;
+  repoUrl?: string | null;
+  askEnabled?: boolean;
 }
 
-const { route } = Astro.props;
+const { route, editUrl, repoUrl, askEnabled } = Astro.props;
 const mdPath = route === "/" ? "/index.md" : `${route}.md`;
+
+const GITHUB_LOGO =
+  '<svg class="size-4 shrink-0" fill="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M12 .297c-6.63 0-12 5.373-12 12 0 5.303 3.438 9.8 8.205 11.385.6.113.82-.258.82-.577 0-.285-.01-1.04-.015-2.04-3.338.724-4.042-1.61-4.042-1.61C4.422 18.07 3.633 17.7 3.633 17.7c-1.087-.744.084-.729.084-.729 1.205.084 1.838 1.236 1.838 1.236 1.07 1.835 2.809 1.305 3.495.998.108-.776.417-1.305.76-1.605-2.665-.3-5.466-1.332-5.466-5.93 0-1.31.465-2.38 1.235-3.22-.135-.303-.54-1.523.105-3.176 0 0 1.005-.322 3.3 1.23.96-.267 1.98-.399 3-.405 1.02.006 2.04.138 3 .405 2.28-1.552 3.285-1.23 3.285-1.23.645 1.653.24 2.873.12 3.176.765.84 1.23 1.91 1.23 3.22 0 4.61-2.805 5.625-5.475 5.92.42.36.81 1.096.81 2.22 0 1.606-.015 2.896-.015 3.286 0 .315.21.69.825.57C20.565 22.092 24 17.592 24 12.297c0-6.627-5.373-12-12-12"/></svg>';
 
 /** Brand logos for the "Open in chat" providers (monochrome, currentColor). */
 const LOGOS: Record<string, string> = {
@@ -31,23 +37,91 @@ const PROVIDERS = [
   { key: "cursor", label: "Open in Cursor" },
 ];
 
+const EMOJI = ["😭", "🙁", "🙂", "🤩"];
+
 const rowClass =
   "flex w-full items-center gap-2.5 rounded-md px-2 py-1.5 text-left text-muted-foreground text-sm transition-colors hover:bg-muted hover:text-foreground";
 ---
 
 <div
-  class="mt-8 border-border border-t pt-4"
+  class="mt-8 space-y-0.5 border-border border-t pt-4"
   data-blume-page-actions
   data-md={mdPath}
 >
+  {
+    editUrl && (
+      <a class={rowClass} href={editUrl} rel="noreferrer" target="_blank">
+        <span set:html={GITHUB_LOGO} />
+        Edit this page on GitHub
+      </a>
+    )
+  }
+
   <button class={rowClass} data-blume-scroll-top type="button">
     <Icon name="arrow-up" size={16} />
     Scroll to top
   </button>
+
+  {
+    repoUrl && (
+      <details class="group">
+        <summary
+          class={`${rowClass} cursor-pointer list-none [&::-webkit-details-marker]:hidden`}
+        >
+          <Icon name="thumbs-up" size={16} />
+          Give feedback
+        </summary>
+        <div
+          class="mt-2 rounded-blume border border-border bg-background p-2.5"
+          data-blume-feedback
+          data-repo={repoUrl}
+        >
+          <textarea
+            class="block max-h-40 min-h-20 w-full resize-y rounded-md border border-border bg-transparent px-2 py-1.5 text-foreground text-sm"
+            data-feedback-text
+            placeholder="Leave your feedback…"
+          />
+          <p class="mt-1 mb-2 text-muted-foreground text-xs">
+            Markdown supported
+          </p>
+          <div class="flex items-center gap-1">
+            {EMOJI.map((emoji) => (
+              <button
+                aria-pressed="false"
+                class="rounded-md px-1.5 py-1 text-base leading-none transition-colors hover:bg-muted aria-[pressed=true]:bg-muted aria-[pressed=true]:ring-1 aria-[pressed=true]:ring-accent"
+                data-feedback-emoji={emoji}
+                type="button"
+              >
+                {emoji}
+              </button>
+            ))}
+            <button
+              class="ml-auto rounded-md bg-accent px-3 py-1 font-medium text-accent-foreground text-sm hover:opacity-90"
+              data-feedback-send
+              type="button"
+            >
+              Send
+            </button>
+          </div>
+        </div>
+      </details>
+    )
+  }
+
   <button class={rowClass} data-blume-copy-page type="button">
     <Icon name="copy" size={16} />
     <span data-blume-copy-label>Copy page</span>
   </button>
+
+  {
+    askEnabled && (
+      <button class={rowClass} data-blume-ask-ai type="button">
+        <Icon name="message-circle" size={16} />
+        Ask AI about this page
+      </button>
+    )
+  }
+
   <details class="group">
     <summary
       class={`${rowClass} cursor-pointer list-none [&::-webkit-details-marker]:hidden`}
@@ -101,8 +175,7 @@ const rowClass =
     );
 
     for (const link of root.querySelectorAll("[data-open-in]")) {
-      const key = link.getAttribute("data-open-in") ?? "";
-      const build = CHAT_URLS[key];
+      const build = CHAT_URLS[link.getAttribute("data-open-in") ?? ""];
       if (build) {
         link.setAttribute("href", build(query));
       }
@@ -112,6 +185,12 @@ const rowClass =
       .querySelector("[data-blume-scroll-top]")
       ?.addEventListener("click", () =>
         window.scrollTo({ behavior: "smooth", top: 0 })
+      );
+
+    root
+      .querySelector("[data-blume-ask-ai]")
+      ?.addEventListener("click", () =>
+        window.dispatchEvent(new CustomEvent("blume:open-ask-ai"))
       );
 
     const label = root.querySelector("[data-blume-copy-label]");
@@ -131,5 +210,37 @@ const rowClass =
           // Clipboard or fetch unavailable; nothing to do.
         }
       });
+
+    const feedback = root.querySelector("[data-blume-feedback]");
+    if (feedback) {
+      const repo = feedback.getAttribute("data-repo") ?? "";
+      let mood = "";
+      const emojis = feedback.querySelectorAll("[data-feedback-emoji]");
+      for (const button of emojis) {
+        button.addEventListener("click", () => {
+          mood = button.getAttribute("data-feedback-emoji") ?? "";
+          for (const other of emojis) {
+            other.setAttribute(
+              "aria-pressed",
+              other === button ? "true" : "false"
+            );
+          }
+        });
+      }
+      feedback
+        .querySelector("[data-feedback-send]")
+        ?.addEventListener("click", () => {
+          const field = feedback.querySelector("[data-feedback-text]");
+          const text =
+            field instanceof HTMLTextAreaElement ? field.value.trim() : "";
+          const title = `Docs feedback: ${location.pathname}`;
+          const body = `${mood ? `${mood} ` : ""}${text}\n\n---\nPage: ${location.href}`;
+          window.open(
+            `${repo}/issues/new?title=${encodeURIComponent(title)}&body=${encodeURIComponent(body)}`,
+            "_blank",
+            "noreferrer"
+          );
+        });
+    }
   }
 </script>

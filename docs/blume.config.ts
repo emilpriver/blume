@@ -12,6 +12,11 @@ export default defineConfig({
   },
   description:
     "Open-source, markdown-first documentation powered by Astro and Vite.",
+  github: {
+    dir: "docs",
+    owner: "haydenbleasel",
+    repo: "blume",
+  },
   markdown: {
     math: true,
   },

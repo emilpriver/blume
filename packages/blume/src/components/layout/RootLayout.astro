@@ -17,6 +17,9 @@ interface Props {
   searchProvider: "orama" | "pagefind";
   indexable: boolean;
   ogImage?: string | null;
+  editUrl?: string | null;
+  repoUrl?: string | null;
+  askEnabled?: boolean;
 }
 
 const {
@@ -29,6 +32,9 @@ const {
   searchProvider,
   indexable,
   ogImage,
+  editUrl,
+  repoUrl,
+  askEnabled,
 } = Astro.props;
 
 const tocHeadings = headings.filter((h) => h.depth >= 2 && h.depth <= 3);
@@ -211,7 +217,12 @@ const toggleScript = `document.addEventListener("click",(e)=>{const t=e.target.c
             </>
           )
         }
-        <PageActions route={page.route} />
+        <PageActions
+          askEnabled={askEnabled}
+          editUrl={editUrl}
+          repoUrl={repoUrl}
+          route={page.route}
+        />
       </aside>
     </div>
     <button

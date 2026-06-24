@@ -257,6 +257,16 @@ const ogConfigSchema = z
   })
   .strict();
 
+const githubConfigSchema = z
+  .object({
+    branch: z.string().default("main"),
+    /** Path from the repo root to the project root (for monorepos). */
+    dir: z.string().optional(),
+    owner: z.string(),
+    repo: z.string(),
+  })
+  .strict();
+
 const markdownConfigSchema = z
   .object({
     /**
@@ -275,6 +285,7 @@ export const blumeConfigSchema = z
     content: contentConfigSchema.default({}),
     deployment: deploymentConfigSchema.default({}),
     description: z.string().optional(),
+    github: githubConfigSchema.optional(),
     logo: logoConfigSchema.optional(),
     markdown: markdownConfigSchema.default({}),
     navigation: navigationConfigSchema.default({}),

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import type { FormEvent } from "react";
 
 interface ChatMessage {
@@ -21,6 +21,12 @@ const AskAI = () => {
   const [input, setInput] = useState("");
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [busy, setBusy] = useState(false);
+
+  useEffect(() => {
+    const handler = () => setOpen(true);
+    window.addEventListener("blume:open-ask-ai", handler);
+    return () => window.removeEventListener("blume:open-ask-ai", handler);
+  }, []);
 
   const send = async (event: FormEvent) => {
     event.preventDefault();

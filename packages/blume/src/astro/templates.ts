@@ -322,6 +322,7 @@ export function getStaticPaths() {
   return data.routes.map((route) => ({
     params: { slug: route.path === "/" ? undefined : route.path.slice(1) },
     props: {
+      editUrl: route.editUrl,
       entryId: route.id,
       indexable: route.indexable,
       route: route.path,
@@ -330,7 +331,7 @@ export function getStaticPaths() {
   }));
 }
 
-const { entryId, route, title, indexable } = Astro.props;
+const { entryId, route, title, indexable, editUrl } = Astro.props;
 const entry = await getEntry("docs", entryId);
 if (!entry) {
   return new Response(null, { status: 404 });
@@ -358,6 +359,9 @@ const ogImage =
   searchProvider={data.config.search.provider}
   indexable={indexable}
   ogImage={ogImage}
+  editUrl={editUrl}
+  repoUrl={data.config.repoUrl}
+  askEnabled={${options.askEnabled}}
 >${askSlot}
   <Content components={components} />
 </RootLayout>
