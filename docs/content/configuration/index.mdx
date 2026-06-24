@@ -1,42 +1,128 @@
 ---
-title: Configuration
-description: Configure Blume with blume.config.ts.
+title: Configuration file
+description: Every option in blume.config.ts — site metadata, content, and links to each feature guide.
 sidebar:
-  label: Overview
+  label: blume.config.ts
 ---
 
-# Configuration
+# Configuration file
 
-Blume reads `blume.config.ts` from your project root. Every field is optional.
+Blume reads `blume.config.ts` from your project root. Wrap your config in
+`defineConfig` for autocomplete and type-checking — every field is optional, with
+a sensible default.
 
 ```ts blume.config.ts
 import { defineConfig } from "blume";
 
 export default defineConfig({
   title: "My Docs",
-  description: "Docs powered by Blume.",
-  content: { root: "docs" },
-  theme: { accent: "teal", radius: "md", mode: "system" },
-  search: { provider: "pagefind" },
-  ai: { llmsTxt: true },
-  deployment: { output: "static", site: "https://docs.example.com" },
-  redirects: [{ from: "/old", to: "/new" }],
+  description: "Documentation for my project.",
 });
 ```
 
+## A complete example
+
+Every option Blume reads, with its default:
+
+```ts blume.config.ts
+import { defineConfig } from "blume";
+
+export default defineConfig({
+  // Site
+  title: "My Docs",
+  description: "Documentation for my project.",
+
+  // Content
+  content: {
+    root: "docs",
+  },
+
+  // Theme — see the Theming guide
+  theme: {
+    accent: "teal",
+    radius: "md",
+    mode: "system",
+  },
+
+  // Search — see the Search guide
+  search: {
+    provider: "orama",
+  },
+
+  // Markdown features
+  markdown: {
+    math: false,
+  },
+
+  // AI — see the AI guide
+  ai: {
+    llmsTxt: true,
+  },
+
+  // Open Graph images — see the Open Graph guide
+  og: {
+    enabled: true,
+  },
+
+  // Deployment — see the Deployment guide
+  deployment: {
+    output: "static",
+    site: "https://docs.example.com",
+  },
+});
+```
+
+## Site
+
+| Option        | Default           | Description                                             |
+| ------------- | ----------------- | ------------------------------------------------------- |
+| `title`       | `"Documentation"` | Site name — shown in the header, page titles, OG cards. |
+| `description` | —                 | Default meta description, used for SEO and OG.          |
+
+## Content
+
+Where your content lives and how Blume discovers it. See [Pages](/content) for
+how files become routes.
+
+```ts blume.config.ts
+content: {
+  root: "docs",
+}
+```
+
+| Option        | Default              | Description                                  |
+| ------------- | -------------------- | -------------------------------------------- |
+| `root`        | `"docs"`             | Folder Blume scans for content.              |
+| `include`     | `["**/*.{md,mdx}"]`  | Globs that match content files.              |
+| `exclude`     | `["**/_*", "**/.*"]` | Globs to ignore (underscore- and dot-files). |
+| `pages`       | `"pages"`            | Folder for custom `.astro` pages.            |
+| `defaultType` | `"doc"`              | Page `type` used when frontmatter omits it.  |
+
+## Feature options
+
+Each of these has its own guide. The config field is the entry point:
+
+| Field        | What it configures                           | Guide                                   |
+| ------------ | -------------------------------------------- | --------------------------------------- |
+| `theme`      | Accent color, corner radius, light/dark mode | [Theming](/configuration/theming)       |
+| `navigation` | Explicit sidebar and header tabs             | [Navigation](/content/navigation)       |
+| `search`     | Provider (Orama or Pagefind) and indexing    | [Search](/configuration/search)         |
+| `markdown`   | Opt-in Markdown features like math           | [Syntax](/content/syntax)               |
+| `ai`         | `llms.txt` and the Ask AI assistant          | [AI](/configuration/ai)                 |
+| `og`         | Open Graph image generation                  | [Open Graph](/configuration/open-graph) |
+| `deployment` | Output mode, adapter, and site URL           | [Deployment](/deployment)               |
+| `redirects`  | Permanent and temporary redirects            | [Deployment](/deployment#redirects)     |
+
 ## Precedence
 
-From lowest to highest priority:
+Settings resolve from lowest to highest priority, so you only override what you
+need:
 
 <Steps>
-  <Step title="Blume defaults">Sensible defaults for every field.</Step>
-  <Step title="blume.config.ts">Your project configuration.</Step>
-  <Step title="Folder meta">`_meta.json` files for nav groups.</Step>
-  <Step title="Page frontmatter">Per-page overrides.</Step>
+  <Step title="Blume defaults">A sensible default for every field.</Step>
+  <Step title="blume.config.ts">Your project-wide configuration.</Step>
+  <Step title="Folder meta">
+    `_meta.json` for a section's title and ordering.
+  </Step>
+  <Step title="Page frontmatter">Per-page overrides win.</Step>
 </Steps>
-
-## Deployment
-
-`deployment.output` defaults to `static`. Server-only features (like Ask AI)
-require `output: "server"` and an adapter, and a static build fails clearly if
-they are enabled.
