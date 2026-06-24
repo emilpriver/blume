@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 
+import { astroConfigTemplate } from "../src/astro/templates.ts";
 import {
   findBreadcrumbs,
   flattenPages,
@@ -36,6 +37,30 @@ describe("config schema", () => {
 
   it("rejects unknown top-level keys", () => {
     expect(blumeConfigSchema.safeParse({ nope: true }).success).toBeFalsy();
+  });
+});
+
+describe("astro config template", () => {
+  it("emits dual light and dark Shiki themes", () => {
+    const config = blumeConfigSchema.parse({});
+    const context = {
+      outDir: "/r/.blume",
+      pagesRoot: null,
+      root: "/r",
+    } as ProjectContext;
+
+    const output = astroConfigTemplate({
+      config,
+      context,
+      dataPath: "/r/.blume/src/generated/data.json",
+      needsReact: false,
+      pages: [],
+      themePath: "/r/.blume/src/generated/app.css",
+    });
+
+    expect(output).toContain('light: "github-light"');
+    expect(output).toContain('dark: "github-dark"');
+    expect(output).toContain("defaultColor: false");
   });
 });
 

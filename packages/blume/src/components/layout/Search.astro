@@ -19,14 +19,14 @@ const indexUrl = `${base}blume-search.json`.replace("//", "/");
 >
   <button
     aria-label="Search"
-    class="inline-flex h-9 cursor-pointer items-center gap-2 rounded-blume border border-border bg-muted px-2.5 text-muted-foreground text-sm hover:border-accent"
+    class="inline-flex h-9 min-w-0 cursor-pointer items-center gap-2 rounded-full border border-border bg-background px-3 text-muted-foreground text-sm transition-colors hover:border-foreground hover:text-foreground sm:min-w-48"
     data-blume-search-open
     type="button"
   >
     <Icon name="search" size={16} />
-    <span class="max-sm:hidden">Search</span>
+    <span class="min-w-0 flex-1 text-left max-sm:hidden">Search</span>
     <kbd
-      class="rounded border border-border bg-background px-1.5 py-0.5 font-mono text-[0.7rem] max-sm:hidden"
+      class="rounded border border-border bg-muted px-1.5 py-0.5 font-mono text-[0.7rem] max-sm:hidden"
     >
       ⌘K
     </kbd>
@@ -34,7 +34,7 @@ const indexUrl = `${base}blume-search.json`.replace("//", "/");
 
   <dialog
     aria-label="Search docs"
-    class="mx-auto mt-[12vh] w-[min(36rem,92vw)] rounded-blume border border-border bg-background p-0 text-foreground backdrop:bg-black/40"
+    class="mx-auto mt-[12vh] w-[min(36rem,92vw)] rounded-blume border border-border bg-background p-0 text-foreground shadow-2xl backdrop:bg-black/40"
     data-blume-search-dialog
   >
     <div class="flex items-center gap-2.5 border-border border-b px-4 py-3.5 text-muted-foreground">
@@ -46,7 +46,7 @@ const indexUrl = `${base}blume-search.json`.replace("//", "/");
         placeholder="Search documentation..."
         type="search"
       />
-      <kbd class="rounded border border-border px-1.5 py-0.5 font-mono text-[0.7rem]">Esc</kbd>
+      <kbd class="rounded border border-border bg-muted px-1.5 py-0.5 font-mono text-[0.7rem]">Esc</kbd>
     </div>
     <ul class="m-0 max-h-[60vh] list-none overflow-y-auto p-2" data-blume-search-results></ul>
     <p class="m-0 px-4 py-5 text-center text-muted-foreground text-sm" data-blume-search-message hidden></p>
@@ -61,7 +61,7 @@ const indexUrl = `${base}blume-search.json`.replace("//", "/");
     type SearchFn = (query: string) => Promise<SearchHit[]>;
 
     const RESULT_CLASS =
-      "block rounded-blume px-2.5 py-2.5 text-inherit hover:bg-muted hover:no-underline";
+      "block rounded-blume px-2.5 py-2.5 text-inherit transition-colors hover:bg-muted hover:no-underline";
     const EXCERPT_CLASS =
       "block text-muted-foreground text-sm [&_mark]:bg-accent/25 [&_mark]:text-inherit";
 

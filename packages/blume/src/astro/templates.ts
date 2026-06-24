@@ -109,6 +109,15 @@ export default defineConfig({
   publicDir: ${JSON.stringify(`${context.root}/public`)},
   output: ${JSON.stringify(deployment.output)},${adapterOption}${siteOption}${baseOption}${redirectsOption}
   integrations: [${integrations.join(", ")}],
+  markdown: {
+    shikiConfig: {
+      themes: {
+        light: "github-light",
+        dark: "github-dark",
+      },
+      defaultColor: false,
+    },
+  },
   devToolbar: { enabled: false },
   vite: {
     plugins: [tailwindcss()],

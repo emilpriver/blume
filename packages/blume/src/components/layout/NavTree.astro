@@ -12,12 +12,12 @@ const { items, currentRoute } = Astro.props;
 
 <ul class="m-0 list-none p-0">
   {
-    items.map((item) =>
+    items.map((item, index) =>
       item.kind === "page" ? (
         <li>
           <a
             aria-current={item.route === currentRoute ? "page" : undefined}
-            class="block rounded-blume px-2.5 py-1.5 text-muted-foreground text-sm hover:bg-muted hover:text-foreground aria-[current=page]:bg-accent/15 aria-[current=page]:font-medium aria-[current=page]:text-accent"
+            class="block rounded-[0.65rem] px-2.5 py-1.5 text-muted-foreground text-sm transition-colors hover:bg-muted hover:text-foreground aria-[current=page]:bg-muted aria-[current=page]:font-medium aria-[current=page]:text-foreground"
             href={item.route}
           >
             {item.label}
@@ -25,10 +25,12 @@ const { items, currentRoute } = Astro.props;
         </li>
       ) : (
         <li>
-          <p class="mt-4 mb-1 font-semibold text-muted-foreground text-xs uppercase tracking-wide">
+          <p
+            class={`mb-2 font-medium text-foreground text-sm ${index === 0 ? "mt-0" : "mt-6"}`}
+          >
             {item.label}
           </p>
-          <div class="ml-2 border-border border-l pl-2">
+          <div class="space-y-0.5">
             <Self currentRoute={currentRoute} items={item.children} />
           </div>
         </li>

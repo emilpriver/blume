@@ -39,9 +39,10 @@ const { prev, next } = getPagination(
   flattenPages(navigation.sidebar),
   page.route
 );
+const eyebrowCrumb = crumbs.length > 1 ? crumbs[crumbs.length - 2] : null;
 
 const iconButton =
-  "inline-flex size-9 cursor-pointer items-center justify-center rounded-blume text-muted-foreground hover:bg-muted hover:text-foreground";
+  "inline-flex size-9 cursor-pointer items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-muted hover:text-foreground";
 
 const initialThemeScript = `(()=>{const m=${JSON.stringify(themeMode)};const s=localStorage.getItem("blume-theme");const sys=matchMedia("(prefers-color-scheme: dark)").matches?"dark":"light";document.documentElement.dataset.theme=s??(m==="system"?sys:m);})();`;
 const toggleScript = `document.addEventListener("click",(e)=>{const t=e.target.closest("[data-blume-theme-toggle]");if(t){const d=document.documentElement;const next=d.dataset.theme==="dark"?"light":"dark";d.dataset.theme=next;localStorage.setItem("blume-theme",next);}const n=e.target.closest("[data-blume-nav-toggle]");if(n){document.documentElement.toggleAttribute("data-blume-nav-open");}});`;
@@ -73,17 +74,22 @@ const toggleScript = `document.addEventListener("click",(e)=>{const t=e.target.c
       href="#blume-content">Skip to content</a
     >
     <header
-      class="sticky top-0 z-40 flex h-14 items-center gap-4 border-b border-border bg-background/85 px-6 backdrop-blur"
+      class="sticky top-0 z-40 flex h-16 items-center gap-3 bg-background/90 px-4 backdrop-blur md:px-6"
     >
       <button
         aria-label="Toggle navigation"
-        class={`${iconButton} md:hidden`}
+        class={`${iconButton} lg:hidden`}
         data-blume-nav-toggle
         type="button"
       >
         <Icon name="menu" size={20} />
       </button>
-      <a class="font-semibold text-foreground" href="/">{site.title}</a>
+      <a
+        class="inline-flex items-center gap-2 font-semibold text-foreground text-sm"
+        href="/"
+      >
+        {site.title}
+      </a>
       {
         navigation.tabs.length > 0 && (
           <nav aria-label="Sections" class="hidden gap-1 md:flex">
@@ -95,7 +101,7 @@ const toggleScript = `document.addEventListener("click",(e)=>{const t=e.target.c
                     ? "page"
                     : undefined
                 }
-                class="rounded-blume px-3 py-1.5 font-medium text-muted-foreground text-sm hover:bg-muted hover:text-foreground aria-[current=page]:text-accent"
+                class="rounded-full px-3 py-1.5 font-medium text-muted-foreground text-sm transition-colors hover:bg-muted hover:text-foreground aria-[current=page]:text-foreground"
                 href={tab.path}
               >
                 {tab.label}
@@ -112,53 +118,44 @@ const toggleScript = `document.addEventListener("click",(e)=>{const t=e.target.c
         <span class="hidden dark:inline-flex"><Icon name="moon" size={18} /></span>
       </button>
     </header>
-    <div
-      class="mx-auto grid max-w-[90rem] grid-cols-1 items-start md:grid-cols-[16rem_minmax(0,1fr)] xl:grid-cols-[16rem_minmax(0,1fr)_15rem]"
-    >
+    <div class="mx-auto grid grid-cols-1 items-start lg:grid-cols-[17.5rem_minmax(0,1fr)] xl:grid-cols-[17.5rem_minmax(0,1fr)_16rem]">
       <aside
         aria-label="Primary"
-        class="fixed top-14 left-0 z-[35] h-[calc(100dvh-3.5rem)] w-64 max-w-[80vw] -translate-x-[105%] overflow-y-auto border-border border-r bg-background px-4 py-6 transition-transform [:where([data-blume-nav-open])_&]:translate-x-0 md:sticky md:z-auto md:w-auto md:max-w-none md:translate-x-0 md:bg-transparent"
+        class="fixed top-16 left-0 z-[35] h-[calc(100dvh-4rem)] w-64 max-w-[80vw] -translate-x-[105%] overflow-y-auto border-border border-r bg-background px-5 py-6 transition-transform [:where([data-blume-nav-open])_&]:translate-x-0 lg:sticky lg:z-auto lg:w-auto lg:max-w-none lg:translate-x-0 lg:border-r-0 lg:bg-transparent lg:px-4"
       >
         <nav>
           <NavTree currentRoute={page.route} items={navigation.sidebar} />
         </nav>
       </aside>
-      <main class="min-w-0 px-6 py-8 md:px-10" id="blume-content">
+      <main class="min-w-0 px-6 py-10 lg:px-8 xl:px-10" id="blume-content">
         {
-          crumbs.length > 1 && (
+          eyebrowCrumb && (
             <nav
               aria-label="Breadcrumb"
-              class="mb-5 flex flex-wrap items-center gap-1.5 text-muted-foreground text-sm"
+              class="mx-auto mb-2 max-w-[42rem] text-muted-foreground text-sm"
             >
-              {crumbs.map((crumb, i) => (
-                <>
-                  {i > 0 && (
-                    <Icon class="opacity-60" name="chevron-right" size={14} />
-                  )}
-                  {crumb.route ? (
-                    <a class="hover:text-foreground" href={crumb.route}>
-                      {crumb.label}
-                    </a>
-                  ) : (
-                    <span>{crumb.label}</span>
-                  )}
-                </>
-              ))}
+              {eyebrowCrumb.route ? (
+                <a class="hover:text-foreground" href={eyebrowCrumb.route}>
+                  {eyebrowCrumb.label}
+                </a>
+              ) : (
+                <span>{eyebrowCrumb.label}</span>
+              )}
             </nav>
           )
         }
-        <article class="prose max-w-3xl">
+        <article class="prose mx-auto max-w-[42rem]">
           <slot />
         </article>
         {
           (prev || next) && (
             <nav
               aria-label="Pagination"
-              class="mt-12 flex justify-between gap-4 border-border border-t pt-6 max-md:flex-col"
+              class="mx-auto mt-12 flex max-w-[42rem] justify-between gap-4 border-border border-t pt-6 max-md:flex-col"
             >
               {prev ? (
                 <a
-                  class="flex max-w-[48%] flex-1 items-center gap-2 rounded-blume border border-border px-4 py-3 text-foreground hover:border-accent max-md:max-w-full"
+                  class="flex max-w-[48%] flex-1 items-center gap-2 rounded-full border border-border px-4 py-3 text-foreground transition-colors hover:border-foreground max-md:max-w-full"
                   href={prev.route}
                 >
                   <Icon name="arrow-left" size={16} />
@@ -174,7 +171,7 @@ const toggleScript = `document.addEventListener("click",(e)=>{const t=e.target.c
               )}
               {next && (
                 <a
-                  class="ml-auto flex max-w-[48%] flex-1 items-center justify-end gap-2 rounded-blume border border-border px-4 py-3 text-right text-foreground hover:border-accent max-md:max-w-full"
+                  class="ml-auto flex max-w-[48%] flex-1 items-center justify-end gap-2 rounded-full border border-border px-4 py-3 text-right text-foreground transition-colors hover:border-foreground max-md:max-w-full"
                   href={next.route}
                 >
                   <span>
@@ -192,16 +189,16 @@ const toggleScript = `document.addEventListener("click",(e)=>{const t=e.target.c
         tocHeadings.length > 0 && (
           <aside
             aria-label="Table of contents"
-            class="sticky top-14 hidden h-[calc(100dvh-3.5rem)] overflow-y-auto px-4 py-6 text-sm xl:block"
+            class="sticky top-16 hidden h-[calc(100dvh-4rem)] overflow-y-auto px-4 py-10 text-sm xl:block"
           >
-            <p class="mb-3 font-semibold text-muted-foreground text-xs uppercase tracking-wide">
+            <p class="mb-3 font-semibold text-foreground text-sm">
               On this page
             </p>
             <ul class="m-0 list-none p-0">
               {tocHeadings.map((heading) => (
                 <li style={`padding-left:${(heading.depth - 2) * 0.75}rem`}>
                   <a
-                    class="block py-1 text-muted-foreground hover:text-foreground"
+                    class="block py-1.5 text-muted-foreground transition-colors hover:text-foreground"
                     href={`#${heading.slug}`}
                   >
                     {heading.text}
@@ -215,7 +212,7 @@ const toggleScript = `document.addEventListener("click",(e)=>{const t=e.target.c
     </div>
     <button
       aria-label="Close navigation"
-      class="fixed inset-0 z-[30] hidden cursor-pointer border-0 bg-black/40 [:where([data-blume-nav-open])_&]:block md:hidden"
+      class="fixed inset-0 z-[30] hidden cursor-pointer border-0 bg-black/40 [:where([data-blume-nav-open])_&]:block lg:hidden"
       data-blume-nav-toggle
       type="button"
     ></button>
@@ -227,11 +224,39 @@ const toggleScript = `document.addEventListener("click",(e)=>{const t=e.target.c
         `<svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${icons[name]}</svg>`;
 
       const buttonClass =
-        "blume-copy-button absolute right-2 top-2 inline-flex size-8 items-center justify-center rounded-md border border-border bg-background text-muted-foreground opacity-0 transition-opacity group-hover:opacity-100 focus-visible:opacity-100";
+        "blume-copy-button absolute right-3 top-3 inline-flex size-7 items-center justify-center rounded-full bg-transparent text-muted-foreground opacity-70 transition hover:bg-muted hover:text-foreground hover:opacity-100 focus-visible:opacity-100";
+
+      const languageLabels: Record<string, string> = {
+        astro: "Astro",
+        bash: "Bash",
+        css: "CSS",
+        html: "HTML",
+        js: "JavaScript",
+        json: "JSON",
+        jsx: "JSX",
+        md: "Markdown",
+        mdx: "MDX",
+        plaintext: "Text",
+        sh: "Shell",
+        shell: "Shell",
+        ts: "TypeScript",
+        tsx: "TSX",
+        txt: "Text",
+        yaml: "YAML",
+        yml: "YAML",
+        zsh: "Zsh",
+      };
 
       for (const pre of document.querySelectorAll(".prose pre")) {
         if (pre.querySelector(".blume-copy-button")) {
           continue;
+        }
+        const language = pre.getAttribute("data-language");
+        if (language) {
+          pre.setAttribute(
+            "data-language",
+            languageLabels[language.toLowerCase()] ?? language
+          );
         }
         pre.classList.add("group", "relative");
         const button = document.createElement("button");

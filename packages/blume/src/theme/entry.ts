@@ -30,23 +30,25 @@ ${options.sources.map((source) => `@source "${source}";`).join("\n")}
 
 :root {
   --blume-background: oklch(1 0 0);
-  --blume-foreground: oklch(0.2 0 0);
-  --blume-muted: oklch(0.97 0 0);
-  --blume-muted-foreground: oklch(0.5 0 0);
-  --blume-border: oklch(0.92 0 0);
-  --blume-accent: oklch(0.62 0.16 250);
+  --blume-foreground: oklch(0.145 0 0);
+  --blume-muted: oklch(0.965 0 0);
+  --blume-muted-foreground: oklch(0.54 0 0);
+  --blume-border: oklch(0.88 0.006 260 / 0.72);
+  --blume-accent: oklch(0.145 0 0);
   --blume-accent-foreground: oklch(1 0 0);
-  --blume-code-background: oklch(0.97 0 0);
-  --blume-radius: 0.5rem;
+  --blume-code-background: oklch(0.99 0 0);
+  --blume-radius: 0.75rem;
 }
 
 :root[data-theme="dark"] {
-  --blume-background: oklch(0.17 0 0);
+  --blume-background: oklch(0.085 0 0);
   --blume-foreground: oklch(0.96 0 0);
-  --blume-muted: oklch(0.23 0 0);
-  --blume-muted-foreground: oklch(0.66 0 0);
-  --blume-border: oklch(0.28 0 0);
-  --blume-code-background: oklch(0.21 0 0);
+  --blume-muted: oklch(0.16 0 0);
+  --blume-muted-foreground: oklch(0.68 0 0);
+  --blume-border: oklch(0.24 0 0 / 0.8);
+  --blume-accent: oklch(0.96 0 0);
+  --blume-accent-foreground: oklch(0.085 0 0);
+  --blume-code-background: oklch(0.12 0 0);
 }
 
 @theme inline {
@@ -89,7 +91,7 @@ ${options.sources.map((source) => `@source "${source}";`).join("\n")}
   --tw-prose-body: var(--blume-foreground);
   --tw-prose-headings: var(--blume-foreground);
   --tw-prose-lead: var(--blume-muted-foreground);
-  --tw-prose-links: var(--blume-accent);
+  --tw-prose-links: var(--blume-foreground);
   --tw-prose-bold: var(--blume-foreground);
   --tw-prose-counters: var(--blume-muted-foreground);
   --tw-prose-bullets: var(--blume-border);
@@ -102,6 +104,174 @@ ${options.sources.map((source) => `@source "${source}";`).join("\n")}
   --tw-prose-pre-bg: var(--blume-code-background);
   --tw-prose-th-borders: var(--blume-border);
   --tw-prose-td-borders: var(--blume-border);
+  color: var(--blume-muted-foreground);
+  font-size: 0.875rem;
+  line-height: 1.7;
+}
+
+.prose :where(h1, h2, h3, h4) {
+  font-weight: 500;
+  letter-spacing: 0;
+}
+
+.prose :where(h1) {
+  font-size: 3rem;
+  line-height: 1.1;
+  margin: 0 0 1rem;
+}
+
+.prose :where(h2) {
+  border-top: 1px solid var(--blume-border);
+  font-size: 1.875rem;
+  line-height: 1.2;
+  margin-top: 3rem;
+  padding-top: 2rem;
+}
+
+.prose :where(h3) {
+  font-size: 1.25rem;
+  line-height: 1.35;
+}
+
+.prose :where(h4) {
+  color: var(--blume-muted-foreground);
+  font-size: 0.875rem;
+  line-height: 1.4;
+}
+
+.prose :where(h1, h2, h3, h4) a {
+  color: inherit;
+  font-weight: inherit;
+  text-decoration: none;
+}
+
+.prose :where(h2:first-child) {
+  border-top: 0;
+  padding-top: 0;
+}
+
+.prose :where(p, ul, ol) {
+  margin-top: 1rem;
+  margin-bottom: 1rem;
+}
+
+.prose :where(strong) {
+  font-weight: 600;
+}
+
+.prose :where(a) {
+  color: var(--blume-foreground);
+  font-weight: 500;
+  text-decoration-line: underline;
+  text-decoration-style: dotted;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 0.2em;
+}
+
+.prose :where(hr) {
+  margin: 2.5rem 0;
+}
+
+.prose :where(pre) {
+  background: var(--blume-code-background);
+  border: 1px solid var(--blume-border);
+  border-radius: var(--blume-radius);
+  color: var(--blume-foreground);
+  font-size: 0.8125rem;
+  line-height: 1.55;
+  margin: 1.5rem 0;
+  overflow-x: auto;
+  padding: 1rem 1.25rem;
+  position: relative;
+}
+
+.prose :where(pre.astro-code) {
+  background: var(--blume-code-background) !important;
+  color: var(--shiki-light, var(--blume-foreground)) !important;
+}
+
+:root[data-theme="dark"] .prose :where(pre.astro-code) {
+  color: var(--shiki-dark, var(--blume-foreground)) !important;
+}
+
+.prose :where(pre.astro-code span) {
+  background: transparent !important;
+  color: var(--shiki-light, inherit);
+  font-style: var(--shiki-light-font-style, inherit);
+  font-weight: var(--shiki-light-font-weight, inherit);
+  text-decoration: var(--shiki-light-text-decoration, inherit);
+}
+
+:root[data-theme="dark"] .prose :where(pre.astro-code span) {
+  color: var(--shiki-dark, inherit);
+  font-style: var(--shiki-dark-font-style, inherit);
+  font-weight: var(--shiki-dark-font-weight, inherit);
+  text-decoration: var(--shiki-dark-text-decoration, inherit);
+}
+
+.prose :where(pre[data-language]) {
+  padding-top: 3.25rem;
+}
+
+.prose :where(pre[data-language])::before {
+  align-items: center;
+  background: color-mix(in oklab, var(--blume-muted) 35%, transparent);
+  border-bottom: 1px solid var(--blume-border);
+  color: var(--blume-muted-foreground);
+  content: attr(data-language);
+  display: flex;
+  font-family: var(--font-sans);
+  font-size: 0.75rem;
+  font-weight: 500;
+  height: 2.25rem;
+  left: 0;
+  padding: 0 3.25rem 0 1rem;
+  position: absolute;
+  right: 0;
+  top: 0;
+}
+
+.prose :where(pre code) {
+  background: transparent;
+  border-radius: 0;
+  color: inherit;
+  font-size: inherit;
+  font-weight: 400;
+  padding: 0;
+}
+
+.prose :where(table) {
+  font-size: 0.8125rem;
+}
+
+blume-tabs pre,
+.not-prose > div > pre {
+  background: var(--blume-code-background);
+}
+
+blume-tabs pre[data-language],
+.not-prose pre[data-language] {
+  padding-top: 1rem;
+}
+
+blume-tabs pre[data-language]::before,
+.not-prose pre[data-language]::before {
+  content: none;
+}
+
+blume-tabs .blume-copy-button,
+.not-prose .blume-copy-button {
+  top: 0.625rem;
+}
+
+@media (max-width: 640px) {
+  .prose :where(h1) {
+    font-size: 2.25rem;
+  }
+
+  .prose :where(h2) {
+    font-size: 1.625rem;
+  }
 }
 
 .prose :not(pre) > code {
