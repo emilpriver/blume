@@ -5,7 +5,7 @@ import type {
   ProjectContext,
   RouteManifestEntry,
 } from "./types.ts";
-import { BLUME_VERSION } from "./version.ts";
+import { getBlumeVersion } from "./version.ts";
 
 /** The current manifest schema version. */
 export const MANIFEST_VERSION = 1;
@@ -37,7 +37,7 @@ export const buildManifest = (options: {
   routes.sort((a, b) => a.path.localeCompare(b.path));
 
   return {
-    blumeVersion: BLUME_VERSION,
+    blumeVersion: getBlumeVersion(),
     contentRoot: context.contentRoot,
     output: config.deployment.output,
     projectRoot: context.root,

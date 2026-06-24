@@ -18,6 +18,7 @@ import {
   contentConfigTemplate,
   envTemplate,
   ogEndpointTemplate,
+  runtimeDependencies,
   runtimePackageTemplate,
   runtimeTsconfigTemplate,
   searchEndpointTemplate,
@@ -171,7 +172,10 @@ export const generateRuntime = async (
         themePath,
       })
     ),
-    writeIfChanged(join(out, "package.json"), runtimePackageTemplate()),
+    writeIfChanged(
+      join(out, "package.json"),
+      runtimePackageTemplate(runtimeDependencies({ config, needsReact }))
+    ),
     writeIfChanged(join(out, "tsconfig.json"), runtimeTsconfigTemplate()),
     writeIfChanged(join(srcDir, "env.d.ts"), envTemplate()),
     writeIfChanged(

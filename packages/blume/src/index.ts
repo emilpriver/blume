@@ -18,4 +18,4 @@ export type {
   NavTab,
   PageRecord,
 } from "./core/types.ts";
-export { BLUME_VERSION } from "./core/version.ts";
+export { getBlumeVersion } from "./core/version.ts";
