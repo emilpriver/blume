@@ -1,5 +1,12 @@
 import { existsSync } from "node:fs";
-import { mkdir, readFile, symlink, writeFile } from "node:fs/promises";
+import {
+  mkdir,
+  readFile,
+  rename,
+  rm,
+  symlink,
+  writeFile,
+} from "node:fs/promises";
 import { createRequire } from "node:module";
 import { fileURLToPath, pathToFileURL } from "node:url";
 
@@ -99,7 +106,16 @@ const writeIfChanged = async (
     return false;
   }
   await mkdir(dirname(path), { recursive: true });
-  await writeFile(path, content, "utf-8");
+  // Write to a temp file then atomically rename into place, so a watching dev
+  // server never observes a missing or half-written file mid-regeneration.
+  const tmp = `${path}.${process.pid}.tmp`;
+  await writeFile(tmp, content, "utf-8");
+  try {
+    await rename(tmp, path);
+  } catch (error) {
+    await rm(tmp, { force: true });
+    throw error;
+  }
   return true;
 };
 
