@@ -409,6 +409,9 @@ const bannerScript = banner?.dismissible
     <script is:inline set:html={toggleScript} />
     <script>
       import { icons } from "../../theme/icons.ts";
+      // Registers the <blume-mermaid> custom element (emitted by ```mermaid
+      // fences). Mermaid itself is lazy-loaded only on pages that use a diagram.
+      import "../content/mermaid-element.ts";
 
       const svg = (name: string) =>
         `<svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${icons[name]}</svg>`;

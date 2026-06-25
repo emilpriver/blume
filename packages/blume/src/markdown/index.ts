@@ -2,6 +2,7 @@ import { satteri } from "@astrojs/markdown-satteri";
 
 import { directiveToCalloutPlugin } from "./directives.ts";
 import { mathPlugin } from "./math.ts";
+import { mermaidPlugin } from "./mermaid.ts";
 import { packageInstallPlugin } from "./package-install.ts";
 
 export {
@@ -14,6 +15,7 @@ export {
   codeTitleTransformer,
 } from "./code-title.ts";
 export { calloutTypeFor } from "./directives.ts";
+export { mermaidPlugin } from "./mermaid.ts";
 export { packageInstallPlugin } from "./package-install.ts";
 
 /** Element type of Satteri's `mdastPlugins`, sourced from the (alpha) core. */
@@ -39,8 +41,9 @@ export interface BlumeMdxOptions {
 
 /**
  * Sätteri MDX processor: Blume's feature set plus the MDAST plugins that target
- * components — `package-install` → package-manager tabs and `:::note` →
- * `<Callout>`. Used as the `processor` for `@astrojs/mdx` so these apply to
+ * components — `package-install` → package-manager tabs, `:::note` →
+ * `<Callout>`, and ` ```mermaid ` → a `<blume-mermaid>` element. Used as the
+ * `processor` for `@astrojs/mdx` so these apply to
  * `.mdx` only (plain `.md` uses {@link blumeMarkdownProcessor}). Math is opt-in
  * via config since `$` is common in prose and code.
  *
@@ -51,6 +54,7 @@ export const blumeMdxProcessor = (options: BlumeMdxOptions = {}) => {
   const plugins: unknown[] = [
     packageInstallPlugin(),
     directiveToCalloutPlugin(),
+    mermaidPlugin(),
   ];
   if (options.math) {
     plugins.push(mathPlugin());
