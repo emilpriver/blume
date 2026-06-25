@@ -165,21 +165,31 @@ Each page includes:
 URLs are absolute when `deployment.site` is set. Pages marked `seo.noindex` are
 skipped.
 
-## Sitemap and robots
+## Sitemap
 
-At build time Blume writes a `sitemap.xml` of every indexable page and a
-`robots.txt` that points crawlers to it. Both are on by default:
+Blume writes a `sitemap.xml` of every indexable page at build time. It needs an
+absolute [`deployment.site`](/deployment) and lists every page except drafts,
+hidden, and `noindex` pages. On by default:
 
 ```ts blume.config.ts
 seo: {
   sitemap: true,
-  robots: true,
 }
 ```
 
-The sitemap needs an absolute [`deployment.site`](/deployment) and lists every
-page except drafts, hidden, and `noindex` pages. The `robots.txt` allows all
-crawlers and adds a `Sitemap:` line when the sitemap is available:
+Ship your own `public/sitemap.xml` to take over — Blume never overwrites a file
+you place in `public/`.
+
+## Robots
+
+Blume writes a `robots.txt` that allows all crawlers and adds a `Sitemap:` line
+pointing to the sitemap when one is available. On by default:
+
+```ts blume.config.ts
+seo: {
+  robots: true,
+}
+```
 
 ```txt robots.txt
 User-agent: *
@@ -188,5 +198,4 @@ Allow: /
 Sitemap: https://docs.example.com/sitemap.xml
 ```
 
-Ship your own `public/robots.txt` or `public/sitemap.xml` to take over — Blume
-never overwrites a file you place in `public/`.
+Ship your own `public/robots.txt` to take over.
