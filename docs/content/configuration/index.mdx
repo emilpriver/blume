@@ -11,7 +11,7 @@ Blume reads `blume.config.ts` from your project root. Wrap your config in
 `defineConfig` for autocomplete and type-checking — every field is optional, with
 a sensible default.
 
-```ts blume.config.ts
+```ts blume.config.ts lineNumbers
 import { defineConfig } from "blume";
 
 export default defineConfig({
@@ -24,7 +24,7 @@ export default defineConfig({
 
 Every option Blume reads, with its default:
 
-```ts blume.config.ts
+```ts blume.config.ts lineNumbers
 import { defineConfig } from "blume";
 
 export default defineConfig({
@@ -88,7 +88,7 @@ export default defineConfig({
 Where your content lives and how Blume discovers it. See [Pages](/content) for
 how files become routes.
 
-```ts blume.config.ts
+```ts blume.config.ts lineNumbers
 content: {
   root: "docs",
 }
@@ -108,7 +108,7 @@ Open Graph images, RSS feeds, and JSON-LD structured data, grouped under `seo`.
 See the [SEO guide](/configuration/seo) for metadata, frontmatter overrides, and
 the full reference.
 
-```ts blume.config.ts
+```ts blume.config.ts lineNumbers
 seo: {
   og: { enabled: false },
   rss: { enabled: true, types: ["blog", "changelog"] },

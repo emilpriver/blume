@@ -67,7 +67,7 @@ The pages share an “Internal” sidebar group but keep flat, parenthesis-free 
 Mark a page as a draft to keep it out of production builds while still previewing
 it in `blume dev`:
 
-```yaml
+```yaml lineNumbers
 ---
 title: Work in progress
 draft: true
@@ -82,7 +82,7 @@ Every page has a **type**, set with the `type` frontmatter field (default
 `doc`). Types let Blume treat groups of pages differently — most importantly,
 `blog` and `changelog` pages are collected into [feeds](#feeds).
 
-```yaml
+```yaml lineNumbers
 ---
 title: v1.2.0
 type: changelog
@@ -107,7 +107,7 @@ as long as it has at least one page. Feeds are served at `/<type>/rss.xml`:
 Give each entry a `date` so items sort newest-first and carry a `pubDate`. An
 unquoted YAML date is fine — Blume normalizes it:
 
-```yaml
+```yaml lineNumbers
 ---
 title: Introducing Blume
 type: blog

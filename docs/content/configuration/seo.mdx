@@ -11,7 +11,7 @@ Blume handles the discoverability layer for you: page metadata, social share
 images, feeds, and structured data. The three configurable features live under
 the `seo` key in `blume.config.ts`; metadata is driven by your content.
 
-```ts blume.config.ts
+```ts blume.config.ts lineNumbers
 seo: {
   og: { enabled: true },
   rss: { enabled: true, types: ["blog", "changelog"] },
@@ -38,7 +38,7 @@ Every page renders the standard `<head>` tags from your config and frontmatter:
 
 Override any of these per page with `seo` frontmatter:
 
-```yaml
+```yaml lineNumbers
 ---
 title: Pricing
 description: Plans and pricing for every team size.
@@ -85,7 +85,7 @@ Blume can render a 1200×630 social card for every page at build time — no
 headless browser, thanks to [Takumi](https://takumi.kane.tw), so builds stay
 fast. Off by default:
 
-```ts blume.config.ts
+```ts blume.config.ts lineNumbers
 seo: {
   og: { enabled: true },
 }
@@ -106,7 +106,7 @@ Override the generated card for any page with `seo.image` — a file in `public/
 or an external URL. It takes precedence over the generated card and works even
 when `og` is off, so you can mix custom images with generated ones:
 
-```yaml
+```yaml lineNumbers
 ---
 title: Pricing
 seo:
@@ -125,7 +125,7 @@ Blume builds an RSS feed for each content type in `rss.types` — `blog` and
 `changelog` by default — that has pages, served at `/<type>/rss.xml`. See
 [Feeds](/content#feeds) for authoring blog and changelog entries with dates.
 
-```ts blume.config.ts
+```ts blume.config.ts lineNumbers
 seo: {
   rss: {
     enabled: true,
@@ -149,7 +149,7 @@ the feeds automatically.
 Blume emits [schema.org](https://schema.org) JSON-LD in every page's `<head>` so
 search engines understand your content. On by default:
 
-```ts blume.config.ts
+```ts blume.config.ts lineNumbers
 seo: {
   structuredData: true,
 }
@@ -171,7 +171,7 @@ Blume writes a `sitemap.xml` of every indexable page at build time. It needs an
 absolute [`deployment.site`](/deployment) and lists every page except drafts,
 hidden, and `noindex` pages. On by default:
 
-```ts blume.config.ts
+```ts blume.config.ts lineNumbers
 seo: {
   sitemap: true,
 }
@@ -185,7 +185,7 @@ you place in `public/`.
 Blume writes a `robots.txt` that allows all crawlers and adds a `Sitemap:` line
 pointing to the sitemap when one is available. On by default:
 
-```ts blume.config.ts
+```ts blume.config.ts lineNumbers
 seo: {
   robots: true,
 }
