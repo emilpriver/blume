@@ -25,11 +25,11 @@ const external = href?.startsWith("http");
       </div>
     )
   }
-  <p class="mt-0! mb-1.5! flex items-center gap-1.5 font-semibold">
+  <p class="mt-0! mb-1.5! flex items-center gap-1.5 font-medium">
     {title}
     {href && <Icon class="text-muted-foreground" name="arrow-right" size={14} />}
   </p>
-  <div class="text-muted-foreground text-sm [&>:first-child]:mt-0! [&>:last-child]:mb-0!">
+  <div class="font-normal text-muted-foreground text-sm [&>:first-child]:mt-0! [&>:last-child]:mb-0!">
     <slot />
   </div>
 </Tag>

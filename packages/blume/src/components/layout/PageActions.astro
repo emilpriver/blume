@@ -117,7 +117,7 @@ const menuRowClass =
 
   <button class={rowClass} data-blume-copy-page type="button">
     <Icon name="copy" size={16} />
-    <span data-blume-copy-label>Copy page</span>
+    <span data-blume-copy-label>Copy as Markdown</span>
   </button>
 
   {
@@ -210,7 +210,7 @@ const menuRowClass =
           if (label) {
             label.textContent = "Copied!";
             setTimeout(() => {
-              label.textContent = "Copy page";
+              label.textContent = "Copy as Markdown";
             }, 1500);
           }
         } catch {
