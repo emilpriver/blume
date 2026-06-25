@@ -172,7 +172,7 @@ const bannerScript = banner?.dismissible
     {
       banner && (
         <div
-          class="relative flex items-center justify-center gap-x-2 gap-y-0.5 bg-accent px-10 py-2 text-center text-accent-foreground text-sm max-sm:flex-wrap [:where([data-blume-banner-hidden])_&]:hidden"
+          class="relative flex items-center justify-center gap-x-2 gap-y-0.5 bg-foreground px-10 py-3 text-center text-background text-sm max-sm:flex-wrap [:where([data-blume-banner-hidden])_&]:hidden"
           data-banner-key={banner.key}
           data-blume-banner
         >
@@ -189,7 +189,7 @@ const bannerScript = banner?.dismissible
           {banner.dismissible && (
             <button
               aria-label="Dismiss announcement"
-              class="absolute right-1.5 inline-flex size-7 items-center justify-center rounded-full text-accent-foreground/80 transition-colors hover:bg-black/10 hover:text-accent-foreground"
+              class="absolute right-1.5 inline-flex size-7 items-center justify-center rounded-full text-background/80 transition-colors hover:bg-white/10 hover:text-background"
               data-blume-banner-dismiss
               type="button"
             >
