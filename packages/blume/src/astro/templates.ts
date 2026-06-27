@@ -620,13 +620,14 @@ export function getStaticPaths() {
       editUrl: route.editUrl,
       entryId: route.id,
       indexable: route.indexable,
+      lastModified: route.lastModified,
       route: route.path,
       title: route.title,
     },
   }));
 }
 
-const { entryId, route, title, indexable, editUrl } = Astro.props;
+const { entryId, route, title, indexable, editUrl, lastModified } = Astro.props;
 const entry = await getEntry("docs", entryId);
 if (!entry) {
   return new Response(null, { status: 404 });
@@ -667,6 +668,7 @@ const canonical =
   siteUrl={data.config.site}
   pageType={frontmatter.type}
   published={frontmatter.date ?? frontmatter.changelog?.date ?? null}
+  lastModified={lastModified}
   noindex={seo.noindex}
   structuredDataEnabled={data.config.structuredData}
 >${askSlot}

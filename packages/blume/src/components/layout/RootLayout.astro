@@ -40,6 +40,7 @@ interface Props {
   siteUrl?: string | null;
   pageType?: string;
   published?: string | Date | null;
+  lastModified?: string | null;
   noindex?: boolean;
   structuredDataEnabled?: boolean;
 }
@@ -64,6 +65,7 @@ const {
   siteUrl,
   pageType,
   published,
+  lastModified,
   noindex,
   structuredDataEnabled,
 } = Astro.props;
@@ -71,6 +73,16 @@ const {
 const tocHeadings = headings.filter((h) => h.depth >= 2 && h.depth <= 3);
 const pageTitle = page.title ? `${page.title} - ${site.title}` : site.title;
 const description = page.description ?? site.description;
+
+// "Last updated on <date>" — formatted in UTC to match the changelog timeline.
+const lastModifiedDate = lastModified ? new Date(lastModified) : null;
+const formattedLastModified =
+  lastModifiedDate && !Number.isNaN(lastModifiedDate.getTime())
+    ? new Intl.DateTimeFormat("en", {
+        dateStyle: "long",
+        timeZone: "UTC",
+      }).format(lastModifiedDate)
+    : null;
 
 const crumbs = findBreadcrumbs(navigation.sidebar, page.route);
 const { prev, next } = getPagination(
@@ -88,6 +100,7 @@ const structuredData =
     : buildStructuredData({
       breadcrumbs: crumbs,
       description,
+      modified: lastModified,
       pageType,
       published,
       route: page.route,
@@ -222,6 +235,13 @@ const bannerScript = banner?.dismissible
         <article class="prose mx-auto max-w-[42rem]">
           <slot />
         </article>
+        {
+          formattedLastModified && (
+            <p class="mx-auto mt-10 max-w-[42rem] text-muted-foreground text-sm">
+              Last updated on {formattedLastModified}
+            </p>
+          )
+        }
         {
           (prev || next) && (
             <nav

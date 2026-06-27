@@ -83,6 +83,8 @@ export const pageMetaSchema = z
     date: dateSchema.optional(),
     description: z.string().optional(),
     draft: z.boolean().default(false),
+    /** Overrides the git-derived last-modified date when `lastModified` is on. */
+    lastModified: dateSchema.optional(),
     search: searchMetaSchema.default({}),
     seo: seoMetaSchema.default({}),
     sidebar: sidebarMetaSchema.default({}),
@@ -381,6 +383,16 @@ const githubConfigSchema = z
   })
   .strict();
 
+/**
+ * "Last updated" timestamps for content pages. `false` (default) disables the
+ * feature; `true` derives each page's date from git history; an object selects
+ * the source explicitly. A page's `lastModified` frontmatter always wins.
+ */
+const lastModifiedConfigSchema = z.union([
+  z.boolean(),
+  z.object({ type: z.enum(["git", "frontmatter"]).default("git") }).strict(),
+]);
+
 const markdownConfigSchema = z
   .object({
     /**
@@ -457,6 +469,7 @@ export const blumeConfigSchema = z
     deployment: deploymentConfigSchema.default({}),
     description: z.string().optional(),
     github: githubConfigSchema.optional(),
+    lastModified: lastModifiedConfigSchema.default(false),
     logo: logoConfigSchema.optional(),
     markdown: markdownConfigSchema.default({}),
     navigation: navigationConfigSchema.default({}),
