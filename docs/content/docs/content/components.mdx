@@ -15,20 +15,20 @@ Cards link to a destination with an icon, title, and short blurb. Group them wit
 indexes, and “next steps” — anywhere you’re guiding the reader onward.
 
 <CardGroup cols={2}>
-  <Card title="Quickstart" href="/quickstart" icon="rocket">
+  <Card title="Quickstart" href="/docs/quickstart" icon="rocket">
     Install Blume and ship your first page.
   </Card>
-  <Card title="Components" href="/content/components" icon="folder">
+  <Card title="Components" href="/docs/content/components" icon="folder">
     Browse the component library.
   </Card>
 </CardGroup>
 
 ```astro lineNumbers
 <CardGroup cols={2}>
-  <Card title="Quickstart" href="/quickstart" icon="rocket">
+  <Card title="Quickstart" href="/docs/quickstart" icon="rocket">
     Install Blume and ship your first page.
   </Card>
-  <Card title="Components" href="/content/components" icon="folder">
+  <Card title="Components" href="/docs/content/components" icon="folder">
     Browse the component library.
   </Card>
 </CardGroup>
@@ -380,10 +380,10 @@ A titled container for supplementary, set-aside content. `title` is optional.
 Reveal a definition or hint on hover for an inline term. `tip` is the hover text;
 add an optional `headline` and a `cta` + `href` for a follow-up link.
 
-Hover the <Tooltip tip="A set of protocols software uses to communicate." headline="API" cta="Read the guide" href="/quickstart">API</Tooltip> term to learn more.
+Hover the <Tooltip tip="A set of protocols software uses to communicate." headline="API" cta="Read the guide" href="/docs/quickstart">API</Tooltip> term to learn more.
 
 ```astro
-Hover the <Tooltip tip="A set of protocols software uses to communicate." headline="API" cta="Read the guide" href="/quickstart">API</Tooltip> term.
+Hover the <Tooltip tip="A set of protocols software uses to communicate." headline="API" cta="Read the guide" href="/docs/quickstart">API</Tooltip> term.
 ```
 
 ## Tile
@@ -395,7 +395,7 @@ and `href`; the child is the visual.
 <Tile
   title="Quickstart"
   description="Ship your first page in minutes."
-  href="/quickstart"
+  href="/docs/quickstart"
 >
   <Icon icon="rocket" size={28} />
 </Tile>
@@ -404,7 +404,7 @@ and `href`; the child is the visual.
 <Tile
   title="Quickstart"
   description="Ship your first page in minutes."
-  href="/quickstart"
+  href="/docs/quickstart"
 >
   <Icon icon="rocket" size={28} />
 </Tile>

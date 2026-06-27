@@ -25,7 +25,7 @@ With this on, `blume build` writes two files to the root of your site:
 - **`/llms-full.txt`** — the entire corpus: each page's full Markdown body, with
   its source URL, in one file.
 
-Draft pages are excluded. Set [`deployment.site`](/deployment) so the links and
+Draft pages are excluded. Set [`deployment.site`](/docs/deployment) so the links and
 source URLs resolve to absolute addresses.
 
 ## Raw Markdown
@@ -46,7 +46,7 @@ served at `/index.md`.
 ## Copy as Markdown
 
 Every page carries a **Copy as Markdown** action — in the [page
-actions](/content/navigation#page-actions) beneath the table of contents — that copies the
+actions](/docs/content/navigation#page-actions) beneath the table of contents — that copies the
 page's raw Markdown to the clipboard. It's the same source served at the [`.md`
 URL](#raw-markdown) above, ready to paste into an LLM, an issue, or your notes.
 It's available on every page, in dev and production, with no configuration.
@@ -91,7 +91,7 @@ deployment: {
 ```
 
 A static build with Ask AI enabled fails fast with a message telling you to set
-`deployment.output` to `server`. See [Deployment](/deployment) for the adapters.
+`deployment.output` to `server`. See [Deployment](/docs/deployment) for the adapters.
 
 ### Models and credentials
 
@@ -101,4 +101,4 @@ so you don't install a provider SDK — switch models by changing the string
 
 The gateway reads an API key from your environment (`AI_GATEWAY_API_KEY`), and is
 wired up automatically when you deploy on Vercel. Enabling Ask AI also turns on
-React for the in-page island — see [Customization](/configuration/customization#react-islands).
+React for the in-page island — see [Customization](/docs/configuration/customization#react-islands).

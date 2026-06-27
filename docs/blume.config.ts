@@ -29,7 +29,7 @@ export default defineConfig({
   navigation: {
     tabs: [
       { label: "Home", path: "/" },
-      { label: "Docs", path: "/introduction" },
+      { label: "Docs", path: "/docs" },
     ],
   },
   // The "Example API" navbar tab is added automatically from this reference.

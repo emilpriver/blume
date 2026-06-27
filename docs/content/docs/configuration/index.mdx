@@ -134,7 +134,7 @@ across edits.
 
 ## Content
 
-Where your content lives and how Blume discovers it. See [Pages](/content) for
+Where your content lives and how Blume discovers it. See [Pages](/docs/content) for
 how files become routes.
 
 ```ts blume.config.ts lineNumbers
@@ -154,7 +154,7 @@ content: {
 ## SEO
 
 Open Graph images, RSS feeds, and JSON-LD structured data, grouped under `seo`.
-See the [SEO guide](/configuration/seo) for metadata, frontmatter overrides, and
+See the [SEO guide](/docs/configuration/seo) for metadata, frontmatter overrides, and
 the full reference.
 
 ```ts blume.config.ts lineNumbers
@@ -177,22 +177,22 @@ seo: {
 | `robots`         | `true`                  | Generate robots.txt with a Sitemap link.      |
 | `structuredData` | `true`                  | Emit schema.org JSON-LD in each page's head.  |
 
-These work best with an absolute [`deployment.site`](/deployment) for full URLs.
+These work best with an absolute [`deployment.site`](/docs/deployment) for full URLs.
 
 ## Feature options
 
 Each of these has its own guide. The config field is the entry point:
 
-| Field        | What it configures                           | Guide                               |
-| ------------ | -------------------------------------------- | ----------------------------------- |
-| `theme`      | Accent color, corner radius, light/dark mode | [Theming](/configuration/theming)   |
-| `navigation` | Explicit sidebar and header tabs             | [Navigation](/content/navigation)   |
-| `search`     | Provider (Orama or Pagefind) and indexing    | [Search](/configuration/search)     |
-| `markdown`   | Opt-in Markdown features like math           | [Syntax](/content/syntax)           |
-| `ai`         | `llms.txt` and the Ask AI assistant          | [AI](/configuration/ai)             |
-| `seo`        | Metadata, OG images, feeds, structured data  | [SEO](/configuration/seo)           |
-| `deployment` | Output mode, adapter, and site URL           | [Deployment](/deployment)           |
-| `redirects`  | Permanent and temporary redirects            | [Deployment](/deployment#redirects) |
+| Field        | What it configures                           | Guide                                    |
+| ------------ | -------------------------------------------- | ---------------------------------------- |
+| `theme`      | Accent color, corner radius, light/dark mode | [Theming](/docs/configuration/theming)   |
+| `navigation` | Explicit sidebar and header tabs             | [Navigation](/docs/content/navigation)   |
+| `search`     | Provider (Orama or Pagefind) and indexing    | [Search](/docs/configuration/search)     |
+| `markdown`   | Opt-in Markdown features like math           | [Syntax](/docs/content/syntax)           |
+| `ai`         | `llms.txt` and the Ask AI assistant          | [AI](/docs/configuration/ai)             |
+| `seo`        | Metadata, OG images, feeds, structured data  | [SEO](/docs/configuration/seo)           |
+| `deployment` | Output mode, adapter, and site URL           | [Deployment](/docs/deployment)           |
+| `redirects`  | Permanent and temporary redirects            | [Deployment](/docs/deployment#redirects) |
 
 ## Precedence
 

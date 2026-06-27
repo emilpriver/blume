@@ -20,7 +20,7 @@ seo: {
 ```
 
 Most of this is sharper with an absolute site URL — set
-[`deployment.site`](/deployment) so feeds, OG images, canonicals, the sitemap,
+[`deployment.site`](/docs/deployment) so feeds, OG images, canonicals, the sitemap,
 and JSON-LD can emit full URLs.
 
 ## Metadata
@@ -121,7 +121,7 @@ default. Use a named accent (`blue`, `teal`, …) or a hex value for custom card
 
 Blume builds an RSS feed for each content type in `rss.types` — `blog` and
 `changelog` by default — that has pages, served at `/<type>/rss.xml`. See
-[Feeds](/content#feeds) for authoring blog and changelog entries with dates.
+[Feeds](/docs/content#feeds) for authoring blog and changelog entries with dates.
 
 ```ts blume.config.ts lineNumbers
 seo: {
@@ -166,7 +166,7 @@ skipped.
 ## Sitemap
 
 Blume writes a `sitemap.xml` of every indexable page at build time. It needs an
-absolute [`deployment.site`](/deployment) and lists every page except drafts,
+absolute [`deployment.site`](/docs/deployment) and lists every page except drafts,
 hidden, and `noindex` pages. On by default:
 
 ```ts blume.config.ts lineNumbers

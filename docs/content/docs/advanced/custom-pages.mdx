@@ -21,7 +21,7 @@ import data from "blume:data";
 ```
 
 `blume dev` picks it up immediately and `blume build` prerenders it to static
-HTML. The folder name is configurable with [`content.pages`](/configuration#content)
+HTML. The folder name is configurable with [`content.pages`](/docs/configuration#content)
 (default `"pages"`).
 
 Custom pages keep their original location on disk, so relative imports, component
@@ -43,7 +43,7 @@ parent folder, and dynamic `[param]` segments are preserved:
 
 A custom page **wins** over a generated route at the same path. Adding
 `pages/changelog.astro`, for example, replaces Blume's
-[generated changelog timeline](/advanced/changelog) with your own.
+[generated changelog timeline](/docs/advanced/changelog) with your own.
 
 ## Reading site data
 
@@ -162,22 +162,26 @@ import data from "blume:data";
 :::note
 `RootLayout` is part of the generated runtime, so its props can change between
 releases. When you want a layout that's fully yours,
-[`blume eject`](/configuration/customization#eject) turns `.blume/` into a
+[`blume eject`](/docs/configuration/customization#eject) turns `.blume/` into a
 standard Astro project you own outright.
 :::
 
 ## Interactive pages
 
 Custom pages are ordinary Astro, so you can drop in React (or any framework)
-[islands](/configuration/customization#react-islands) with a hydration directive.
+[islands](/docs/configuration/customization#react-islands) with a hydration directive.
 React switches on automatically the moment your project contains a `.tsx` or
 `.jsx` file.
 
 <CardGroup cols={2}>
-  <Card title="Customization" href="/configuration/customization" icon="file">
+  <Card
+    title="Customization"
+    href="/docs/configuration/customization"
+    icon="file"
+  >
     Component overrides, React islands, the registry, and eject.
   </Card>
-  <Card title="Blog" href="/advanced/blog" icon="book-open">
+  <Card title="Blog" href="/docs/advanced/blog" icon="book-open">
     Author posts and build a custom blog index.
   </Card>
 </CardGroup>

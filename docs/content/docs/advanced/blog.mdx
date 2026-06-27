@@ -5,7 +5,7 @@ description: Publish posts as content, get an RSS feed and article structured da
 
 A blog in Blume is just content with a type. Mark a page `type: blog` and Blume
 gives it an RSS feed and richer article metadata automatically. Unlike the
-[changelog](/advanced/changelog), there's no generated index page — you compose
+[changelog](/docs/advanced/changelog), there's no generated index page — you compose
 the landing page yourself, which keeps the design entirely in your hands.
 
 ## Write a post
@@ -32,11 +32,11 @@ and a `description` — it's used for both the feed summary and SEO.
 ## The RSS feed
 
 Blume builds a blog feed at **`/blog/rss.xml`**, sorted newest-first by `date`.
-Feeds need an absolute site URL, so set [`deployment.site`](/deployment); Blume
+Feeds need an absolute site URL, so set [`deployment.site`](/docs/deployment); Blume
 then injects a `<link rel="alternate">` tag on every page so readers discover it
 automatically.
 
-The feed is on by default. Tune it under [`seo.rss`](/configuration/seo#rss-feeds):
+The feed is on by default. Tune it under [`seo.rss`](/docs/configuration/seo#rss-feeds):
 
 ```ts blume.config.ts lineNumbers
 seo: {
@@ -52,7 +52,7 @@ Remove `"blog"` from `rss.types` to skip the feed.
 
 ## Structured data
 
-When [structured data](/configuration/seo#structured-data) is on, each post is
+When [structured data](/docs/configuration/seo#structured-data) is on, each post is
 emitted as a schema.org **`BlogPosting`** with its description and publish date —
 the richer article type search engines expect for blog content.
 
@@ -74,7 +74,7 @@ description: News and writing from the team.
 </CardGroup>
 ```
 
-To list posts automatically instead, add a [custom page](/advanced/custom-pages)
+To list posts automatically instead, add a [custom page](/docs/advanced/custom-pages)
 at `pages/blog/index.astro` that reads from Astro's `docs` content collection and
 pairs each entry with its route from `blume:data`:
 
@@ -108,14 +108,14 @@ const posts = (await getCollection("docs"))
 </ul>
 ```
 
-See [Custom Pages](/advanced/custom-pages#using-the-site-layout) for wrapping this
+See [Custom Pages](/docs/advanced/custom-pages#using-the-site-layout) for wrapping this
 in the full site layout.
 
 <CardGroup cols={2}>
-  <Card title="Custom Pages" href="/advanced/custom-pages" icon="folder">
+  <Card title="Custom Pages" href="/docs/advanced/custom-pages" icon="folder">
     Mount the blog index and read from blume:data.
   </Card>
-  <Card title="SEO" href="/configuration/seo" icon="file">
+  <Card title="SEO" href="/docs/configuration/seo" icon="file">
     Feeds, Open Graph images, and structured data.
   </Card>
 </CardGroup>

@@ -8,7 +8,7 @@ a page — routing, navigation, and metadata are inferred from the file system, 
 there's no manifest to keep in sync.
 
 Content lives under your **content root** (`docs/` by default; change it with
-`content.root` in [`blume.config.ts`](/configuration)).
+`content.root` in [`blume.config.ts`](/docs/configuration)).
 
 ## Markdown and MDX
 
@@ -16,8 +16,8 @@ Blume renders two kinds of file:
 
 - **`.md`** — Markdown for plain prose: GFM, frontmatter, smart punctuation, and
   super/subscript.
-- **`.mdx`** — everything `.md` has, plus [components](/content/components) and
-  the MDX-only [directives, package installs, and math](/content/syntax).
+- **`.mdx`** — everything `.md` has, plus [components](/docs/content/components) and
+  the MDX-only [directives, package installs, and math](/docs/content/syntax).
 
 Reach for `.md` when a page is just prose, and `.mdx` when it needs components or
 directives. Switching is as simple as renaming the file.
@@ -46,7 +46,7 @@ prefix is stripped from the URL, so you can reorder pages without breaking links
 02-installation.mdx  ->  /installation
 ```
 
-Ordering has several layers — see [Navigation](/content/navigation) for the full
+Ordering has several layers — see [Navigation](/docs/content/navigation) for the full
 precedence rules.
 
 ## Group folders
@@ -94,13 +94,13 @@ changelog:
 The type is independent of where the file lives, but by convention blog posts
 go under `blog/` and changelog entries under `changelog/`. Both get an RSS feed
 automatically, and changelog entries are also collected into a generated
-[`/changelog` timeline](/advanced/changelog). See [Blog](/advanced/blog) and
-[Changelog](/advanced/changelog) for authoring each.
+[`/changelog` timeline](/docs/advanced/changelog). See [Blog](/docs/advanced/blog) and
+[Changelog](/docs/advanced/changelog) for authoring each.
 
 ## Feeds
 
 Blume generates an RSS feed automatically for each content type listed in
-[`rss.types`](/configuration/seo#rss-feeds) — `blog` and `changelog` by default —
+[`rss.types`](/docs/configuration/seo#rss-feeds) — `blog` and `changelog` by default —
 as long as it has at least one page. Feeds are served at `/<type>/rss.xml`:
 
 | Type        | Feed                 |
@@ -120,24 +120,24 @@ description: Why we built a markdown-first docs framework.
 ---
 ```
 
-Feeds need an absolute site URL, so set [`deployment.site`](/deployment). Blume
+Feeds need an absolute site URL, so set [`deployment.site`](/docs/deployment). Blume
 adds `<link rel="alternate">` tags to every page so browsers and feed readers
-discover them automatically. See [Blog](/advanced/blog) and
-[Changelog](/advanced/changelog) for authoring each content type.
+discover them automatically. See [Blog](/docs/advanced/blog) and
+[Changelog](/docs/advanced/changelog) for authoring each content type.
 
 ## Where to next
 
 <CardGroup cols={2}>
-  <Card title="Frontmatter" href="/reference/frontmatter" icon="file">
+  <Card title="Frontmatter" href="/docs/reference/frontmatter" icon="file">
     Page metadata: title, description, sidebar, SEO, and search.
   </Card>
-  <Card title="Syntax" href="/content/syntax" icon="book-open">
+  <Card title="Syntax" href="/docs/content/syntax" icon="book-open">
     Every Markdown and MDX feature you can write.
   </Card>
-  <Card title="Components" href="/content/components" icon="folder">
+  <Card title="Components" href="/docs/content/components" icon="folder">
     The JSX components available in any MDX page.
   </Card>
-  <Card title="Navigation" href="/content/navigation" icon="menu">
+  <Card title="Navigation" href="/docs/content/navigation" icon="menu">
     Shape the sidebar, ordering, and tabs.
   </Card>
 </CardGroup>
