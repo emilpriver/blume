@@ -53,6 +53,9 @@ Astro gives Blume the default shape it wants:
 | `18-errors.md` | Error model, diagnostics, overlay, doctor output |
 | `19-deployment.md` | Static/server builds, Vercel, adapters, search, redirects |
 | `21-openapi.md` | OpenAPI & AsyncAPI reference via an embedded Scalar renderer (no native UI) |
+| `22-content-sources.md` | Pluggable content sources (remote MDX, Sanity, Notion) — the "Path B" loader abstraction |
+| `23-i18n.md` | Internationalization — locale routing, per-locale nav/search, UI dictionaries, SEO (Mintlify/Fumadocs prior art) |
+| `24-openapi-native.md` | Native OpenAPI reference — own the finite render layer, delegate parsing, keep Scalar as an optional playground (revisits `21`) |
 
 ## Core architecture in one diagram
 
