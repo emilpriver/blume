@@ -1,6 +1,7 @@
 import { describe, expect, it } from "bun:test";
 
 import { blumeConfigSchema } from "../src/core/schema.ts";
+import { tailwindEntryTemplate } from "../src/theme/entry.ts";
 import {
   buildThemeCss,
   resolveAccent,
@@ -37,5 +38,38 @@ describe("buildThemeCss", () => {
     expect(css).toContain(":root {");
     expect(css).toContain("--blume-accent: oklch(0.6 0.12 195);");
     expect(css).toContain("--blume-radius: 0.75rem;");
+  });
+});
+
+describe("tailwindEntryTemplate", () => {
+  const entry = tailwindEntryTemplate({
+    configTokens: ":root { --blume-accent: red; }",
+    sources: ["../pkg", "../project"],
+    userTheme: ".prose { color: green; }",
+  });
+
+  it("imports Tailwind and the typography plugin", () => {
+    expect(entry).toContain('@import "tailwindcss";');
+    expect(entry).toContain('@plugin "@tailwindcss/typography";');
+  });
+
+  it("emits a @source line for each scanned source", () => {
+    expect(entry).toContain('@source "../pkg";');
+    expect(entry).toContain('@source "../project";');
+  });
+
+  it("declares the data-theme dark variant and base tokens", () => {
+    expect(entry).toContain(
+      '@custom-variant dark (&:where([data-theme="dark"]'
+    );
+    expect(entry).toContain("--blume-background: oklch(1 0 0);");
+    expect(entry).toContain('[data-theme="dark"]');
+  });
+
+  it("appends config tokens before the user theme (user wins)", () => {
+    const configAt = entry.indexOf("--blume-accent: red;");
+    const userAt = entry.indexOf(".prose { color: green; }");
+    expect(configAt).toBeGreaterThan(-1);
+    expect(userAt).toBeGreaterThan(configAt);
   });
 });
