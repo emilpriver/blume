@@ -183,10 +183,33 @@ const mdxRemoteSourceSchema = z
   })
   .strict();
 
+/** A Sanity dataset queried with GROQ; Portable Text bodies become Markdown. */
+const sanitySourceSchema = z.object({
+  /** Sanity API version (a date); default `2024-01-01`. */
+  apiVersion: z.string().optional(),
+  dataset: z.string(),
+  /** Field paths mapping a document onto Blume meta + body. */
+  fields: z
+    .object({
+      body: z.string().optional(),
+      description: z.string().optional(),
+      lastModified: z.string().optional(),
+      slug: z.string().optional(),
+      title: z.string().optional(),
+    })
+    .strict()
+    .optional(),
+  prefix: z.string().optional(),
+  projectId: z.string(),
+  /** GROQ query selecting the documents to import. */
+  query: z.string(),
+  type: z.literal("sanity"),
+});
+
 /**
  * A user-provided `ContentSource` instance, passed straight through from
- * `blume.config.ts`. This is the extension point that lets adapters (Sanity,
- * Notion, …) ship as separate packages without their SDKs touching core.
+ * `blume.config.ts`. This is the extension point that lets adapters with custom
+ * serializers (or any backend) ship without their SDKs touching core.
  */
 const customSourceSchema = z.object({
   source: z.custom<ContentSource>(
@@ -204,6 +227,7 @@ const customSourceSchema = z.object({
 const contentSourceSchema = z.discriminatedUnion("type", [
   filesystemSourceSchema,
   mdxRemoteSourceSchema,
+  sanitySourceSchema,
   customSourceSchema,
 ]);
 

@@ -29,6 +29,7 @@
     "./markdown": "./src/markdown/index.ts",
     "./components": "./src/components/index.ts",
     "./components/*": "./src/components/*",
+    "./sources/*": "./src/core/sources/*",
     "./theme/*": "./src/theme/*",
     "./package.json": "./package.json"
   },
@@ -86,6 +87,7 @@
     "@mixedbread/sdk": "^0.76.0",
     "@openrouter/ai-sdk-provider": "^1.5.4",
     "@oramacloud/client": "^2.1.0",
+    "@sanity/client": "^6.21.0",
     "algoliasearch": "^5.55.0",
     "flexsearch": "^0.8.0",
     "typesense": "^3.0.0"
@@ -101,6 +103,9 @@
       "optional": true
     },
     "@oramacloud/client": {
+      "optional": true
+    },
+    "@sanity/client": {
       "optional": true
     },
     "algoliasearch": {

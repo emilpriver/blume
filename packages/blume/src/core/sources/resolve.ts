@@ -4,6 +4,7 @@ import type { ContentSourceConfig, ResolvedConfig } from "../schema.ts";
 import type { ProjectContext } from "../types.ts";
 import { filesystemSource } from "./filesystem.ts";
 import { mdxRemoteSource } from "./mdx-remote.ts";
+import { sanitySource } from "./sanity.ts";
 import type { ContentSource, SourceContext } from "./types.ts";
 
 /** Allocate a unique, stable source name from a base (prefix or type). */
@@ -51,6 +52,20 @@ const buildSource = (
     // A user-provided instance manages its own context/caching; we only ensure
     // its name is unique across the project for id namespacing.
     return def.source.name === name ? def.source : { ...def.source, name };
+  }
+  if (def.type === "sanity") {
+    return sanitySource(
+      {
+        apiVersion: def.apiVersion,
+        dataset: def.dataset,
+        fields: def.fields,
+        name,
+        prefix: def.prefix,
+        projectId: def.projectId,
+        query: def.query,
+      },
+      sourceContext(context, name, mode)
+    );
   }
   return mdxRemoteSource(
     {

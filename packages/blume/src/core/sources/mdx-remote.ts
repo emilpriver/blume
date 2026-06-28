@@ -1,10 +1,7 @@
-import { mkdir, readFile, writeFile } from "node:fs/promises";
-
 import matter from "gray-matter";
-import { join } from "pathe";
 
 import { BlumeError } from "../diagnostics.ts";
-import type { Diagnostic } from "../types.ts";
+import { hashText, loadWithCache, snapshotCache } from "./cache.ts";
 import type {
   ContentSource,
   SourceContext,
@@ -123,15 +120,6 @@ const enumerateGithub = async (
     }));
 };
 
-/** Small, stable content hash for cache bookkeeping (non-bitwise). */
-const hashText = (text: string): string => {
-  let hash = 5381;
-  for (let i = 0; i < text.length; i += 1) {
-    hash = (hash * 33 + (text.codePointAt(i) ?? 0)) % 2_147_483_647;
-  }
-  return hash.toString(36);
-};
-
 /**
  * Remote Markdown/MDX content source. Fetches raw `.md`/`.mdx` over HTTP and
  * passes the text straight through `normalizeEntry`. A snapshot under
@@ -142,7 +130,7 @@ export const mdxRemoteSource = (
   ctx: SourceContext
 ): ContentSource => {
   const doFetch = options.fetchImpl ?? globalThis.fetch;
-  const cacheFile = join(ctx.cacheDir, "entries.json");
+  const cache = snapshotCache(ctx.cacheDir);
   let snapshot = new Map<string, SourceEntry>();
 
   const enumerate = async (): Promise<RemoteRef[]> => {
@@ -184,47 +172,13 @@ export const mdxRemoteSource = (
     };
   };
 
-  const readCache = async (): Promise<SourceEntry[]> => {
-    try {
-      return JSON.parse(await readFile(cacheFile, "utf-8")) as SourceEntry[];
-    } catch {
-      return [];
-    }
-  };
-
-  const writeCache = async (entries: SourceEntry[]): Promise<void> => {
-    try {
-      await mkdir(ctx.cacheDir, { recursive: true });
-      await writeFile(cacheFile, `${JSON.stringify(entries)}\n`, "utf-8");
-    } catch {
-      // Cache is best-effort; a write failure must not fail the build.
-    }
-  };
-
   const load = async (): Promise<SourceLoadResult> => {
-    try {
+    const result = await loadWithCache(options.name, cache, async () => {
       const refs = await enumerate();
-      const entries = await Promise.all(refs.map(fetchEntry));
-      snapshot = new Map(entries.map((entry) => [entry.ref, entry]));
-      await writeCache(entries);
-      return { diagnostics: [], entries };
-    } catch (error) {
-      const fallback = await readCache();
-      if (fallback.length > 0) {
-        snapshot = new Map(fallback.map((entry) => [entry.ref, entry]));
-        const diagnostic: Diagnostic = {
-          code: "BLUME_SOURCE_OFFLINE",
-          message: `Source "${options.name}" could not be fetched (${(error as Error).message}); served ${fallback.length} cached entries.`,
-          severity: "warning",
-        };
-        return { diagnostics: [diagnostic], entries: fallback };
-      }
-      throw new BlumeError({
-        code: "BLUME_SOURCE_FETCH_FAILED",
-        message: `Source "${options.name}" failed to load and no cache is available: ${(error as Error).message}`,
-        severity: "error",
-      });
-    }
+      return await Promise.all(refs.map(fetchEntry));
+    });
+    snapshot = new Map(result.entries.map((entry) => [entry.ref, entry]));
+    return result;
   };
 
   const read = async (ref: string): Promise<string> => {
@@ -232,7 +186,7 @@ export const mdxRemoteSource = (
     if (cached) {
       return cached.raw ?? cached.body.text;
     }
-    const all = await readCache();
+    const all = await cache.read();
     const entry = all.find((e) => e.ref === ref);
     return entry?.raw ?? entry?.body.text ?? "";
   };

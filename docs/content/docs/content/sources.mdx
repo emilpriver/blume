@@ -85,15 +85,47 @@ snapshot with a warning rather than failing the build. The cache lives inside
 In dev, remote content is fetched once and frozen for the session; restart the
 dev server to refresh it. Local filesystem sources hot-reload as usual.
 
-## Custom sources
+## Sanity
 
-Any object implementing the `ContentSource` interface can be passed directly,
-which is how CMS adapters (Sanity, Notion, …) ship as separate packages without
-forcing their SDKs on every project:
+The built-in `sanity` source runs a GROQ query and maps each document's fields
+to frontmatter and its Portable Text body to Markdown. The `@sanity/client`
+package is an optional peer dependency — install it only if you use this source.
 
 ```ts blume.config.ts
 import { defineConfig } from "blume";
-import { sanitySource } from "@blume/source-sanity";
+
+export default defineConfig({
+  content: {
+    sources: [
+      { type: "filesystem", root: "docs" },
+      {
+        type: "sanity",
+        prefix: "guides",
+        projectId: "abc123",
+        dataset: "production",
+        query: `*[_type == "guide"]`,
+        // Field paths default to title / slug.current / body / _updatedAt
+        fields: { slug: "slug.current", body: "content" },
+      },
+    ],
+  },
+});
+```
+
+A read token for a private dataset comes from the `SANITY_TOKEN` environment
+variable. Custom Portable Text block types map to Blume components through the
+adapter's `serializers` option, available when you construct `sanitySource`
+directly via a [custom source](#custom-sources).
+
+## Custom sources
+
+Any object implementing the `ContentSource` interface can be passed directly,
+which is how an adapter with custom serializers — or any backend not built in —
+plugs in without its SDK touching the core install:
+
+```ts blume.config.ts
+import { defineConfig } from "blume";
+import { sanitySource } from "blume/sources/sanity.ts";
 
 export default defineConfig({
   content: {
@@ -102,10 +134,15 @@ export default defineConfig({
       {
         type: "custom",
         source: sanitySource({
+          name: "guides",
           prefix: "guides",
           projectId: "abc123",
           dataset: "production",
           query: `*[_type == "guide"]`,
+          // Map custom Portable Text blocks to Blume components
+          serializers: {
+            callout: (block) => `<Callout>${block.text}</Callout>`,
+          },
         }),
       },
     ],
@@ -115,6 +152,4 @@ export default defineConfig({
 
 A source normalizes its native shape (Portable Text, Notion blocks, remote HTML)
 to Markdown/MDX text, so the same components and markdown features apply no
-matter where a page comes from. See the
-[`ContentSource` type](https://github.com/haydenbleasel/blume) for the full
-interface.
+matter where a page comes from.
