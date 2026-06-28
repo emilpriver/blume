@@ -10,7 +10,7 @@ import {
 import { createRequire } from "node:module";
 import { fileURLToPath, pathToFileURL } from "node:url";
 
-import { dirname, join, relative } from "pathe";
+import { dirname, join, normalize, relative } from "pathe";
 import { glob } from "tinyglobby";
 
 import { buildRawMarkdown } from "../ai/markdown.ts";
@@ -140,6 +140,33 @@ const writeIfChanged = async (
     throw error;
   }
   return true;
+};
+
+/**
+ * Delete generated files under `srcDir` that this pass didn't (re)write. The
+ * generator emits many files conditionally — an Ask AI endpoint, OG images, a
+ * search index, RSS feeds, reference pages, the MCP server — so toggling a
+ * feature off would otherwise leave a stale file behind, and a leftover
+ * server-rendered endpoint breaks the static build. `writeIfChanged` only ever
+ * adds or updates, so this closes the loop. Scoped to `.blume/src`, so it never
+ * touches Astro's `dist/`, `.astro/` cache, or the symlinked `node_modules`
+ * (all of which live outside `src`). `written` holds normalized absolute paths.
+ */
+export const pruneOrphans = async (
+  srcDir: string,
+  written: Set<string>
+): Promise<void> => {
+  const existing = await glob("**/*", {
+    absolute: true,
+    cwd: srcDir,
+    onlyFiles: true,
+  });
+  await Promise.all(
+    existing
+      .map((path) => normalize(path))
+      .filter((path) => !written.has(path))
+      .map((path) => rm(path, { force: true }))
+  );
 };
 
 /** The logo shape the runtime consumes: an inline SVG or image URL(s). */
@@ -397,7 +424,8 @@ const planMcp = (project: BlumeProject, srcDir: string): McpPlan => {
 /** Write the MCP data snapshot, server endpoint, and discovery documents. */
 const writeMcpFiles = async (
   project: BlumeProject,
-  plan: McpPlan
+  plan: McpPlan,
+  write: (path: string, content: string) => Promise<boolean>
 ): Promise<void> => {
   if (!plan.enabled) {
     return;
@@ -410,19 +438,19 @@ const writeMcpFiles = async (
     version: data.version,
   };
   await Promise.all([
-    writeIfChanged(
+    write(
       join(plan.srcDir, "generated", "mcp-data.json"),
       `${JSON.stringify(data)}\n`
     ),
-    writeIfChanged(
+    write(
       join(plan.srcDir, "pages", mcpPageFile(plan.route)),
       mcpEndpointTemplate(plan.route)
     ),
-    writeIfChanged(
+    write(
       join(plan.dir, "discovery.ts"),
       staticJsonEndpointTemplate(buildMcpDiscovery(discoveryInput))
     ),
-    writeIfChanged(
+    write(
       join(plan.dir, "server-card.ts"),
       staticJsonEndpointTemplate(buildMcpServerCard(discoveryInput))
     ),
@@ -450,6 +478,14 @@ export const generateRuntime = async (
   const themePath = join(srcDir, "generated", "app.css");
   const searchClientPath = join(srcDir, "generated", "search-client.ts");
 
+  // Record every file this pass writes so orphans (from a now-disabled feature)
+  // can be pruned afterwards. `write` wraps the atomic writer and tracks paths.
+  const written = new Set<string>();
+  const write = (path: string, content: string): Promise<boolean> => {
+    written.add(normalize(path));
+    return writeIfChanged(path, content);
+  };
+
   await ensureDepsLink(out);
 
   const askEnabled = config.ai.ask?.enabled ?? false;
@@ -469,7 +505,7 @@ export const generateRuntime = async (
   pages.push(...mcp.discoveryPages);
 
   const structural = await Promise.all([
-    writeIfChanged(
+    write(
       join(out, "astro.config.mjs"),
       astroConfigTemplate({
         config,
@@ -482,17 +518,17 @@ export const generateRuntime = async (
         themePath,
       })
     ),
-    writeIfChanged(
+    write(
       join(out, "package.json"),
       runtimePackageTemplate(runtimeDependencies({ config, needsReact }))
     ),
-    writeIfChanged(join(out, "tsconfig.json"), runtimeTsconfigTemplate()),
-    writeIfChanged(join(srcDir, "env.d.ts"), envTemplate()),
-    writeIfChanged(
+    write(join(out, "tsconfig.json"), runtimeTsconfigTemplate()),
+    write(join(srcDir, "env.d.ts"), envTemplate()),
+    write(
       join(srcDir, "content.config.ts"),
       contentConfigTemplate({ config, context })
     ),
-    writeIfChanged(
+    write(
       join(srcDir, "pages", "[...slug].astro"),
       catchAllPageTemplate({
         askEnabled,
@@ -501,11 +537,11 @@ export const generateRuntime = async (
         mathEnabled: config.markdown.math,
       })
     ),
-    writeIfChanged(
+    write(
       join(srcDir, "generated", "components.ts"),
       userComponentsTemplate(context.componentsFile)
     ),
-    writeIfChanged(
+    write(
       themePath,
       tailwindEntryTemplate({
         configTokens: `${buildThemeCss(config.theme)}${buildFontsCss(config.theme.fonts)}`,
@@ -520,16 +556,16 @@ export const generateRuntime = async (
   ]);
 
   if (askEnabled) {
-    await writeIfChanged(
+    await write(
       join(srcDir, "pages", "api", "ask.ts"),
       askEndpointTemplate(config.ai.ask?.model ?? "openai/gpt-5.5")
     );
   }
 
-  await writeMcpFiles(project, mcp);
+  await writeMcpFiles(project, mcp, write);
 
   if (config.seo.og.enabled) {
-    await writeIfChanged(
+    await write(
       join(srcDir, "pages", "og", "[...slug].png.ts"),
       ogEndpointTemplate()
     );
@@ -547,7 +583,7 @@ export const generateRuntime = async (
     (page) => page.route === "/changelog"
   );
   if (hasChangelog && !changelogRouteTaken) {
-    await writeIfChanged(
+    await write(
       join(srcDir, "pages", "changelog.astro"),
       changelogIndexTemplate({ askEnabled, exportEpub, exportPdf })
     );
@@ -555,16 +591,16 @@ export const generateRuntime = async (
 
   // The provider-specific client loader behind the `blume:search-client` alias
   // is always (re)generated so the alias resolves even when search is disabled.
-  await writeIfChanged(searchClientPath, searchClientTemplate(config));
+  await write(searchClientPath, searchClientTemplate(config));
 
   // Client-loaded providers (orama, flexsearch) ship a static index + endpoint.
   if (servesStaticIndex(config.search.provider)) {
     const documents = await buildSearchDocuments(project);
-    await writeIfChanged(
+    await write(
       join(srcDir, "generated", "search.json"),
       `${JSON.stringify(documents)}\n`
     );
-    await writeIfChanged(
+    await write(
       join(srcDir, "pages", "blume-search.json.ts"),
       searchEndpointTemplate()
     );
@@ -572,7 +608,7 @@ export const generateRuntime = async (
 
   // Mixedbread proxies queries through a server endpoint that holds the key.
   if (config.search.provider === "mixedbread") {
-    await writeIfChanged(
+    await write(
       join(srcDir, "pages", "api", "search.ts"),
       mixedbreadSearchEndpointTemplate(config.search.mixedbread?.storeId ?? "")
     );
@@ -580,15 +616,15 @@ export const generateRuntime = async (
 
   const rawMarkdown = await buildRawMarkdown(project);
   await Promise.all([
-    writeIfChanged(
+    write(
       join(srcDir, "generated", "raw-markdown.json"),
       `${JSON.stringify(rawMarkdown)}\n`
     ),
-    writeIfChanged(
+    write(
       join(srcDir, "pages", "[...slug].md.ts"),
       rawMarkdownEndpointTemplate()
     ),
-    writeIfChanged(
+    write(
       join(srcDir, "pages", "[...slug].mdx.ts"),
       rawMarkdownEndpointTemplate()
     ),
@@ -602,11 +638,11 @@ export const generateRuntime = async (
       feeds.map((feed) => [feed.type, renderRssFeed(feed)])
     );
     await Promise.all([
-      writeIfChanged(
+      write(
         join(srcDir, "generated", "rss.json"),
         `${JSON.stringify(feedXml)}\n`
       ),
-      writeIfChanged(
+      write(
         join(srcDir, "pages", "[section]", "rss.xml.ts"),
         rssEndpointTemplate()
       ),
@@ -635,20 +671,24 @@ export const generateRuntime = async (
     warnings.push(...references.warnings);
     await Promise.all(
       references.files.map((file) =>
-        writeIfChanged(join(srcDir, "pages", file.pagePath), file.content)
+        write(join(srcDir, "pages", file.pagePath), file.content)
       )
     );
   }
 
   // Data and manifest are not "structural" for Astro; they hot-reload.
-  await writeIfChanged(
+  await write(
     join(srcDir, "generated", "data.json"),
     buildRuntimeData(project)
   );
-  await writeIfChanged(
+  await write(
     join(out, "blume.manifest.json"),
     `${JSON.stringify(project.manifest, null, 2)}\n`
   );
+
+  // Remove anything under `.blume/src` this pass didn't write — e.g. an Ask AI
+  // endpoint left behind after the feature was switched off.
+  await pruneOrphans(srcDir, written);
 
   return { structuralChange: structural.some(Boolean), warnings };
 };
