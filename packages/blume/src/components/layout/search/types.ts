@@ -28,7 +28,7 @@ export interface SearchResult {
 /** A configured query function — the common contract every provider returns. */
 export type SearchFn = (
   query: string,
-  options?: { section?: string }
+  options?: { section?: string; locale?: string }
 ) => Promise<SearchResult>;
 
 /** A document in the client-loaded `blume-search.json` index. */
@@ -39,6 +39,7 @@ export interface IndexedDocument {
   content: string;
   breadcrumb?: string[];
   section?: string;
+  locale?: string;
 }
 
 /** Max results surfaced in the dialog. */

@@ -16,6 +16,8 @@ export interface SearchDocument {
   breadcrumb: string[];
   /** Top-level section label, used by the search filter pills. */
   section: string;
+  /** Locale code, so the dialog can filter results to the active language. */
+  locale: string;
   /** Frontmatter `search.tags`, surfaced for hosted-provider faceting. */
   tags?: string[];
 }
@@ -31,6 +33,8 @@ export interface SearchRecord {
   title: string;
   description: string;
   content: string;
+  /** Locale code, carried as a facet for per-language filtering. */
+  locale: string;
   /** Single faceting tag (the first frontmatter tag, when present). */
   tag?: string;
 }
@@ -100,7 +104,21 @@ export const buildSearchDocuments = async (
   options?: { includeWhenDisabled?: boolean }
 ): Promise<SearchDocument[]> => {
   const pageById = new Map(project.graph.pages.map((page) => [page.id, page]));
-  const crumbs = buildCrumbIndex(project.graph.navigation?.sidebar ?? []);
+
+  // Build the crumb index from every locale's sidebar (their nodes carry
+  // locale-prefixed routes), so localized pages get the right section/breadcrumb.
+  // Falls back to the single default-locale nav when i18n is off.
+  const byLocale = Object.values(project.graph.navigationByLocale ?? {});
+  const sidebars =
+    byLocale.length > 0
+      ? byLocale.map((nav) => nav.sidebar)
+      : [project.graph.navigation?.sidebar ?? []];
+  const crumbs = new Map<string, Crumbs>();
+  for (const sidebar of sidebars) {
+    for (const [route, crumb] of buildCrumbIndex(sidebar)) {
+      crumbs.set(route, crumb);
+    }
+  }
 
   const indexable = project.manifest.routes.filter((route) => {
     if (!options?.includeWhenDisabled) {
@@ -121,6 +139,7 @@ export const buildSearchDocuments = async (
         breadcrumb: crumb?.breadcrumb ?? [],
         content: body,
         description: page?.description ?? "",
+        locale: route.locale,
         route: route.path,
         section: crumb?.section || "Docs",
         tags: tags && tags.length > 0 ? tags : undefined,
@@ -140,6 +159,7 @@ export const toSearchRecords = (documents: SearchDocument[]): SearchRecord[] =>
     _id: doc.route,
     content: doc.content,
     description: doc.description,
+    locale: doc.locale,
     tag: doc.tags?.[0],
     title: doc.title,
     url: doc.route,

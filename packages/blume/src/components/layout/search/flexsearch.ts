@@ -40,7 +40,9 @@ export const createSearch = async (opts: {
         }
         seen.add(route);
         const doc = byRoute.get(route);
-        if (doc) {
+        // Filter to the active locale (when one is requested) before shaping,
+        // so section counts and results stay within the language.
+        if (doc && (!options?.locale || doc.locale === options.locale)) {
           matched.push(doc);
         }
       }

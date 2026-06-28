@@ -24,6 +24,8 @@ interface Props {
   searchStrings?: UIStrings["search"];
   switcherStrings?: UIStrings["languageSwitcher"];
   localeSwitch?: LocaleSwitchOption[];
+  /** Active locale for per-language search filtering. */
+  searchLocale?: string;
 }
 
 const {
@@ -37,6 +39,7 @@ const {
   searchStrings,
   switcherStrings,
   localeSwitch,
+  searchLocale,
 } = Astro.props;
 
 // The logo is resolved upstream: an inline `svg` (so a currentColor mark
@@ -142,6 +145,7 @@ const clickScript = `document.addEventListener("click",(e)=>{const t=e.target.cl
     searchEnabled && (
       <Search
         askEnabled={askEnabled}
+        locale={searchLocale}
         navigation={navigation}
         strings={searchStrings}
       />

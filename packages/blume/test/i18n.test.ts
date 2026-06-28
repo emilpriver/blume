@@ -22,6 +22,7 @@ import type {
   ResolvedI18nConfig,
 } from "../src/core/schema.ts";
 import type { NavNode, ProjectContext } from "../src/core/types.ts";
+import { UI_PACKS } from "../src/core/ui-packs/index.ts";
 
 const config = (i18nOver: Record<string, unknown> = {}): ResolvedConfig =>
   blumeConfigSchema.parse({
@@ -219,5 +220,70 @@ describe("UI dictionaries", () => {
     expect(dict.search.button).toBe("Chercher");
     // Untranslated keys still fall back to the pack, then English.
     expect(dict.page.next).toBe("Suivant");
+  });
+
+  it("ships packs for a broad set of locales", () => {
+    // A representative spread across scripts/regions; not the whole list.
+    const sample = ["de", "es", "ja", "zh", "zh-TW", "ar", "ru", "pt-BR"];
+    for (const code of sample) {
+      expect(UI_PACKS[code]).toBeDefined();
+    }
+    expect(Object.keys(UI_PACKS).length).toBeGreaterThan(20);
+  });
+
+  it("resolves a non-French shipped pack", () => {
+    const de = resolveUIStrings("de", { defaultLocale: "en" });
+    expect(de.search.button).toBe("Suchen");
+    expect(de.page.previous).toBe("Zurück");
+
+    const ja = resolveUIStrings("ja", { defaultLocale: "en" });
+    expect(ja.toc.title).toBe("このページの内容");
+    // Brand names stay verbatim inside translated strings.
+    expect(ja.actions.edit).toContain("GitHub");
+  });
+
+  it("resolves a regional variant pack by its BCP 47 code", () => {
+    const dict = resolveUIStrings("zh-TW", { defaultLocale: "en" });
+    expect(dict.search.button).toBe("搜尋");
+  });
+
+  it("falls back to English for a locale with no shipped pack", () => {
+    const dict = resolveUIStrings("xx", { defaultLocale: "en" });
+    expect(dict.search.button).toBe(EN_UI.search.button);
+    expect(dict.page.next).toBe("Next");
+  });
+
+  it("resolves a region variant to its base-language pack", () => {
+    // No fr-CA pack ships, so it should use the French pack, not English.
+    const dict = resolveUIStrings("fr-CA", { defaultLocale: "en" });
+    expect(dict.search.button).toBe("Rechercher");
+  });
+
+  it("matches a pack code case-insensitively", () => {
+    // `pt-br` should still find the `pt-BR` pack.
+    const dict = resolveUIStrings("pt-br", { defaultLocale: "en" });
+    expect(dict.page.next).toBe(
+      resolveUIStrings("pt-BR", { defaultLocale: "en" }).page.next
+    );
+  });
+
+  it("every shipped pack uses only known UI keys", () => {
+    const baseline = EN_UI as Record<string, Record<string, string>>;
+    const violations: string[] = [];
+    for (const [code, pack] of Object.entries(UI_PACKS)) {
+      for (const [group, values] of Object.entries(pack)) {
+        const known = baseline[group];
+        if (!known) {
+          violations.push(`${code}: unknown group "${group}"`);
+          continue;
+        }
+        for (const key of Object.keys(values)) {
+          if (!(key in known)) {
+            violations.push(`${code}.${group}: unknown key "${key}"`);
+          }
+        }
+      }
+    }
+    expect(violations).toEqual([]);
   });
 });

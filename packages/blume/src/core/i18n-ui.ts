@@ -1,5 +1,7 @@
 import { z } from "zod";
 
+import { UI_PACKS } from "./ui-packs/index.ts";
+
 /**
  * Translatable UI chrome strings.
  *
@@ -54,6 +56,7 @@ const uiStringsObject = z.object({
     .default({}),
   search: z
     .object({
+      allLanguages: z.string().default("All languages"),
       button: z.string().default("Search"),
       devOnly: z
         .string()
@@ -112,45 +115,31 @@ const mergeUI = (base: UIStrings, override?: UIStringsOverride): UIStrings => {
 };
 
 /**
- * Built-in translation packs. English is the schema baseline; additional
- * locales ship a starter pack so adopters get translated chrome out of the box.
- * Community-maintained — start small and high-quality.
+ * Built-in translation packs, one module per locale under {@link ./ui-packs}.
+ * English is the schema baseline (no pack); every other locale ships a starter
+ * pack so adopters get translated chrome out of the box. Re-exported here so the
+ * resolver and existing imports keep a single entry point.
  */
-export const UI_PACKS: Record<string, UIStringsOverride> = {
-  fr: {
-    actions: {
-      askAI: "Demander à l'IA",
-      copied: "Copié !",
-      copyMarkdown: "Copier en Markdown",
-      edit: "Modifier sur GitHub",
-      giveFeedback: "Donner un avis",
-      openInChat: "Ouvrir dans le chat",
-      scrollToTop: "Revenir en haut",
-      send: "Envoyer",
-    },
-    ask: {
-      empty: "Posez une question sur la documentation.",
-      error: "Désolé, une erreur s'est produite.",
-      label: "Poser une question",
-      placeholder: "Posez une question…",
-      send: "Envoyer",
-      title: "Demander à l'IA",
-    },
-    languageSwitcher: { label: "Langue", untranslated: "Non traduit" },
-    page: {
-      lastUpdated: "Dernière mise à jour le",
-      next: "Suivant",
-      previous: "Précédent",
-      skipToContent: "Aller au contenu",
-    },
-    search: {
-      button: "Rechercher",
-      label: "Rechercher dans la doc",
-      noResults: "Aucun résultat.",
-      placeholder: "Rechercher dans la documentation…",
-    },
-    toc: { title: "Sur cette page" },
-  },
+export { UI_PACKS };
+
+/** Case-insensitive index for region-variant lookup (`pt-br` -> `pt-BR`). */
+const PACKS_BY_LOWER: Record<string, UIStringsOverride> = Object.fromEntries(
+  Object.entries(UI_PACKS).map(([code, pack]) => [code.toLowerCase(), pack])
+);
+
+/**
+ * Find the built-in pack for a locale code, tolerating case and region subtags:
+ * an exact match wins, then a case-insensitive match (`pt-br` -> `pt-BR`), then
+ * the base language (`fr-CA` -> `fr`). So any reasonable code gets sensible
+ * chrome without the project having to match our exact casing.
+ */
+const packFor = (code: string): UIStringsOverride | undefined => {
+  const lower = code.toLowerCase();
+  return (
+    UI_PACKS[code] ??
+    PACKS_BY_LOWER[lower] ??
+    PACKS_BY_LOWER[lower.split(/[-_]/u)[0] ?? lower]
+  );
 };
 
 /**
@@ -168,10 +157,10 @@ export const resolveUIStrings = (
 ): UIStrings => {
   const { defaultLocale, overrides } = options;
   let dict = EN_UI;
-  dict = mergeUI(dict, UI_PACKS[defaultLocale]);
+  dict = mergeUI(dict, packFor(defaultLocale));
   dict = mergeUI(dict, overrides?.[defaultLocale]);
   if (locale !== defaultLocale) {
-    dict = mergeUI(dict, UI_PACKS[locale]);
+    dict = mergeUI(dict, packFor(locale));
     dict = mergeUI(dict, overrides?.[locale]);
   }
   return dict;

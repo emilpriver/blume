@@ -241,6 +241,7 @@ describe("hosted sync uploads", () => {
       _id: "/a",
       content: "c",
       description: "d",
+      locale: "en",
       tag: "guides",
       title: "A",
       url: "/a",

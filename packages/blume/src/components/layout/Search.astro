@@ -14,9 +14,11 @@ interface Props {
   askEnabled?: boolean;
   navigation?: Navigation;
   strings?: UIStrings["search"];
+  /** Active locale to filter results to; omitted disables locale filtering. */
+  locale?: string;
 }
 
-const { askEnabled = false, navigation, strings } = Astro.props;
+const { askEnabled = false, navigation, strings, locale } = Astro.props;
 const s = strings ?? EN_UI.search;
 
 // Pages shown in the empty state, before the user has typed anything.
@@ -30,6 +32,7 @@ const kbd = "rounded border border-border bg-muted px-1 py-0.5 font-mono";
   data-ask={askEnabled ? "" : undefined}
   data-i18n-dev={s.devOnly}
   data-i18n-empty={s.noResults}
+  data-locale={locale || undefined}
 >
   <button
     aria-label={s.button}
@@ -93,21 +96,37 @@ const kbd = "rounded border border-border bg-muted px-1 py-0.5 font-mono";
       </div>
     </div>
     <div
-      class="flex items-center justify-end gap-3 border-border border-t px-3 py-2 text-muted-foreground text-xs"
+      class="flex items-center justify-between gap-3 border-border border-t px-3 py-2 text-muted-foreground text-xs"
     >
-      <span class="flex items-center gap-1">
-        <kbd class={`${kbd} text-[0.65rem]`}>↑</kbd>
-        <kbd class={`${kbd} text-[0.65rem]`}>↓</kbd>
-        navigate
-      </span>
-      <span class="flex items-center gap-1">
-        <kbd class={`${kbd} text-[0.65rem]`}>↵</kbd>
-        open
-      </span>
-      <span class="flex items-center gap-1 max-md:hidden">
-        <kbd class={`${kbd} text-[0.65rem]`}>⌘J</kbd>
-        preview
-      </span>
+      {
+        locale ? (
+          <label class="flex cursor-pointer select-none items-center gap-1.5">
+            <input
+              class="size-3.5 accent-accent"
+              data-blume-search-all-locales
+              type="checkbox"
+            />
+            {s.allLanguages}
+          </label>
+        ) : (
+          <span />
+        )
+      }
+      <div class="flex items-center gap-3">
+        <span class="flex items-center gap-1">
+          <kbd class={`${kbd} text-[0.65rem]`}>↑</kbd>
+          <kbd class={`${kbd} text-[0.65rem]`}>↓</kbd>
+          navigate
+        </span>
+        <span class="flex items-center gap-1">
+          <kbd class={`${kbd} text-[0.65rem]`}>↵</kbd>
+          open
+        </span>
+        <span class="flex items-center gap-1 max-md:hidden">
+          <kbd class={`${kbd} text-[0.65rem]`}>⌘J</kbd>
+          preview
+        </span>
+      </div>
     </div>
   </dialog>
 
@@ -174,12 +193,17 @@ const kbd = "rounded border border-border bg-muted px-1 py-0.5 font-mono";
       previewOn = true;
       devOnlyMsg = "Search is available in the production build.";
       noResultsMsg = "No results found.";
+      // The active locale to filter to (null when i18n is off), and whether the
+      // reader has opted to search across every language instead.
+      locale: string | null = null;
+      allLocales = false;
 
       connectedCallback() {
         this.devOnlyMsg =
           this.getAttribute("data-i18n-dev") || this.devOnlyMsg;
         this.noResultsMsg =
           this.getAttribute("data-i18n-empty") || this.noResultsMsg;
+        this.locale = this.getAttribute("data-locale");
         this.dialog = this.querySelector("[data-blume-search-dialog]")!;
         this.input = this.querySelector("[data-blume-search-input]")!;
         this.grid = this.querySelector("[data-blume-search-grid]")!;
@@ -201,6 +225,25 @@ const kbd = "rounded border border-border bg-muted px-1 py-0.5 font-mono";
         this.previewOn =
           localStorage.getItem("blume-search-preview") !== "0";
         this.applyPreviewState();
+
+        // Per-language filtering: default to the active locale, with an opt-in
+        // toggle to search every language. The choice is remembered.
+        const allToggle = this.querySelector<HTMLInputElement>(
+          "[data-blume-search-all-locales]"
+        );
+        if (allToggle) {
+          this.allLocales =
+            localStorage.getItem("blume-search-all-locales") === "1";
+          allToggle.checked = this.allLocales;
+          allToggle.addEventListener("change", () => {
+            this.allLocales = allToggle.checked;
+            localStorage.setItem(
+              "blume-search-all-locales",
+              this.allLocales ? "1" : "0"
+            );
+            this.render();
+          });
+        }
 
         // The handler accepts ⌘K and Ctrl+K; show the right one per platform.
         const hint = this.querySelector("[data-blume-search-kbd]");
@@ -312,10 +355,12 @@ const kbd = "rounded border border-border bg-muted px-1 py-0.5 font-mono";
           return;
         }
 
-        const result = await this.searchFn(
-          query,
-          this.activeSection ? { section: this.activeSection } : undefined
-        );
+        const localeFilter =
+          this.locale && !this.allLocales ? this.locale : undefined;
+        const result = await this.searchFn(query, {
+          locale: localeFilter,
+          section: this.activeSection ?? undefined,
+        });
         // A later keystroke may have superseded this query mid-await.
         if (this.input.value.trim() !== query) {
           return;

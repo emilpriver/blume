@@ -182,6 +182,30 @@ describe("orama index helpers", () => {
     const hits = await queryOramaIndex(db, "configuration", 5);
     expect(hits[0]?.route).toBe("/guides/config");
   });
+
+  it("filters results to a locale when one is given", async () => {
+    const db = await buildOramaIndex([
+      {
+        content: "Installation guide",
+        description: "",
+        locale: "en",
+        route: "/install",
+        title: "Install",
+      },
+      {
+        content: "Guide d'installation",
+        description: "",
+        locale: "fr",
+        route: "/fr/install",
+        title: "Installation",
+      },
+    ]);
+    const fr = await queryOramaIndex(db, "install", 5, "fr");
+    expect(fr.map((doc) => doc.route)).toEqual(["/fr/install"]);
+    // No filter searches every language.
+    const all = await queryOramaIndex(db, "install", 5);
+    expect(all.length).toBe(2);
+  });
 });
 
 describe("discovery documents", () => {

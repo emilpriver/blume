@@ -112,6 +112,9 @@ const {
 } = Astro.props;
 
 const strings = ui ?? EN_UI;
+// Filter search to the active language only when the site is multi-locale.
+const searchLocale =
+  localeSwitch && localeSwitch.length > 1 ? locale : undefined;
 const tocHeadings = headings.filter((h) => h.depth >= 2 && h.depth <= 3);
 const pageTitle = page.title ? `${page.title} - ${site.title}` : site.title;
 const description = page.description ?? site.description;
@@ -234,6 +237,7 @@ const bannerScript = banner?.dismissible
       navigation={navigation}
       route={page.route}
       searchEnabled={searchEnabled}
+      searchLocale={searchLocale}
       searchStrings={strings.search}
       site={site}
       switcherStrings={strings.languageSwitcher}
