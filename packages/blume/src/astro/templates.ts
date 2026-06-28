@@ -717,6 +717,7 @@ export function getStaticPaths() {
       alternates: route.alternates,
       editUrl: route.editUrl,
       entryId: route.id,
+      fallback: route.fallback,
       indexable: route.indexable,
       lastModified: route.lastModified,
       locale: route.locale,
@@ -726,7 +727,7 @@ export function getStaticPaths() {
   }));
 }
 
-const { entryId, route, title, indexable, editUrl, lastModified, locale, alternates } = Astro.props;
+const { entryId, route, title, indexable, editUrl, lastModified, locale, alternates, fallback } = Astro.props;
 const entry = await getEntry("docs", entryId);
 if (!entry) {
   return new Response(null, { status: 404 });
@@ -770,6 +771,13 @@ const ui = i18n ? (data.uiByLocale[locale] ?? data.ui) : data.ui;
 const localeMeta = i18n ? i18n.locales.find((l) => l.code === locale) : null;
 const dir = localeMeta?.dir ?? "ltr";
 const htmlLang = i18n ? locale : "en";
+// A fallback page renders the fallback locale's content, so its text direction
+// follows that language — not the (mirrored) page locale.
+const contentLocale =
+  fallback && i18n?.fallbackLocale ? i18n.fallbackLocale : locale;
+const contentDir = i18n
+  ? (i18n.locales.find((l) => l.code === contentLocale)?.dir ?? "ltr")
+  : "ltr";
 const absolute = (path) => base + (path === "/" ? "" : path);
 
 const localeAlternates =
@@ -806,6 +814,7 @@ const localeSwitch = i18n
   navigation={navigation}
   locale={htmlLang}
   dir={dir}
+  contentDir={contentDir}
   ui={ui}
   localeAlternates={localeAlternates}
   xDefault={xDefault}

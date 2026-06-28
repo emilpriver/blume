@@ -64,6 +64,12 @@ interface Props {
   locale?: string;
   /** Text direction for `<html dir>` (defaults to `ltr`). */
   dir?: "ltr" | "rtl";
+  /**
+   * Direction of the page content's own language — differs from `dir` on a
+   * fallback page (e.g. English content under an RTL locale). Applied to the
+   * article so prose punctuation reads correctly; the chrome still mirrors.
+   */
+  contentDir?: "ltr" | "rtl";
   /** Resolved UI dictionary; English baseline when omitted. */
   ui?: UIStrings;
   /** `hreflang` alternates (absolute URLs) for this page's translations. */
@@ -105,6 +111,7 @@ const {
   structuredDataEnabled,
   locale = "en",
   dir = "ltr",
+  contentDir,
   ui,
   localeAlternates,
   xDefault,
@@ -296,7 +303,7 @@ const bannerScript = banner?.dismissible
             </details>
           )
         }
-        <article class="prose mx-auto max-w-[42rem]">
+        <article class="prose mx-auto max-w-[42rem]" dir={contentDir}>
           <slot />
         </article>
         {

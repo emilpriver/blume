@@ -17,6 +17,7 @@ import { buildRawMarkdown } from "../ai/markdown.ts";
 import { buildMcpData } from "../ai/mcp/data.ts";
 import { buildMcpDiscovery, buildMcpServerCard } from "../ai/mcp/discovery.ts";
 import { EN_UI, resolveUIStrings } from "../core/i18n-ui.ts";
+import { resolveFallbackLocale } from "../core/i18n.ts";
 import type { BlumeProject } from "../core/project-graph.ts";
 import type { ResolvedConfig } from "../core/schema.ts";
 import type { Navigation } from "../core/types.ts";
@@ -367,6 +368,9 @@ export const buildRuntimeData = (project: BlumeProject): string => {
       i18n: i18n
         ? {
             defaultLocale: i18n.defaultLocale,
+            // The locale fallback content is rendered from, so the catch-all can
+            // set the content direction to the language it's actually written in.
+            fallbackLocale: resolveFallbackLocale(i18n),
             hideDefaultLocalePrefix: i18n.hideDefaultLocalePrefix,
             locales: i18n.locales.map(({ code, dir, label }) => ({
               code,
