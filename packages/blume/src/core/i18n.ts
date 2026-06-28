@@ -147,7 +147,9 @@ export const i18nDiagnostics = (
   const seen = new Set<string>();
   const diagnostics: Diagnostic[] = [];
   for (const page of pages) {
-    const first = page.id.split("/")[0]?.toLowerCase();
+    // The locale-looking folder is the first segment of the source-local ref
+    // (e.g. `fr/guide.md`), not the namespaced id (`filesystem:fr/guide.md`).
+    const first = page.source.ref.split("/")[0]?.toLowerCase();
     if (
       first &&
       !seen.has(first) &&

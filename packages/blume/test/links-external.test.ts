@@ -31,6 +31,7 @@ const graphWith = (links: PageLink[]): ContentGraph =>
         navPath: "a.mdx",
         route: "/a",
         segments: [],
+        source: { name: "filesystem", ref: "a.mdx" },
         sourcePath: "/abs/a.mdx",
         title: "A",
         translationKey: "/a",

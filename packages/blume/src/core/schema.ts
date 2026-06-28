@@ -141,6 +141,56 @@ const bannerConfigSchema = z.union([
     .strict(),
 ]);
 
+/** A local filesystem content source. */
+const filesystemSourceSchema = z
+  .object({
+    exclude: z.array(z.string()).default(["**/_*", "**/.*"]),
+    include: z.array(z.string()).default(["**/*.{md,mdx}"]),
+    /** Namespaces the source's routes under `/<prefix>/`. */
+    prefix: z.string().optional(),
+    root: z.string().default("docs"),
+    type: z.literal("filesystem"),
+  })
+  .strict();
+
+/**
+ * Remote Markdown/MDX fetched over HTTP. Enumerate files either explicitly
+ * (`files` against a raw `url` base) or from a GitHub repo subtree (`github`).
+ * The token, when needed, comes from `GITHUB_TOKEN` — never inlined here.
+ */
+const mdxRemoteSourceSchema = z
+  .object({
+    /** Explicit list of source-relative file paths to fetch from `url`. */
+    files: z.array(z.string()).optional(),
+    /** Enumerate a GitHub repo subtree via the git-trees API. */
+    github: z
+      .object({
+        owner: z.string(),
+        path: z.string().default(""),
+        ref: z.string().default("main"),
+        repo: z.string(),
+      })
+      .strict()
+      .optional(),
+    /** Glob patterns applied to enumerated refs. */
+    include: z.array(z.string()).default(["**/*.{md,mdx}"]),
+    /** Namespaces the source's routes under `/<prefix>/`. */
+    prefix: z.string().optional(),
+    type: z.literal("mdx-remote"),
+    /** Raw base URL, e.g. `https://raw.githubusercontent.com/acme/sdk/main/docs`. */
+    url: z.string().optional(),
+  })
+  .strict();
+
+/** A single configured content source. */
+const contentSourceSchema = z.discriminatedUnion("type", [
+  filesystemSourceSchema,
+  mdxRemoteSourceSchema,
+]);
+
+/** A resolved content-source config entry (post-defaults). */
+export type ContentSourceConfig = z.infer<typeof contentSourceSchema>;
+
 const contentConfigSchema = z
   .object({
     defaultType: z.string().default("doc"),
@@ -148,6 +198,12 @@ const contentConfigSchema = z
     include: z.array(z.string()).default(["**/*.{md,mdx}"]),
     pages: z.string().default("pages"),
     root: z.string().default("docs"),
+    /**
+     * Pluggable content sources. When omitted, the top-level
+     * `root`/`include`/`exclude` desugar to one implicit filesystem source, so
+     * existing projects are unchanged.
+     */
+    sources: z.array(contentSourceSchema).optional(),
   })
   .strict();
 

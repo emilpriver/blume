@@ -1,8 +1,4 @@
-import { existsSync } from "node:fs";
-
 import { loadConfig } from "./config.ts";
-import { discoverContent } from "./content.ts";
-import { BlumeError } from "./diagnostics.ts";
 import { buildContentGraph } from "./graph.ts";
 import { i18nDiagnostics } from "./i18n.ts";
 import {
@@ -13,10 +9,14 @@ import { buildManifest } from "./manifest.ts";
 import { discoverFolderMeta } from "./meta.ts";
 import { resolveProjectContext } from "./project.ts";
 import type { ResolvedConfig } from "./schema.ts";
+import { normalizeEntry } from "./sources/normalize.ts";
+import { resolveSources } from "./sources/resolve.ts";
+import type { ContentSource } from "./sources/types.ts";
 import type {
   BlumeManifest,
   ContentGraph,
   Diagnostic,
+  PageRecord,
   ProjectContext,
 } from "./types.ts";
 
@@ -31,6 +31,8 @@ export interface BlumeProject {
   graph: ContentGraph;
   manifest: BlumeManifest;
   diagnostics: Diagnostic[];
+  /** The instantiated content sources, for lazy entry reads (search/AI/raw). */
+  sources: ContentSource[];
 }
 
 /**
@@ -47,49 +49,62 @@ export const scanProject = async (
   const { config } = await loadConfig(root);
   const context = resolveProjectContext(root, config);
 
-  if (!existsSync(context.contentRoot)) {
-    throw new BlumeError({
-      code: "BLUME_CONTENT_ROOT_MISSING",
-      file: context.contentRoot,
-      message: `Content root not found: ${config.content.root}`,
-      severity: "error",
-      suggestion: `Create a "${config.content.root}" folder with at least one .md or .mdx file, or set content.root in blume.config.ts.`,
-    });
+  // Each source validates itself (e.g. the filesystem source checks its root
+  // exists), replacing the single hard `contentRoot` check.
+  const sources = resolveSources(config, context, mode);
+  for (const source of sources) {
+    source.validate?.();
   }
 
-  const [content, folderMeta] = await Promise.all([
-    discoverContent({
-      contentRoot: context.contentRoot,
-      defaultType: config.content.defaultType,
-      exclude: config.content.exclude,
-      i18n: config.i18n,
-      include: config.content.include,
-    }),
+  // Run every source's `load()` in parallel, then funnel each entry through the
+  // shared `normalizeEntry` so route mapping is identical regardless of origin.
+  const [loaded, folderMeta] = await Promise.all([
+    Promise.all(
+      sources.map(async (source) => ({ source, ...(await source.load()) }))
+    ),
     discoverFolderMeta(context.contentRoot),
   ]);
 
+  const allPages: PageRecord[] = [];
+  const contentDiagnostics: Diagnostic[] = [];
+  for (const { source, entries, diagnostics } of loaded) {
+    contentDiagnostics.push(...diagnostics);
+    for (const entry of entries) {
+      const normalized = normalizeEntry(entry, {
+        defaultType: config.content.defaultType,
+        i18n: config.i18n,
+        source: {
+          name: source.name,
+          prefix: source.prefix,
+          staged: source.staged,
+        },
+      });
+      allPages.push(...normalized.pages);
+      contentDiagnostics.push(...normalized.diagnostics);
+    }
+  }
+
   // Drafts render in dev but are excluded from production builds.
   const pages =
-    mode === "build"
-      ? content.pages.filter((page) => !page.meta.draft)
-      : content.pages;
+    mode === "build" ? allPages.filter((page) => !page.meta.draft) : allPages;
 
   // Resolve "last updated" dates before the graph is built so the manifest
   // (which shares these page objects) picks them up. Frontmatter always wins;
-  // git provides the rest when enabled.
+  // git applies to filesystem entries, other sources supply dates on the entry.
   const lastModified = resolveLastModifiedConfig(config.lastModified);
-  if (lastModified.enabled) {
-    const gitTimes =
-      lastModified.source === "git"
-        ? gitLastModifiedTimes(
-            context.root,
-            context.contentRoot,
-            pages.map((page) => page.sourcePath)
-          )
-        : new Map<string, string>();
+  if (lastModified.enabled && lastModified.source === "git") {
+    const fsPaths = pages
+      .map((page) => page.sourcePath)
+      .filter((path): path is string => path !== undefined);
+    const gitTimes = gitLastModifiedTimes(
+      context.root,
+      context.contentRoot,
+      fsPaths
+    );
     for (const page of pages) {
-      page.lastModified =
-        page.meta.lastModified ?? gitTimes.get(page.sourcePath);
+      if (!page.lastModified && page.sourcePath) {
+        page.lastModified = gitTimes.get(page.sourcePath);
+      }
     }
   }
 
@@ -107,7 +122,7 @@ export const scanProject = async (
     config,
     context,
     diagnostics: [
-      ...content.diagnostics,
+      ...contentDiagnostics,
       ...folderMeta.diagnostics,
       ...graph.diagnostics,
       ...i18nWarnings,
@@ -115,5 +130,6 @@ export const scanProject = async (
     graph,
     manifest,
     mode,
+    sources,
   };
 };

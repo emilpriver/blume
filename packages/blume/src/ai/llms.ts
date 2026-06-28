@@ -1,8 +1,7 @@
-import { readFile } from "node:fs/promises";
-
 import matter from "gray-matter";
 
 import type { BlumeProject } from "../core/project-graph.ts";
+import { readEntryText } from "../core/sources/read.ts";
 import type { PageRecord } from "../core/types.ts";
 
 const pageUrl = (route: string, site?: string): string => {
@@ -43,7 +42,7 @@ const buildFull = async (project: BlumeProject): Promise<string> => {
 
   const sections = await Promise.all(
     pages.map(async (page) => {
-      const raw = await readFile(page.sourcePath, "utf-8");
+      const raw = await readEntryText(project, page);
       const body = matter(raw).content.trim();
       const url = pageUrl(page.route, config.deployment.site);
       return [`# ${page.title}`, `Source: ${url}`, "", body].join("\n");

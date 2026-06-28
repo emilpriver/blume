@@ -23,6 +23,7 @@ const page = (
   navPath: id,
   route,
   segments: [],
+  source: { name: "filesystem", ref: id },
   sourcePath: `/abs/${id}`,
   title,
   translationKey: route,

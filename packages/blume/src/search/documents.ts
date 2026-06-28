@@ -1,9 +1,8 @@
-import { readFile } from "node:fs/promises";
-
 import matter from "gray-matter";
 
 import { contentIndexable } from "../core/manifest.ts";
 import type { BlumeProject } from "../core/project-graph.ts";
+import { readEntryText } from "../core/sources/read.ts";
 import type { NavNode } from "../core/types.ts";
 
 /** A document indexed by the client-side search providers (Orama, FlexSearch). */
@@ -131,7 +130,7 @@ export const buildSearchDocuments = async (
   return await Promise.all(
     indexable.map(async (route) => {
       const page = pageById.get(route.id);
-      const raw = page ? await readFile(page.sourcePath, "utf-8") : "";
+      const raw = page ? await readEntryText(project, page) : "";
       const body = raw ? toPlainText(matter(raw).content) : "";
       const tags = page?.meta?.search?.tags;
       const crumb = crumbs.get(route.path);

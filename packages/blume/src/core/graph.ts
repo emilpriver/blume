@@ -30,7 +30,7 @@ export const buildContentGraph = (
     if (existing) {
       diagnostics.push({
         code: "BLUME_DUPLICATE_ROUTE",
-        file: page.sourcePath,
+        file: page.sourcePath ?? page.id,
         message: `Two files resolve to ${page.route}: ${existing} and ${page.id}`,
         severity: "error",
         suggestion: "Rename or move one of the files so each route is unique.",

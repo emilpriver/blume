@@ -37,6 +37,7 @@ const makePage = (
   meta: pageMetaSchema.parse({}),
   navPath: over.id,
   segments: [],
+  source: { name: "filesystem", ref: over.id },
   sourcePath: `/abs/${over.id}`,
   translationKey: over.route,
   ...over,

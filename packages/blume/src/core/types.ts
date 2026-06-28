@@ -62,10 +62,24 @@ export interface ProjectContext {
  * and search index are derived from.
  */
 export interface PageRecord {
-  /** Stable id: content-root-relative path, e.g. `api/auth.mdx`. */
+  /** Stable, globally-unique id: `"<source>:<ref>"`, e.g. `filesystem:api/auth.mdx`. */
   id: string;
-  /** Absolute source path. */
-  sourcePath: string;
+  /** Provenance: the owning source's name and its source-local ref. */
+  source: { name: string; ref: string };
+  /** Absolute source path. Populated by the filesystem adapter only (back-compat). */
+  sourcePath?: string;
+  /**
+   * Renderable body captured at scan time. Set for staged (non-filesystem)
+   * sources so they can be materialized to `.blume/content` and so soft
+   * consumers need no re-read; omitted for filesystem entries (read from disk).
+   */
+  body?: { format: "md" | "mdx"; text: string };
+  /** Adapter-supplied "edit this page" URL (non-filesystem sources). */
+  editUrl?: string;
+  /** Astro collection this entry renders through; defaults to `"docs"`. */
+  collection?: string;
+  /** Astro collection-relative entry id for `getEntry`; defaults to the ref. */
+  entryId?: string;
   /** URL route, e.g. `/api/auth`. Always starts with `/`. Locale-prefixed under i18n. */
   route: string;
   /** Resolved locale code; the default locale when not under i18n. */
@@ -164,8 +178,17 @@ export interface LocaleSwitchOption {
 /** A route entry written to `blume.manifest.json`. */
 export interface RouteManifestEntry {
   id: string;
+  /** Provenance: the owning source's name and its source-local ref. */
+  source: { name: string; ref: string };
+  /** Astro collection this entry renders through (`"docs"` | `"staged"`). */
+  collection: string;
+  /** Astro collection-relative entry id, passed to `getEntry`. */
+  entryId: string;
   path: string;
-  sourcePath: string;
+  /** Absolute source path; populated for filesystem entries only (back-compat). */
+  sourcePath?: string;
+  /** Adapter-supplied "edit this page" URL (non-filesystem sources). */
+  editUrl?: string;
   title: string;
   contentType: string;
   hidden: boolean;

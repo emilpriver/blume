@@ -173,6 +173,42 @@ export const pruneOrphans = async (
   );
 };
 
+/**
+ * Collect staged (non-filesystem) page bodies keyed by their Astro entry id, so
+ * i18n duplicates of one entry collapse to a single materialized file.
+ */
+const collectStaged = (project: BlumeProject): Map<string, string> => {
+  const staged = new Map<string, string>();
+  for (const page of project.graph.pages) {
+    if (page.collection === "staged" && page.entryId && page.body) {
+      staged.set(page.entryId, page.body.text);
+    }
+  }
+  return staged;
+};
+
+/**
+ * Materialize staged source bodies under `.blume/content` and prune orphans in
+ * that tree (separate from `.blume/src`), so a removed remote entry is cleaned up.
+ */
+const writeStagedContent = async (
+  out: string,
+  staged: Map<string, string>
+): Promise<void> => {
+  const contentDir = join(out, "content");
+  const written = new Set<string>();
+  await Promise.all(
+    [...staged].map(async ([entryId, text]) => {
+      const path = join(contentDir, entryId);
+      written.add(normalize(path));
+      await writeIfChanged(path, text);
+    })
+  );
+  if (existsSync(contentDir)) {
+    await pruneOrphans(contentDir, written);
+  }
+};
+
 /** The logo shape the runtime consumes: an inline SVG or image URL(s). */
 interface ResolvedLogo {
   svg?: string;
@@ -312,8 +348,8 @@ export const buildRuntimeData = (project: BlumeProject): string => {
     : null;
   const editBase = github ? `${repoUrl}/edit/${github.branch}` : null;
 
-  const editUrlFor = (sourcePath: string): string | null => {
-    if (!editBase) {
+  const editUrlFor = (sourcePath?: string): string | null => {
+    if (!(editBase && sourcePath)) {
       return null;
     }
     const rel = relative(context.root, sourcePath).split("\\").join("/");
@@ -409,8 +445,10 @@ export const buildRuntimeData = (project: BlumeProject): string => {
     navigationByLocale,
     routes: manifest.routes.map((route) => ({
       alternates: route.alternates,
+      collection: route.collection,
       draft: route.draft,
-      editUrl: editUrlFor(route.sourcePath),
+      editUrl: route.editUrl ?? editUrlFor(route.sourcePath),
+      entryId: route.entryId,
       fallback: route.fallback ?? false,
       hidden: route.hidden,
       id: route.id,
@@ -567,6 +605,11 @@ export const generateRuntime = async (
   const mcp = planMcp(project, srcDir);
   pages.push(...mcp.discoveryPages);
 
+  // Staged (non-filesystem) sources materialize into `.blume/content`; keyed by
+  // entryId so i18n duplicates of one entry write a single file.
+  const staged = collectStaged(project);
+  const hasStaged = staged.size > 0;
+
   const structural = await Promise.all([
     write(
       join(out, "astro.config.mjs"),
@@ -589,7 +632,7 @@ export const generateRuntime = async (
     write(join(srcDir, "env.d.ts"), envTemplate()),
     write(
       join(srcDir, "content.config.ts"),
-      contentConfigTemplate({ config, context })
+      contentConfigTemplate({ config, context, staged: hasStaged })
     ),
     write(
       join(srcDir, "pages", "[...slug].astro"),
@@ -748,6 +791,10 @@ export const generateRuntime = async (
     join(out, "blume.manifest.json"),
     `${JSON.stringify(project.manifest, null, 2)}\n`
   );
+
+  // Write staged source bodies and prune orphans under `.blume/content` (its own
+  // tree, outside `.blume/src`), so a removed remote entry doesn't linger.
+  await writeStagedContent(out, staged);
 
   // Remove anything under `.blume/src` this pass didn't write — e.g. an Ask AI
   // endpoint left behind after the feature was switched off.

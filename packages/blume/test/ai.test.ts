@@ -47,6 +47,7 @@ const makePage = (
   navPath: id,
   route,
   segments: [],
+  source: { name: "filesystem", ref: id },
   sourcePath: join(root, id),
   title,
   translationKey: route,

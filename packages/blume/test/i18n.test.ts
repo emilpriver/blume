@@ -161,7 +161,7 @@ describe("i18n helpers", () => {
 describe("i18n content discovery", () => {
   it("records locale, prefixed route, translationKey and navPath", async () => {
     const { pages } = await buildProject(config());
-    const byId = new Map(pages.map((page) => [page.id, page]));
+    const byId = new Map(pages.map((page) => [page.source.ref, page]));
 
     const en = byId.get("guides/quickstart.mdx");
     expect(en?.locale).toBe("en");
@@ -281,7 +281,7 @@ describe("dot parser and shared files", () => {
       "guides/quickstart.mdx": "# Quickstart\n",
     });
     const { pages } = await discoverIn(contentRoot, config({ parser: "dot" }));
-    const byId = new Map(pages.map((page) => [page.id, page]));
+    const byId = new Map(pages.map((page) => [page.source.ref, page]));
 
     const fr = byId.get("guides/quickstart.fr.mdx");
     expect(fr?.locale).toBe("fr");
@@ -353,7 +353,7 @@ describe("manifest alternates and fallback", () => {
     const fallback = byPath.get("/fr/guides/only-en");
     expect(fallback?.fallback).toBe(true);
     expect(fallback?.locale).toBe("fr");
-    expect(fallback?.id).toBe("guides/only-en.mdx");
+    expect(fallback?.source.ref).toBe("guides/only-en.mdx");
     expect(fallback?.indexable).toBe(false);
   });
 

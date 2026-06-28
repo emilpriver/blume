@@ -49,14 +49,18 @@ export const buildManifest = (options: {
 
   const routes: RouteManifestEntry[] = graph.pages.map((page) => ({
     alternates: alternatesByKey.get(page.translationKey) ?? [],
+    collection: page.collection ?? "docs",
     contentType: page.contentType,
     draft: page.meta.draft,
+    editUrl: page.editUrl,
+    entryId: page.entryId ?? page.source.ref,
     hidden: page.meta.sidebar.hidden,
     id: page.id,
     indexable: searchEnabled && contentIndexable(page, config),
     lastModified: page.lastModified,
     locale: page.locale,
     path: page.route,
+    source: page.source,
     sourcePath: page.sourcePath,
     title: page.title,
   }));
@@ -88,8 +92,11 @@ export const buildManifest = (options: {
           }
           routes.push({
             alternates: alternatesByKey.get(key) ?? [],
+            collection: source.collection ?? "docs",
             contentType: source.contentType,
             draft: source.meta.draft,
+            editUrl: source.editUrl,
+            entryId: source.entryId ?? source.source.ref,
             fallback: true,
             hidden: source.meta.sidebar.hidden,
             id: source.id,
@@ -97,6 +104,7 @@ export const buildManifest = (options: {
             lastModified: source.lastModified,
             locale: code,
             path: localizeRoute(key, code, i18n),
+            source: source.source,
             sourcePath: source.sourcePath,
             title: source.title,
           });
