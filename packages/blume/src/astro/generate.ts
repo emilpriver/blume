@@ -54,6 +54,7 @@ import {
   runtimeTsconfigTemplate,
   searchClientTemplate,
   searchEndpointTemplate,
+  stagedContentDir,
   userComponentsTemplate,
 } from "./templates.ts";
 
@@ -175,9 +176,10 @@ export const pruneOrphans = async (
 
 /**
  * Collect staged (non-filesystem) page bodies keyed by their Astro entry id, so
- * i18n duplicates of one entry collapse to a single materialized file.
+ * i18n duplicates of one entry collapse to a single materialized file. Shared
+ * with `eject`, which materializes the same bodies into the owned project.
  */
-const collectStaged = (project: BlumeProject): Map<string, string> => {
+export const collectStaged = (project: BlumeProject): Map<string, string> => {
   const staged = new Map<string, string>();
   for (const page of project.graph.pages) {
     if (page.collection === "staged" && page.entryId && page.body) {
@@ -195,7 +197,7 @@ const writeStagedContent = async (
   out: string,
   staged: Map<string, string>
 ): Promise<void> => {
-  const contentDir = join(out, "content");
+  const contentDir = stagedContentDir(out);
   const written = new Set<string>();
   await Promise.all(
     [...staged].map(async ([entryId, text]) => {

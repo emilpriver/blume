@@ -47,6 +47,11 @@ const buildSource = (
       root: def.root,
     });
   }
+  if (def.type === "custom") {
+    // A user-provided instance manages its own context/caching; we only ensure
+    // its name is unique across the project for id namespacing.
+    return def.source.name === name ? def.source : { ...def.source, name };
+  }
   return mdxRemoteSource(
     {
       files: def.files,
@@ -58,6 +63,14 @@ const buildSource = (
     },
     sourceContext(context, name, mode)
   );
+};
+
+/** The base name to allocate for a source config (before deduplication). */
+const baseName = (def: ContentSourceConfig): string => {
+  if (def.type === "custom") {
+    return def.source.name;
+  }
+  return def.prefix ?? def.type;
 };
 
 /**
@@ -85,6 +98,6 @@ export const resolveSources = (
 
   const nameFor = uniqueNamer();
   return defs.map((def) =>
-    buildSource(def, nameFor(def.prefix ?? def.type), context, mode)
+    buildSource(def, nameFor(baseName(def)), context, mode)
   );
 };

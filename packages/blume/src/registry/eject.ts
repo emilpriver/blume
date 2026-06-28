@@ -4,7 +4,11 @@ import { join, relative } from "pathe";
 
 import { resolveAskBackend } from "../ai/ask.ts";
 import { buildRawMarkdown } from "../ai/markdown.ts";
-import { buildRuntimeData, detectNeedsReact } from "../astro/generate.ts";
+import {
+  buildRuntimeData,
+  collectStaged,
+  detectNeedsReact,
+} from "../astro/generate.ts";
 import { discoverPages } from "../astro/pages.ts";
 import {
   askEndpointTemplate,
@@ -76,6 +80,13 @@ export const eject = async (root: string): Promise<string[]> => {
     pattern: page.pattern,
   }));
 
+  // Non-filesystem sources eject their materialized MDX into `<root>/blume-staged`
+  // (a dedicated dir so it never clashes with a content root literally named
+  // `content`; the relative `staged` collection points there).
+  const staged = collectStaged(project);
+  const hasStaged = staged.size > 0;
+  const stagedDir = "blume-staged";
+
   const files: { path: string; content: string }[] = [
     {
       content: astroConfigTemplate({
@@ -96,7 +107,12 @@ export const eject = async (root: string): Promise<string[]> => {
     },
     { content: envTemplate(), path: join(srcDir, "env.d.ts") },
     {
-      content: contentConfigTemplate({ config, context: relContext }),
+      content: contentConfigTemplate({
+        config,
+        context: relContext,
+        staged: hasStaged,
+        stagedBase: stagedDir,
+      }),
       path: join(srcDir, "content.config.ts"),
     },
     {
@@ -214,6 +230,12 @@ export const eject = async (root: string): Promise<string[]> => {
         path: join(srcDir, "pages", file.pagePath),
       });
     }
+  }
+
+  // Materialize staged source bodies under `<root>/blume-staged/<source>/<ref>`,
+  // matching the relative `staged` collection base in the ejected config.
+  for (const [entryId, content] of staged) {
+    files.push({ content, path: join(root, stagedDir, entryId) });
   }
 
   await Promise.all(

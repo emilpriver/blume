@@ -1,0 +1,120 @@
+---
+title: Content sources
+description: Pull docs from local files, a remote repo, or any custom backend — and mix several sources into one site.
+---
+
+By default Blume reads a folder of `.md`/`.mdx` files. **Content sources** let
+you pull pages from somewhere else — a remote repository, a CMS, or any custom
+backend — and mix several sources into a single site. Sources are read at
+build time; Blume stays static-first.
+
+## The default
+
+With no configuration, Blume scans your content root (`docs` by default) as one
+implicit filesystem source. The top-level `content.root`/`include`/`exclude`
+options still work exactly as before — nothing to change.
+
+```ts blume.config.ts
+import { defineConfig } from "blume";
+
+export default defineConfig({
+  content: { root: "docs" },
+});
+```
+
+## Multiple sources
+
+Add a `content.sources` array to compose sources. Each entry is namespaced by an
+optional `prefix`, so its routes nest under `/<prefix>/…`. When `sources` is
+present it replaces the implicit default, so include a `filesystem` entry for
+your local docs.
+
+```ts blume.config.ts
+import { defineConfig } from "blume";
+
+export default defineConfig({
+  content: {
+    sources: [
+      // Local docs at the site root
+      { type: "filesystem", root: "docs" },
+
+      // Remote MDX from a GitHub repo, mounted under /sdk
+      {
+        type: "mdx-remote",
+        prefix: "sdk",
+        github: { owner: "acme", repo: "sdk", ref: "main", path: "docs" },
+      },
+    ],
+  },
+});
+```
+
+If two sources resolve to the same route, Blume reports a `BLUME_DUPLICATE_ROUTE`
+build error — give each source a distinct `prefix`.
+
+## Remote MDX
+
+The built-in `mdx-remote` source fetches raw `.md`/`.mdx` over HTTP. Enumerate
+files either from a GitHub repo subtree (`github`) or explicitly against a raw
+base URL (`url` + `files`):
+
+```ts blume.config.ts
+{
+  type: "mdx-remote",
+  prefix: "sdk",
+  url: "https://raw.githubusercontent.com/acme/sdk/main/docs",
+  files: ["intro.mdx", "guide.mdx"],
+}
+```
+
+A private repo's token is read from the `GITHUB_TOKEN` environment variable — it
+is never inlined into your config or generated output.
+
+Remote pages are rendered with full MDX-plus-component fidelity: their bodies are
+materialized into a hidden staging directory and rendered through Astro
+alongside your local docs, so callouts, tabs, and every other Blume component
+keep working.
+
+### Caching and offline builds
+
+Each remote source keeps a snapshot under `.blume/cache/<source>/`. If a fetch
+fails — a network blip or a CMS outage — Blume serves the last-known-good
+snapshot with a warning rather than failing the build. The cache lives inside
+`.blume/` and is regenerated, never committed.
+
+In dev, remote content is fetched once and frozen for the session; restart the
+dev server to refresh it. Local filesystem sources hot-reload as usual.
+
+## Custom sources
+
+Any object implementing the `ContentSource` interface can be passed directly,
+which is how CMS adapters (Sanity, Notion, …) ship as separate packages without
+forcing their SDKs on every project:
+
+```ts blume.config.ts
+import { defineConfig } from "blume";
+import { sanitySource } from "@blume/source-sanity";
+
+export default defineConfig({
+  content: {
+    sources: [
+      { type: "filesystem", root: "docs" },
+      {
+        type: "custom",
+        source: sanitySource({
+          prefix: "guides",
+          projectId: "abc123",
+          dataset: "production",
+          query: `*[_type == "guide"]`,
+        }),
+      },
+    ],
+  },
+});
+```
+
+A source normalizes its native shape (Portable Text, Notion blocks, remote HTML)
+to Markdown/MDX text, so the same components and markdown features apply no
+matter where a page comes from. See the
+[`ContentSource` type](https://github.com/haydenbleasel/blume) for the full
+interface.

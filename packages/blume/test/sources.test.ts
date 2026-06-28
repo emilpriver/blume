@@ -12,6 +12,7 @@ import { mdxRemoteSource } from "../src/core/sources/mdx-remote.ts";
 import { normalizeEntry } from "../src/core/sources/normalize.ts";
 import type { SourceContext, SourceEntry } from "../src/core/sources/types.ts";
 import type { ProjectContext } from "../src/core/types.ts";
+import { eject } from "../src/registry/eject.ts";
 
 const dirs: string[] = [];
 
@@ -329,6 +330,75 @@ describe("scanProject composition", () => {
       "BLUME_DUPLICATE_ROUTE"
     );
   });
+
+  it("merges a user-provided custom ContentSource", async () => {
+    const root = await withConfig(
+      { "docs/index.md": "# Home\n" },
+      `const memory = {
+        name: "memory",
+        prefix: "mem",
+        staged: true,
+        load: () => Promise.resolve({
+          diagnostics: [],
+          entries: [{
+            ref: "hello.md",
+            data: { title: "Hi" },
+            body: { format: "md", text: "# Hi" },
+            raw: "# Hi",
+          }],
+        }),
+        read: () => Promise.resolve("# Hi"),
+      };
+      export default {
+        content: {
+          sources: [
+            { type: "filesystem", root: "docs" },
+            { type: "custom", source: memory },
+          ],
+        },
+      };\n`
+    );
+
+    const project = await scanProject(root, { mode: "build" });
+    const route = project.manifest.routes.find((r) => r.path === "/mem/hello");
+    expect(route?.collection).toBe("staged");
+    expect(route?.entryId).toBe("memory/hello.md");
+    expect(route?.source.name).toBe("memory");
+  });
+});
+
+const noop = () => {
+  // intentionally empty change handler
+};
+
+describe("filesystemSource watch", () => {
+  it("watches an existing root and returns a disposer", async () => {
+    const root = await makeProject({ "docs/index.md": "# Home\n" });
+    const source = filesystemSource({
+      exclude: [],
+      include: ["**/*.md"],
+      name: "filesystem",
+      projectRoot: root,
+      root: "docs",
+    });
+    const dispose = source.watch?.(noop);
+    expect(typeof dispose).toBe("function");
+    expect(() => dispose?.()).not.toThrow();
+  });
+
+  it("is a no-op disposer when the root does not exist", async () => {
+    const root = await makeProject({});
+    const source = filesystemSource({
+      exclude: [],
+      include: ["**/*.md"],
+      name: "filesystem",
+      projectRoot: root,
+      root: "missing",
+    });
+    const dispose = source.watch?.(noop);
+    expect(typeof dispose).toBe("function");
+    expect(() => dispose?.()).not.toThrow();
+  });
 });
 
 describe("contentConfigTemplate", () => {
@@ -395,5 +465,48 @@ describe("staging end to end", () => {
       "utf-8"
     );
     expect(contentConfig).toContain("const staged = defineCollection(");
+  });
+
+  it("ejects staged content into a dedicated dir with a portable collection base", async () => {
+    const root = await makeProject({ "docs/index.md": "# Home\n" });
+    await writeFile(
+      join(root, "blume.config.ts"),
+      `export default {
+        content: {
+          sources: [
+            { type: "filesystem", root: "docs" },
+            { type: "mdx-remote", prefix: "sdk", url: "http://127.0.0.1:1", files: ["intro.mdx"] },
+          ],
+        },
+      };\n`
+    );
+    const seed: SourceEntry[] = [
+      {
+        body: { format: "mdx", text: "# Intro\n" },
+        data: { title: "Intro" },
+        raw: "---\ntitle: Intro\n---\n# Intro\n",
+        ref: "intro.mdx",
+      },
+    ];
+    const cacheDir = join(root, ".blume/cache/sdk");
+    await mkdir(cacheDir, { recursive: true });
+    await writeFile(join(cacheDir, "entries.json"), JSON.stringify(seed));
+
+    await eject(root);
+
+    const ejectedConfig = await readFile(
+      join(root, "src/content.config.ts"),
+      "utf-8"
+    );
+    expect(ejectedConfig).toContain('base: "blume-staged"');
+    expect(ejectedConfig).toContain(
+      "export const collections = { docs, staged }"
+    );
+
+    const staged = await readFile(
+      join(root, "blume-staged/sdk/intro.mdx"),
+      "utf-8"
+    );
+    expect(staged).toContain("title: Intro");
   });
 });

@@ -273,15 +273,21 @@ export default defineConfig({
 `;
 };
 
+/** The default staged-content base, relative to the runtime `outDir`. */
+export const stagedContentDir = (outDir: string): string =>
+  join(outDir, "content");
+
 /** Generate `.blume/src/content.config.ts`. */
 export const contentConfigTemplate = (options: {
   context: ProjectContext;
   config: ResolvedConfig;
-  /** Whether any non-filesystem source materialized MDX into `.blume/content`. */
+  /** Whether any non-filesystem source materialized MDX into the staged dir. */
   staged?: boolean;
+  /** Base dir for the staged collection; defaults to `<outDir>/content`. */
+  stagedBase?: string;
 }): string => {
   const { context, config } = options;
-  const stagedBase = join(context.outDir, "content");
+  const stagedBase = options.stagedBase ?? stagedContentDir(context.outDir);
 
   // Non-filesystem sources render through a parallel `staged` collection backed
   // by materialized MDX, so the filesystem `docs` collection stays untouched.

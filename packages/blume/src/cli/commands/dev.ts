@@ -39,14 +39,6 @@ export const devCommand = defineCommand({
 
     // Watch user inputs and regenerate the runtime data on change. Astro/Vite
     // hot-reloads the generated data module so nav and routes stay in sync.
-    const watchTargets = [
-      project.context.contentRoot,
-      project.context.pagesRoot,
-      project.context.configFile,
-      project.context.themeFile,
-      project.context.componentsFile,
-    ].filter((target) => target !== null);
-
     let timer: ReturnType<typeof setTimeout> | null = null;
     const regenerate = () => {
       if (timer) {
@@ -62,13 +54,27 @@ export const devCommand = defineCommand({
       }, 80);
     };
 
-    const watchers = watchTargets.map((target) =>
-      watch(target, { recursive: true }, regenerate)
-    );
+    // Content is watched per source (filesystem uses fs.watch; remote sources
+    // are frozen for the session). The remaining project inputs — user pages,
+    // config, theme, and component overrides — are watched directly.
+    const fileTargets = [
+      project.context.pagesRoot,
+      project.context.configFile,
+      project.context.themeFile,
+      project.context.componentsFile,
+    ].filter((target) => target !== null);
+
+    const disposers = [
+      ...project.sources.map((source) => source.watch?.(regenerate)),
+      ...fileTargets.map((target) => {
+        const watcher = watch(target, { recursive: true }, regenerate);
+        return () => watcher.close();
+      }),
+    ].filter((dispose) => dispose !== undefined);
 
     const shutdown = async () => {
-      for (const w of watchers) {
-        w.close();
+      for (const dispose of disposers) {
+        dispose();
       }
       await server.stop();
       process.exit(0);

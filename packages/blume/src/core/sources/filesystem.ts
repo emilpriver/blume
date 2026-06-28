@@ -1,4 +1,4 @@
-import { existsSync } from "node:fs";
+import { existsSync, watch as fsWatch } from "node:fs";
 import { readFile } from "node:fs/promises";
 
 import matter from "gray-matter";
@@ -63,6 +63,28 @@ export const filesystemSource = (
     return { diagnostics: [], entries };
   };
 
+  const validate = (): void => {
+    if (!existsSync(contentRoot)) {
+      throw new BlumeError({
+        code: options.missingCode ?? "BLUME_CONTENT_ROOT_MISSING",
+        file: contentRoot,
+        message: `Content root not found: ${options.root}`,
+        severity: "error",
+        suggestion: `Create a "${options.root}" folder with at least one .md or .mdx file, or set content.root in blume.config.ts.`,
+      });
+    }
+  };
+
+  const watch = (onChange: () => void): (() => void) => {
+    if (!existsSync(contentRoot)) {
+      return () => {
+        // Nothing to dispose when the root doesn't exist yet.
+      };
+    }
+    const watcher = fsWatch(contentRoot, { recursive: true }, onChange);
+    return () => watcher.close();
+  };
+
   return {
     contentRoot,
     load,
@@ -71,16 +93,7 @@ export const filesystemSource = (
     read: (ref: string): Promise<string> =>
       readFile(join(contentRoot, ref), "utf-8"),
     staged: false,
-    validate(): void {
-      if (!existsSync(contentRoot)) {
-        throw new BlumeError({
-          code: options.missingCode ?? "BLUME_CONTENT_ROOT_MISSING",
-          file: contentRoot,
-          message: `Content root not found: ${options.root}`,
-          severity: "error",
-          suggestion: `Create a "${options.root}" folder with at least one .md or .mdx file, or set content.root in blume.config.ts.`,
-        });
-      }
-    },
+    validate,
+    watch,
   };
 };

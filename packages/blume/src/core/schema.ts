@@ -2,6 +2,7 @@ import { z } from "zod";
 
 import { FONT_SLUGS, isFontSlug } from "../theme/fonts.ts";
 import { uiLocaleOverridesSchema } from "./i18n-ui.ts";
+import type { ContentSource } from "./sources/types.ts";
 
 /**
  * Public Blume schemas.
@@ -182,10 +183,28 @@ const mdxRemoteSourceSchema = z
   })
   .strict();
 
+/**
+ * A user-provided `ContentSource` instance, passed straight through from
+ * `blume.config.ts`. This is the extension point that lets adapters (Sanity,
+ * Notion, …) ship as separate packages without their SDKs touching core.
+ */
+const customSourceSchema = z.object({
+  source: z.custom<ContentSource>(
+    (val) =>
+      typeof val === "object" &&
+      val !== null &&
+      typeof (val as { load?: unknown }).load === "function" &&
+      typeof (val as { name?: unknown }).name === "string",
+    { message: "custom source must be a ContentSource (with name + load)" }
+  ),
+  type: z.literal("custom"),
+});
+
 /** A single configured content source. */
 const contentSourceSchema = z.discriminatedUnion("type", [
   filesystemSourceSchema,
   mdxRemoteSourceSchema,
+  customSourceSchema,
 ]);
 
 /** A resolved content-source config entry (post-defaults). */
