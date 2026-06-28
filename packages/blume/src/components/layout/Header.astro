@@ -152,35 +152,37 @@ const clickScript = `document.addEventListener("click",(e)=>{const t=e.target.cl
       />
     )
   }
-  {
-    navigation.repoUrl && (
-      <a
-        aria-label="GitHub repository"
-        class={iconButton}
-        href={navigation.repoUrl}
-        rel="noreferrer"
-        target="_blank"
-      >
-        <svg
-          aria-hidden="true"
-          fill="currentColor"
-          height="18"
-          set:html={GITHUB_MARK}
-          viewBox="0 0 16 16"
-          width="18"
-          xmlns="http://www.w3.org/2000/svg"
-        />
-      </a>
-    )
-  }
-  <button
-    aria-label="Toggle color theme"
-    class={iconButton}
-    data-blume-theme-toggle
-    type="button"
-  >
-    <span class="inline-flex dark:hidden"><Icon name="sun" size={18} /></span>
-    <span class="hidden dark:inline-flex"><Icon name="moon" size={18} /></span>
-  </button>
+  <div class="flex items-center gap-2">
+    {
+      navigation.repoUrl && (
+        <a
+          aria-label="GitHub repository"
+          class={iconButton}
+          href={navigation.repoUrl}
+          rel="noreferrer"
+          target="_blank"
+        >
+          <svg
+            aria-hidden="true"
+            fill="currentColor"
+            height="18"
+            set:html={GITHUB_MARK}
+            viewBox="0 0 16 16"
+            width="18"
+            xmlns="http://www.w3.org/2000/svg"
+          />
+        </a>
+      )
+    }
+    <button
+      aria-label="Toggle color theme"
+      class={iconButton}
+      data-blume-theme-toggle
+      type="button"
+    >
+      <span class="inline-flex dark:hidden"><Icon name="sun" size={18} /></span>
+      <span class="hidden dark:inline-flex"><Icon name="moon" size={18} /></span>
+    </button>
+  </div>
 </header>
 <script is:inline set:html={clickScript} />
