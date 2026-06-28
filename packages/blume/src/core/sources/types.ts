@@ -51,6 +51,10 @@ export interface SourceContext {
   /** Per-source cache dir under `.blume/cache/<source>/`. */
   cacheDir: string;
   mode: "dev" | "build";
+  /** Dir for downloaded assets (served from the site's public dir). */
+  assetsDir?: string;
+  /** Public URL prefix the downloaded assets are served under. */
+  assetsBaseUrl?: string;
 }
 
 /**

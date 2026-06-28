@@ -1,4 +1,5 @@
-import { mkdir, readFile, rm, writeFile } from "node:fs/promises";
+import { existsSync } from "node:fs";
+import { cp, mkdir, readFile, rm, writeFile } from "node:fs/promises";
 
 import { join, relative } from "pathe";
 
@@ -244,6 +245,16 @@ export const eject = async (root: string): Promise<string[]> => {
       await writeFile(file.path, file.content, "utf-8");
     })
   );
+
+  // Materialized source assets (e.g. downloaded Notion images) live under the
+  // hidden runtime's public dir; copy them into the owned project's `public/`
+  // so the staged content's `/blume-assets/…` references still resolve.
+  const assetsSrc = join(context.outDir, "public", "blume-assets");
+  if (existsSync(assetsSrc)) {
+    await cp(assetsSrc, join(root, "public", "blume-assets"), {
+      recursive: true,
+    });
+  }
 
   // The hidden runtime is no longer the source of truth.
   await rm(context.outDir, { force: true, recursive: true });

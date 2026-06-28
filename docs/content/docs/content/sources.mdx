@@ -117,6 +117,38 @@ variable. Custom Portable Text block types map to Blume components through the
 adapter's `serializers` option, available when you construct `sanitySource`
 directly via a [custom source](#custom-sources).
 
+## Notion
+
+The built-in `notion` source turns a Notion database into a collection: each row
+becomes a page, its properties become frontmatter, and its block tree becomes
+MDX. Callouts, toggles, columns, and code blocks map to the matching Blume
+components. `@notionhq/client` is an optional peer dependency.
+
+```ts blume.config.ts
+import { defineConfig } from "blume";
+
+export default defineConfig({
+  content: {
+    sources: [
+      { type: "filesystem", root: "docs" },
+      {
+        type: "notion",
+        prefix: "handbook",
+        database: process.env.NOTION_DB_ID,
+        // Property names default to Title / Description / Slug / Status / Order
+        properties: { status: "Status", order: "Order" },
+      },
+    ],
+  },
+});
+```
+
+The integration token comes from the `NOTION_TOKEN` environment variable (share
+the database with your integration). A `Status` that isn't `Published` maps to
+`draft: true`, which production builds drop. **Notion image URLs are signed and
+expire**, so the adapter downloads them at build time into the site's assets and
+rewrites the references — a CMS image never rots a static build.
+
 ## Custom sources
 
 Any object implementing the `ContentSource` interface can be passed directly,

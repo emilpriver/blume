@@ -4,6 +4,7 @@ import type { ContentSourceConfig, ResolvedConfig } from "../schema.ts";
 import type { ProjectContext } from "../types.ts";
 import { filesystemSource } from "./filesystem.ts";
 import { mdxRemoteSource } from "./mdx-remote.ts";
+import { notionSource } from "./notion.ts";
 import { sanitySource } from "./sanity.ts";
 import type { ContentSource, SourceContext } from "./types.ts";
 
@@ -27,6 +28,8 @@ const sourceContext = (
   name: string,
   mode: "dev" | "build"
 ): SourceContext => ({
+  assetsBaseUrl: `/blume-assets/${name}`,
+  assetsDir: join(context.outDir, "public", "blume-assets", name),
   cacheDir: join(context.outDir, "cache", name),
   mode,
   projectRoot: context.root,
@@ -63,6 +66,18 @@ const buildSource = (
         prefix: def.prefix,
         projectId: def.projectId,
         query: def.query,
+      },
+      sourceContext(context, name, mode)
+    );
+  }
+  if (def.type === "notion") {
+    return notionSource(
+      {
+        database: def.database,
+        name,
+        prefix: def.prefix,
+        properties: def.properties,
+        publishedValue: def.publishedValue,
       },
       sourceContext(context, name, mode)
     );

@@ -85,6 +85,7 @@
   "peerDependencies": {
     "@ai-sdk/openai-compatible": "^1.0.41",
     "@mixedbread/sdk": "^0.76.0",
+    "@notionhq/client": "^2.2.15",
     "@openrouter/ai-sdk-provider": "^1.5.4",
     "@oramacloud/client": "^2.1.0",
     "@sanity/client": "^6.21.0",
@@ -100,6 +101,9 @@
       "optional": true
     },
     "@openrouter/ai-sdk-provider": {
+      "optional": true
+    },
+    "@notionhq/client": {
       "optional": true
     },
     "@oramacloud/client": {

@@ -206,6 +206,26 @@ const sanitySourceSchema = z.object({
   type: z.literal("sanity"),
 });
 
+/** A Notion database; pages become entries, blocks become MDX. */
+const notionSourceSchema = z.object({
+  database: z.string(),
+  prefix: z.string().optional(),
+  /** Notion property names mapped onto Blume meta. */
+  properties: z
+    .object({
+      description: z.string().optional(),
+      order: z.string().optional(),
+      slug: z.string().optional(),
+      status: z.string().optional(),
+      title: z.string().optional(),
+    })
+    .strict()
+    .optional(),
+  /** Status value treated as published; others map to `draft`. Default `Published`. */
+  publishedValue: z.string().optional(),
+  type: z.literal("notion"),
+});
+
 /**
  * A user-provided `ContentSource` instance, passed straight through from
  * `blume.config.ts`. This is the extension point that lets adapters with custom
@@ -228,6 +248,7 @@ const contentSourceSchema = z.discriminatedUnion("type", [
   filesystemSourceSchema,
   mdxRemoteSourceSchema,
   sanitySourceSchema,
+  notionSourceSchema,
   customSourceSchema,
 ]);
 
