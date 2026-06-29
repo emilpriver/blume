@@ -27,7 +27,7 @@ const aiResources = [
 
 // The connect command shown in the MCP card's mock terminal.
 const mcpConnectCommand =
-  "claude mcp add --transport http my-docs https://docs.example.com/mcp";
+  "claude mcp add --transport http comet-docs https://docs.comet.dev/mcp";
 ---
 
 <!-- Built for humans and models: the AI surfaces (Ask AI, MCP, llms.txt,
@@ -86,7 +86,7 @@ const mcpConnectCommand =
           <span
             class="rounded-blume bg-foreground px-3 py-1.5 text-background text-xs"
           >
-            How do I enable search?
+            How do I send my first message?
           </span>
         </div>
         <div class="flex items-start gap-2">
@@ -109,8 +109,9 @@ const mcpConnectCommand =
           <span
             class="rounded-blume border border-border bg-background px-3 py-1.5 text-foreground text-xs leading-relaxed"
           >
-            Search is on by default — Orama runs in dev and production, with no
-            setup required.
+            Install the SDK, set your API key, then call
+            <code class="font-mono">comet.messages.send()</code> with a recipient
+            and template.
           </span>
         </div>
         <div

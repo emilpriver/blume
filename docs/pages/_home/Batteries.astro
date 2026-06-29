@@ -2,11 +2,8 @@
 // "Batteries included" — a column of feature blocks paired with a single
 // browser-window graphic that stays centred in the viewport and crossfades its
 // contents as you scroll. `kind` selects which mock <FeatureBrowser> renders.
-import data from "blume:data";
 import FeatureBrowser from "../_FeatureBrowser.astro";
 import { icons } from "./shared.ts";
-
-const logoSvg = data.config.logo?.svg;
 
 const features = [
   {
@@ -130,7 +127,7 @@ const featuresScript = `(()=>{const r=document.querySelector("[data-blume-featur
             {/* Inline browser graphic for mobile; desktop uses the shared sticky one. */}
             <div class="pt-6 pb-10 lg:hidden">
               <div class="overflow-hidden rounded-blume border border-border bg-background shadow-xl shadow-foreground/[0.06]">
-                <FeatureBrowser kind={feature.kind} logo={logoSvg} />
+                <FeatureBrowser kind={feature.kind} />
               </div>
             </div>
           </article>
@@ -152,7 +149,7 @@ const featuresScript = `(()=>{const r=document.querySelector("[data-blume-featur
                 data-active={index === 0 ? "true" : "false"}
                 data-panel={index}
               >
-                <FeatureBrowser kind={feature.kind} logo={logoSvg} />
+                <FeatureBrowser kind={feature.kind} />
               </div>
             ))
           }

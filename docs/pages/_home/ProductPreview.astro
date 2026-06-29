@@ -1,19 +1,22 @@
 ---
-// A faithful, static mock of a Blume docs page, framed by a light-grey panel it
-// sits into (padded top/left/right, flush bottom).
-import data from "blume:data";
-import { copyIcon, icons } from "./shared.ts";
+// A faithful, static mock of a docs site built with Blume — the fictional
+// "Comet" brand (see `sampleBrand` in shared.ts) — framed by a light-grey panel
+// it sits into (padded top/left/right, flush bottom).
+import { copyIcon, icons, sampleBrand } from "./shared.ts";
 
-const { config } = data;
-const title = config.title;
-const logoSvg = config.logo?.svg;
+const title = sampleBrand.name;
+const logoSvg = sampleBrand.logo;
 
 // Code shown in the mock. A string rendered through an Astro expression so the
 // JSX/Markdown inside auto-escapes (no hand-written entities).
-const mockupCode = `<CardGroup cols={2}>
-  <Card title="Quickstart" icon="rocket" />
-  <Card title="Components" icon="box" />
-</CardGroup>`;
+const mockupCode = `import { Comet } from "comet";
+
+const comet = new Comet(process.env.COMET_API_KEY);
+
+await comet.messages.send({
+  to: "ada@example.com",
+  template: "welcome",
+});`;
 ---
 
 <section>
@@ -45,9 +48,9 @@ const mockupCode = `<CardGroup cols={2}>
           <nav
             class="hidden items-center gap-5 text-muted-foreground text-sm sm:flex"
           >
-            <span class="text-foreground">Home</span>
-            <span>Docs</span>
+            <span class="text-foreground">Docs</span>
             <span>API</span>
+            <span>Changelog</span>
           </nav>
         </div>
         <span
@@ -74,27 +77,27 @@ const mockupCode = `<CardGroup cols={2}>
         class="grid min-h-[360px] grid-cols-1 sm:min-h-[520px] sm:grid-cols-[220px_1fr] lg:grid-cols-[220px_1fr_200px]"
       >
         <aside class="hidden border-border border-r p-5 text-[13px] sm:block">
-          <p class="font-medium text-foreground">Docs</p>
+          <p class="font-medium text-foreground">Get started</p>
           <ul class="mt-3 space-y-2 text-muted-foreground">
-            <li class="text-accent">Introduction</li>
-            <li>Quickstart</li>
-            <li>Deployment</li>
+            <li>Introduction</li>
+            <li class="text-accent">Quickstart</li>
+            <li>Authentication</li>
           </ul>
-          <p class="mt-5 font-medium text-foreground">Content</p>
+          <p class="mt-5 font-medium text-foreground">Sending</p>
           <ul class="mt-3 space-y-2 text-muted-foreground">
-            <li>Components</li>
-            <li>Syntax</li>
-            <li>Navigation</li>
+            <li>Messages</li>
+            <li>Templates</li>
+            <li>Webhooks</li>
           </ul>
         </aside>
         <div class="mx-auto min-w-0 max-w-2xl p-6 sm:p-8">
-          <p class="text-[13px] text-muted-foreground">Content</p>
+          <p class="text-[13px] text-muted-foreground">Get started</p>
           <h3 class="mt-1 font-semibold text-2xl text-foreground tracking-tight">
-            Components
+            Quickstart
           </h3>
           <p class="mt-3 text-muted-foreground text-sm leading-relaxed">
-            Blume ships an accessible, themeable component set available in any
-            .mdx page with no imports.
+            Send your first message in minutes. Comet's REST API works with any
+            language — here's a request to get you started.
           </p>
           <div
             class="mt-5 flex gap-2.5 rounded-blume border-accent border-l-2 bg-accent/5 p-4"
@@ -112,15 +115,15 @@ const mockupCode = `<CardGroup cols={2}>
               set:html={icons.sparkle}
             ></svg>
             <p class="text-[13px] text-foreground leading-relaxed">
-              <span class="font-medium">Tip</span> — every component is React-free
-              and theme-aware.
+              <span class="font-medium">Tip</span> — store your API key in an
+              environment variable, never in source.
             </p>
           </div>
           <div class="mt-5 overflow-hidden rounded-blume border border-border">
             <div
               class="flex items-center justify-between border-border border-b bg-muted/40 px-4 py-2 text-[13px] text-muted-foreground"
             >
-              <span class="font-mono">index.mdx</span>
+              <span class="font-mono">send-message.ts</span>
               <svg
                 class="size-3.5"
                 fill="none"
@@ -141,10 +144,9 @@ const mockupCode = `<CardGroup cols={2}>
         <aside class="hidden border-border border-l p-5 text-[13px] lg:block">
           <p class="font-medium text-foreground">On this page</p>
           <ul class="mt-3 space-y-2 text-muted-foreground">
-            <li class="text-foreground">Card and CardGroup</li>
-            <li>Steps</li>
-            <li>Tabs</li>
-            <li>Accordion</li>
+            <li class="text-foreground">Install the SDK</li>
+            <li>Send a message</li>
+            <li>Handle webhooks</li>
           </ul>
         </aside>
       </div>

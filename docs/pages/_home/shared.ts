@@ -36,6 +36,43 @@ export const icons = {
 export const copyIcon =
   '<rect width="14" height="14" x="8" y="8" rx="2" ry="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/>';
 
+// A fictional brand ("Comet", a transactional email & SMS API) used by the
+// homepage mock browser windows (ProductPreview + FeatureBrowser) so they read
+// as a real docs site built with Blume rather than a mock of Blume's own docs.
+// Single source of truth for the name, logo, and docs/API information
+// architecture so both windows stay branded identically. The logo is a filled
+// `currentColor` spark that inherits `text-accent` in the chrome.
+export const sampleBrand = {
+  api: [
+    {
+      items: [
+        { method: "POST", path: "/messages", summary: "Send message" },
+        { method: "GET", path: "/messages/{id}", summary: "Get message" },
+        { method: "DELETE", path: "/messages/{id}", summary: "Delete message" },
+      ],
+      label: "Messages",
+    },
+    {
+      items: [
+        { method: "GET", path: "/templates", summary: "List templates" },
+        { method: "POST", path: "/templates", summary: "Create template" },
+      ],
+      label: "Templates",
+    },
+  ],
+  logo: '<svg fill="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M12 1.5l2.45 6.4a3 3 0 0 0 1.65 1.65L22.5 12l-6.4 2.45a3 3 0 0 0-1.65 1.65L12 22.5l-2.45-6.4a3 3 0 0 0-1.65-1.65L1.5 12l6.4-2.45a3 3 0 0 0 1.65-1.65z"/></svg>',
+  name: "Comet",
+  nav: ["Docs", "API", "Changelog"],
+  sidebar: [
+    {
+      items: ["Introduction", "Quickstart", "Authentication"],
+      label: "Get started",
+    },
+    { items: ["Messages", "Templates", "Webhooks"], label: "Sending" },
+    { items: ["Logs", "Search", "Analytics"], label: "Platform" },
+  ],
+};
+
 // The single-line install box (x.ai-style): a `$` prompt, the command, and a
 // copy button. Shared by the hero and the install CTA so they stay identical.
 // Buttons use the page-level delegated `data-blume-copy-install` handler in

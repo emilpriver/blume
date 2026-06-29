@@ -3,12 +3,14 @@
 // section. The same component renders in the sticky desktop graphic (crossfaded
 // per feature) and inline on mobile, so each `kind` lives in exactly one place.
 // It mirrors the hero product preview: app header + a three-pane docs layout
-// (sidebar · content · on-this-page). Only the content morphs.
+// (sidebar · content · on-this-page). Only the content morphs. It depicts the
+// fictional "Comet" brand (see `sampleBrand` in _home/shared.ts).
+import { sampleBrand } from "./_home/shared.ts";
+
 interface Props {
   kind: string;
-  logo?: string | null;
 }
-const { kind, logo } = Astro.props;
+const { kind } = Astro.props;
 
 const sparkle =
   '<path d="m12 3-1.9 5.8a2 2 0 0 1-1.3 1.3L3 12l5.8 1.9a2 2 0 0 1 1.3 1.3L12 21l1.9-5.8a2 2 0 0 1 1.3-1.3L21 12l-5.8-1.9a2 2 0 0 1-1.3-1.3z"/>';
@@ -22,95 +24,77 @@ const fileText =
 
 // The docs sidebar groups; the active item and right-rail outline change per
 // feature. The `api` kind swaps this sidebar for OpenAPI endpoints (see below).
-const navGroups = [
-  { items: ["Introduction", "Quickstart", "Deployment"], label: "Docs" },
-  { items: ["Components", "Syntax", "Navigation"], label: "Content" },
-  { items: ["AI", "Search", "Theming"], label: "Configuration" },
-];
+const navGroups = sampleBrand.sidebar;
 const meta = {
   api: {
-    active: "API",
-    crumb: "Reference",
-    heading: "Get pet by ID",
+    active: "Messages",
+    crumb: "API reference",
+    heading: "Get a message",
     toc: ["Parameters", "Responses", "Schema"],
   },
   components: {
-    active: "Components",
-    crumb: "Content",
-    heading: "Components",
-    toc: ["Card", "Steps", "Tabs", "Accordion"],
+    active: "Quickstart",
+    crumb: "Get started",
+    heading: "Quickstart",
+    toc: ["Install the SDK", "Send a message", "Next steps"],
   },
   page: {
     active: "Introduction",
-    crumb: "Docs",
+    crumb: "Get started",
     heading: "Introduction",
-    toc: ["Why Blume", "What's included", "Next steps"],
+    toc: ["Why Comet", "What's included", "Next steps"],
   },
+  // The search kind opens a ⌘K modal over a normal docs page, so its "view"
+  // mirrors the Introduction page that sits (dimmed) behind the overlay.
   search: {
-    active: "Search",
-    crumb: "Configuration",
-    heading: "Search",
-    toc: ["Providers", "Shortcuts", "Indexing"],
+    active: "Introduction",
+    crumb: "Get started",
+    heading: "Introduction",
+    toc: ["Why Comet", "What's included", "Next steps"],
   },
 };
 const view = meta[kind as keyof typeof meta] ?? meta.page;
 
-const searchResults = [
-  { hint: "Get started in minutes", title: "Quickstart" },
-  { hint: "Static or server output", title: "Deployment" },
-  { hint: "30+ components, no imports", title: "Components" },
-];
+// The "Popular" results in the search-palette mock (titles only, like the real
+// ⌘K menu); the first row renders as the highlighted/active result.
+const searchResults = ["Quickstart", "Messages", "Templates", "Webhooks"];
 
-// For the `api` kind the sidebar swaps to OpenAPI endpoints (Scalar-style).
-const apiGroups = [
-  {
-    items: [
-      { method: "GET", path: "/pet/{id}" },
-      { method: "POST", path: "/pet" },
-      { method: "DELETE", path: "/pet/{id}" },
-    ],
-    label: "Pet",
-  },
-  {
-    items: [
-      { method: "GET", path: "/store/inventory" },
-      { method: "POST", path: "/store/order" },
-    ],
-    label: "Store",
-  },
-];
-const apiEndpoint = "/pet/{id}";
+// For the `api` kind the sidebar swaps to OpenAPI endpoints (Scalar-style):
+// the operation summary on the left, a colour-coded method badge on the right.
+const apiGroups = sampleBrand.api;
+const apiEndpoint = "/messages/{id}";
+const methodColor: Record<string, string> = {
+  DELETE: "text-[#ef4444]",
+  GET: "text-[#3b82f6]",
+  POST: "text-[#16a34a]",
+  PUT: "text-[#f59e0b]",
+};
+const methodLabel: Record<string, string> = { DELETE: "DEL" };
 const apiResponse = `{
-  "id": 7,
-  "name": "Rex",
-  "status": "available"
+  "id": "msg_01H8...",
+  "to": "ada@example.com",
+  "status": "delivered"
 }`;
 ---
 
-<div class="flex h-full flex-col">
+<div class="relative flex h-full flex-col">
   {/* App header */}
   <div
     class="flex items-center justify-between border-border border-b px-4 py-2.5"
   >
     <div class="flex items-center gap-4">
       <span class="flex items-center gap-1.5 font-medium text-foreground text-sm">
-        {
-          logo ? (
-            <span
-              aria-hidden="true"
-              class="inline-flex h-4 items-center text-accent [&>svg]:h-4 [&>svg]:w-auto"
-              set:html={logo}
-            />
-          ) : (
-            <span class="size-3.5 rounded-sm bg-accent" />
-          )
-        }
-        Blume
+        <span
+          aria-hidden="true"
+          class="inline-flex h-4 items-center text-accent [&>svg]:h-4 [&>svg]:w-auto"
+          set:html={sampleBrand.logo}
+        />
+        {sampleBrand.name}
       </span>
       <nav class="hidden items-center gap-3 text-[11px] text-muted-foreground sm:flex">
-        <span>Home</span>
         <span class={kind === "api" ? "" : "text-foreground"}>Docs</span>
         <span class={kind === "api" ? "text-foreground" : ""}>API</span>
+        <span>Changelog</span>
       </nav>
     </div>
     <span
@@ -144,18 +128,16 @@ const apiResponse = `{
           apiGroups.map((group) => (
             <div class="mb-4 last:mb-0">
               <p class="font-medium text-foreground">{group.label}</p>
-              <ul class="mt-2 space-y-2">
+              <ul class="mt-2 space-y-0.5">
                 {group.items.map((ep) => (
-                  <li class="flex items-center gap-2">
+                  <li
+                    class={`flex items-center gap-2 rounded px-1.5 py-1 ${ep.method === "GET" && ep.path === "/messages/{id}" ? "bg-muted text-foreground" : "text-muted-foreground"}`}
+                  >
+                    <span class="flex-1 truncate">{ep.summary}</span>
                     <span
-                      class={`w-9 shrink-0 font-mono font-semibold text-[9px] ${ep.method === "GET" ? "text-accent" : ep.method === "POST" ? "text-[#3b82f6]" : "text-[#ef4444]"}`}
+                      class={`shrink-0 font-mono font-semibold text-[9px] ${methodColor[ep.method]}`}
                     >
-                      {ep.method}
-                    </span>
-                    <span
-                      class={`truncate ${ep.method === "GET" && ep.path === "/pet/{id}" ? "text-foreground" : "text-muted-foreground"}`}
-                    >
-                      {ep.path}
+                      {methodLabel[ep.method] ?? ep.method}
                     </span>
                   </li>
                 ))}
@@ -185,11 +167,11 @@ const apiResponse = `{
       </h4>
 
       {
-        kind === "page" && (
+        (kind === "page" || kind === "search") && (
           <div>
             <p class="mt-2 text-muted-foreground text-xs leading-relaxed">
-              Drop Markdown into a folder and ship a production-grade docs site —
-              navigation is inferred from your files.
+              Comet is a transactional email & SMS API. Send your first message in
+              minutes, then add templates, webhooks, and analytics as you grow.
             </p>
             <div class="mt-4 grid grid-cols-2 gap-3">
               <div class="rounded-blume border border-border p-3">
@@ -207,7 +189,7 @@ const apiResponse = `{
                 />
                 <p class="mt-2 font-medium text-foreground text-xs">Quickstart</p>
                 <p class="mt-0.5 text-[11px] text-muted-foreground">
-                  Ship your first page
+                  Send your first message
                 </p>
               </div>
               <div class="rounded-blume border border-border p-3">
@@ -224,10 +206,10 @@ const apiResponse = `{
                   set:html={sliders}
                 />
                 <p class="mt-2 font-medium text-foreground text-xs">
-                  Configuration
+                  Authentication
                 </p>
                 <p class="mt-0.5 text-[11px] text-muted-foreground">
-                  Theme, search, deploy
+                  API keys & scopes
                 </p>
               </div>
             </div>
@@ -245,8 +227,8 @@ const apiResponse = `{
                 set:html={sparkle}
               />
               <p class="text-[11px] text-foreground leading-relaxed">
-                <span class="font-medium">Tip</span> — there's no starter to
-                clone. The framework is the template.
+                <span class="font-medium">Tip</span> — every request is
+                idempotent; safely retry without sending twice.
               </p>
             </div>
           </div>
@@ -257,7 +239,7 @@ const apiResponse = `{
         kind === "api" && (
           <div>
             <div class="mt-2 flex items-center gap-2">
-              <span class="rounded bg-accent/10 px-1.5 py-0.5 font-mono font-semibold text-[10px] text-accent">
+              <span class="font-mono font-semibold text-[11px] text-[#3b82f6]">
                 GET
               </span>
               <span class="font-mono text-[11px] text-muted-foreground">
@@ -265,22 +247,27 @@ const apiResponse = `{
               </span>
             </div>
             <p class="mt-3 text-muted-foreground text-xs leading-relaxed">
-              Returns a single pet by its ID — rendered straight from your OpenAPI
-              spec, with a live “Try it” playground.
+              Returns a single message by its ID — rendered straight from your
+              OpenAPI spec, with a live “Try it” playground.
             </p>
-            <p class="mt-4 font-medium text-[11px] text-foreground">
-              Path parameters
+            <p class="mt-4 border-border border-b pb-2 font-medium text-[11px] text-foreground">
+              Path Parameters
             </p>
-            <div class="mt-2 flex items-center gap-2 rounded-blume border border-border px-3 py-2 text-[11px]">
-              <span class="font-mono text-foreground">id</span>
-              <span class="text-muted-foreground">integer</span>
-              <span class="ml-auto text-[10px] text-accent">required</span>
+            <div class="mt-2 text-[11px]">
+              <span class="font-mono font-semibold text-foreground">id</span>
+              <span class="ml-2 text-muted-foreground">string</span>
+              <span class="ml-2 text-[10px] text-[#f59e0b]">required</span>
+              <p class="mt-0.5 text-[10px] text-muted-foreground">
+                The ID of the message to return.
+              </p>
             </div>
-            <p class="mt-4 font-medium text-[11px] text-foreground">Response</p>
+            <p class="mt-4 border-border border-b pb-2 font-medium text-[11px] text-foreground">
+              Responses
+            </p>
             <div class="mt-2 overflow-hidden rounded-blume border border-border">
               <div class="flex items-center gap-2 border-border border-b bg-muted/40 px-3 py-1.5 text-[10px]">
-                <span class="font-medium text-accent">200</span>
-                <span class="text-muted-foreground">application/json</span>
+                <span class="font-mono font-semibold text-[#16a34a]">200</span>
+                <span class="text-muted-foreground">successful operation</span>
               </div>
               <pre class="overflow-x-auto px-3 py-2 font-mono text-[10px] text-muted-foreground"><code>{apiResponse}</code></pre>
             </div>
@@ -292,8 +279,8 @@ const apiResponse = `{
         kind === "components" && (
           <div class="space-y-3">
             <p class="mt-2 text-muted-foreground text-xs leading-relaxed">
-              30+ accessible components, usable in any .mdx page with nothing to
-              import.
+              Comet's docs use 30+ accessible components — callouts, cards, steps,
+              and tabs — with nothing to import.
             </p>
             <div class="flex gap-2 rounded-blume border-accent border-l-2 bg-accent/5 p-3">
               <svg
@@ -329,7 +316,7 @@ const apiResponse = `{
             </div>
             <div class="overflow-hidden rounded-blume border border-border">
               <div class="flex items-center justify-between border-border border-b bg-muted/40 px-3 py-1.5 text-[10px] text-muted-foreground">
-                <span class="font-mono">components.mdx</span>
+                <span class="font-mono">quickstart.mdx</span>
               </div>
               <pre class="overflow-x-auto px-3 py-2 font-mono text-[10px] text-muted-foreground"><code>&lt;Tabs&gt; · &lt;Accordion&gt; · &lt;FileTree&gt;</code></pre>
             </div>
@@ -337,58 +324,6 @@ const apiResponse = `{
         )
       }
 
-      {
-        kind === "search" && (
-          <div>
-            <p class="mt-2 text-muted-foreground text-xs leading-relaxed">
-              Local search runs in dev and production with no hosted index — swap
-              providers with one line.
-            </p>
-            <div class="mt-4 flex items-center gap-2 rounded-blume border border-border px-3 py-2.5 text-muted-foreground text-xs">
-              <svg
-                class="size-3.5"
-                fill="none"
-                height="14"
-                stroke="currentColor"
-                stroke-linecap="round"
-                stroke-linejoin="round"
-                stroke-width="2"
-                viewBox="0 0 24 24"
-                width="14"
-                set:html={searchIcon}
-              />
-              <span class="flex-1">Search docs…</span>
-              <span class="rounded border border-border px-1 font-mono text-[10px]">
-                ⌘K
-              </span>
-            </div>
-            <div class="mt-3 space-y-1">
-              {searchResults.map((result) => (
-                <div class="flex items-center gap-2.5 rounded-blume px-2 py-2 first:bg-muted">
-                  <svg
-                    class="size-3.5 shrink-0 text-muted-foreground"
-                    fill="none"
-                    height="14"
-                    stroke="currentColor"
-                    stroke-linecap="round"
-                    stroke-linejoin="round"
-                    stroke-width="2"
-                    viewBox="0 0 24 24"
-                    width="14"
-                    set:html={fileText}
-                  />
-                  <span class="font-medium text-foreground text-xs">
-                    {result.title}
-                  </span>
-                  <span class="truncate text-[11px] text-muted-foreground">
-                    {result.hint}
-                  </span>
-                </div>
-              ))}
-            </div>
-          </div>
-        )
-      }
     </div>
 
     {/* On this page */}
@@ -402,5 +337,66 @@ const apiResponse = `{
         }
       </ul>
     </aside>
+
+    {/* Search: a ⌘K command palette modal over the dimmed page. The backdrop is
+        positioned to the window root, so it covers the whole window — nav
+        included — like the real ⌘K overlay. */}
+    {
+      kind === "search" && (
+        <div class="absolute inset-0 z-10 flex items-start justify-center bg-foreground/20 p-6 pt-20 backdrop-blur-[2px]">
+          <div class="w-full max-w-md overflow-hidden rounded-blume border border-border bg-background shadow-2xl shadow-foreground/20">
+            <div class="flex items-center gap-2 border-border border-b px-3 py-2.5">
+              <svg
+                class="size-3.5 text-muted-foreground"
+                fill="none"
+                height="14"
+                stroke="currentColor"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="2"
+                viewBox="0 0 24 24"
+                width="14"
+                set:html={searchIcon}
+              />
+              <span class="flex-1 text-muted-foreground text-xs">
+                Search documentation…
+              </span>
+              <span class="rounded border border-border px-1.5 py-0.5 text-[10px] text-muted-foreground">
+                Esc
+              </span>
+            </div>
+            <div class="p-2">
+              <p class="px-2 pt-1 pb-1.5 text-[10px] text-muted-foreground">
+                Popular
+              </p>
+              {searchResults.map((result, index) => (
+                <div
+                  class={`flex items-center gap-2.5 rounded-blume px-2 py-1.5 ${index === 0 ? "border border-border bg-muted" : ""}`}
+                >
+                  <svg
+                    class="size-3.5 shrink-0 text-muted-foreground"
+                    fill="none"
+                    height="14"
+                    stroke="currentColor"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    stroke-width="2"
+                    viewBox="0 0 24 24"
+                    width="14"
+                    set:html={fileText}
+                  />
+                  <span class="text-foreground text-xs">{result}</span>
+                </div>
+              ))}
+            </div>
+            <div class="flex items-center gap-3 border-border border-t px-3 py-1.5 text-[10px] text-muted-foreground">
+              <span>↑↓ navigate</span>
+              <span>↵ open</span>
+              <span class="ml-auto">⌘] preview</span>
+            </div>
+          </div>
+        </div>
+      )
+    }
   </div>
 </div>
