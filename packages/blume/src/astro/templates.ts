@@ -277,12 +277,19 @@ export default defineConfig({
   devToolbar: { enabled: false },
   vite: {
     plugins: [tailwindcss()],
-    // @takumi-rs/core (OG image rendering) is a native NAPI addon: it loads a
-    // platform-specific .node binding via createRequire(import.meta.url).
-    // Bundling it into the prerender output relocates import.meta.url and breaks
-    // that resolution ("Cannot find native binding"). Keep it external so the
-    // binding resolves from node_modules at runtime.
-    ssr: { external: ["@takumi-rs/core"] },
+    // @takumi-rs/core (OG image rendering) is a native NAPI addon that loads a
+    // platform-specific .node binding via createRequire(import.meta.url). Astro's
+    // build bundles it into the per-environment output by default, which
+    // relocates import.meta.url and breaks the binding lookup ("Cannot find
+    // native binding") on other platforms (e.g. the Linux CI runner). Astro 7
+    // configures externalization per Vite environment, so it must be forced
+    // external on the prerender (static) and ssr (server) environments -- a
+    // top-level ssr.external only reaches the latter -- so the binding resolves
+    // from node_modules at runtime instead.
+    environments: {
+      prerender: { resolve: { external: ["@takumi-rs/core"] } },
+      ssr: { resolve: { external: ["@takumi-rs/core"] } },
+    },
     resolve: {
       alias: {
         "blume:data": ${JSON.stringify(dataPath)},
