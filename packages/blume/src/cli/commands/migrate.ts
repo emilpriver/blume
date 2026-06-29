@@ -33,6 +33,7 @@ export const migrateCommand = defineCommand({
   subCommands: {
     fumadocs: makeMigrateCommand("fumadocs"),
     mintlify: makeMigrateCommand("mintlify"),
+    nextra: makeMigrateCommand("nextra"),
     starlight: makeMigrateCommand("starlight"),
   },
 });

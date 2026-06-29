@@ -4,21 +4,14 @@ import { mkdir, readFile, rename, rm, writeFile } from "node:fs/promises";
 import { dirname, join, relative } from "pathe";
 import { glob } from "tinyglobby";
 
-import type { BlumeConfig } from "../core/schema.ts";
 import { migrateMintlifyProject } from "./mintlify/index.ts";
+import { migrateNextraProject } from "./nextra/index.ts";
+import { writeBlumeConfig } from "./shared.ts";
 
 export interface MigrationResult {
   moved: number;
   warnings: string[];
 }
-
-const writeBlumeConfig = async (
-  root: string,
-  config: BlumeConfig
-): Promise<void> => {
-  const body = `import { defineConfig } from "blume";\n\nexport default defineConfig(${JSON.stringify(config, null, 2)});\n`;
-  await writeFile(join(root, "blume.config.ts"), body, "utf-8");
-};
 
 const META_JSON = /(?<sep>^|\/)meta\.json$/u;
 
@@ -104,6 +97,14 @@ const moveIntoDocs = async (
 export const migrateMintlify = (root: string): Promise<MigrationResult> =>
   migrateMintlifyProject(root);
 
+/**
+ * Migrate a Nextra project (`content/` or `pages/` + `_meta` files). Moves pages
+ * into `docs/`, rewrites `<Callout>`s to directives, and converts every `_meta`
+ * into a typed `meta.ts`, preserving navigation order and titles.
+ */
+export const migrateNextra = (root: string): Promise<MigrationResult> =>
+  migrateNextraProject(root);
+
 const migrateFromContentDir = async (
   root: string,
   sourceDir: string,
@@ -149,5 +150,6 @@ export const migrators: Record<
 > = {
   fumadocs: migrateFumadocs,
   mintlify: migrateMintlify,
+  nextra: migrateNextra,
   starlight: migrateStarlight,
 };

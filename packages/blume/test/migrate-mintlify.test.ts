@@ -13,12 +13,10 @@ import {
   rewriteSnippetImports,
   unsupportedMintlifyComponents,
 } from "../src/migrate/mintlify/content.ts";
-import {
-  normalizeMintlifyPageMeta,
-  stripUnknownPageMeta,
-} from "../src/migrate/mintlify/frontmatter.ts";
+import { normalizeMintlifyPageMeta } from "../src/migrate/mintlify/frontmatter.ts";
 import { rewriteMintlifySvgIconProps } from "../src/migrate/mintlify/icons.ts";
 import { rewriteMintlifyGlobalVariables } from "../src/migrate/mintlify/snippets.ts";
+import { stripUnknownPageMeta } from "../src/migrate/shared.ts";
 
 const dirs: string[] = [];
 

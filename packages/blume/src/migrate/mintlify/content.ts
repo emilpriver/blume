@@ -1,5 +1,7 @@
 import { dirname, join, relative } from "pathe";
 
+import { rewriteCallouts } from "../shared.ts";
+
 /**
  * Source-to-source rewrites that turn Mintlify-only MDX component syntax into
  * idiomatic Blume markup. Runs once at migration time — no Mintlify-aware
@@ -31,139 +33,17 @@ const CALLOUT_TYPE_DIRECTIVES: Record<string, string> = {
   warning: "warning",
 };
 
-const attribute = (attrs: string, name: string): string | undefined => {
-  const match = attrs.match(
-    new RegExp(`\\b${name}=(?:"(?<dq>[^"]*)"|'(?<sq>[^']*)')`, "u")
-  );
-  return match?.groups?.dq ?? match?.groups?.sq;
-};
-
-/** Remove a shared leading indent and surrounding blank lines from a block. */
-const dedent = (value: string): string => {
-  const lines = value
-    .replace(/^\r?\n/u, "")
-    .replace(/\s+$/u, "")
-    .split("\n");
-  const indents = lines
-    .filter((line) => line.trim() !== "")
-    .map((line) => line.match(/^\s*/u)?.[0].length ?? 0);
-  const common = indents.length > 0 ? Math.min(...indents) : 0;
-  return lines.map((line) => line.slice(common)).join("\n");
-};
-
-const directiveBlock = (
-  directive: string,
-  title: string | undefined,
-  inner: string
-): string => {
-  const head = title ? `:::${directive}[${title}]` : `:::${directive}`;
-  const body = dedent(inner);
-  return `${head}\n${body}\n:::`;
-};
-
-const CALLOUT_TAG =
-  /<(?<tag>Callout|Check|Danger|Error|Info|Note|Success|Tip|Warning)(?=[\s/>])/u;
-
-/**
- * Find the `>` that closes an opening JSX tag, honoring quotes and `{…}`
- * expression attributes (so a `>` inside `icon={"<svg…>"}` is not mistaken for
- * the tag end). Returns -1 if unterminated.
- */
-const findOpenTagEnd = (source: string, from: number): number => {
-  let depth = 0;
-  let quote: '"' | "'" | "`" | null = null;
-  for (let index = from; index < source.length; index += 1) {
-    const char = source[index];
-    if (quote) {
-      if (char === quote && source[index - 1] !== "\\") {
-        quote = null;
-      }
-      continue;
-    }
-    if (char === '"' || char === "'" || char === "`") {
-      quote = char;
-    } else if (char === "{") {
-      depth += 1;
-    } else if (char === "}") {
-      depth -= 1;
-    } else if (char === ">" && depth === 0) {
-      return index;
-    }
-  }
-  return -1;
-};
-
-const directiveFor = (tag: string, attrs: string): string | undefined => {
-  if (tag !== "Callout") {
-    return CALLOUT_DIRECTIVES[tag];
-  }
-  const type = attribute(attrs, "type")?.toLowerCase();
-  return type ? CALLOUT_TYPE_DIRECTIVES[type] : "note";
-};
-
 /**
  * Convert Mintlify callout components (`<Note>`, `<Warning>`, `<Callout
- * type="…">`, …) into Blume `:::` directives. Uses a quote/brace-aware tag
- * scanner so callouts with JSX-expression attributes (e.g. inline-SVG icons)
- * convert cleanly. Non-convertible attributes (icons, colors) are dropped.
+ * type="…">`, …) into Blume `:::` directives.
  */
-export const rewriteMintlifyCallouts = (source: string): string => {
-  let output = "";
-  let cursor = 0;
-
-  while (cursor < source.length) {
-    const match = CALLOUT_TAG.exec(source.slice(cursor));
-    if (!match?.groups) {
-      output += source.slice(cursor);
-      break;
-    }
-
-    const start = cursor + match.index;
-    const { tag } = match.groups;
-    if (!tag) {
-      output += source.slice(cursor);
-      break;
-    }
-    const openEnd = findOpenTagEnd(source, start + tag.length + 1);
-    if (openEnd === -1) {
-      output += source.slice(cursor, start + 1);
-      cursor = start + 1;
-      continue;
-    }
-
-    const attrs = source.slice(start + tag.length + 1, openEnd);
-    const directive = directiveFor(tag, attrs);
-    const closeTag = `</${tag}>`;
-    const selfClosing = attrs.trimEnd().endsWith("/");
-    const closeIndex = selfClosing
-      ? openEnd
-      : source.indexOf(closeTag, openEnd + 1);
-
-    if (!directive || (!selfClosing && closeIndex === -1)) {
-      output += source.slice(cursor, openEnd + 1);
-      cursor = openEnd + 1;
-      continue;
-    }
-
-    output += source.slice(cursor, start);
-    const title = attribute(attrs, "title");
-    if (selfClosing) {
-      output += title
-        ? `:::${directive}[${title}]\n:::`
-        : `:::${directive}\n:::`;
-      cursor = openEnd + 1;
-    } else {
-      output += directiveBlock(
-        directive,
-        title,
-        source.slice(openEnd + 1, closeIndex)
-      );
-      cursor = closeIndex + closeTag.length;
-    }
-  }
-
-  return output;
-};
+export const rewriteMintlifyCallouts = (source: string): string =>
+  rewriteCallouts(source, {
+    defaultDirective: "note",
+    tagDirectives: CALLOUT_DIRECTIVES,
+    tags: ["Callout", ...Object.keys(CALLOUT_DIRECTIVES)],
+    typeDirectives: CALLOUT_TYPE_DIRECTIVES,
+  });
 
 /**
  * Mintlify's `<RequestExample>`/`<ResponseExample>` are tab-style code wrappers

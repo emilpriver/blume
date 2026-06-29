@@ -1,7 +1,5 @@
 import { z } from "zod";
 
-import { pageMetaSchema } from "../../core/schema.ts";
-
 /**
  * One-time translation of Mintlify page frontmatter into Blume's shape. This
  * runs at migration time only — Blume's runtime page schema stays
@@ -125,40 +123,4 @@ export const normalizeMintlifyPageMeta = (
     }
   }
   return cleaned;
-};
-
-/**
- * Remove frontmatter keys Blume's strict page schema would reject (e.g. stray
- * `og:*`/`twitter:*` metatags) so the migrated page validates, reporting what
- * was dropped.
- */
-export const stripUnknownPageMeta = (
-  data: Record<string, unknown>
-): { data: Record<string, unknown>; removed: string[] } => {
-  const result = pageMetaSchema.safeParse(data);
-  if (result.success) {
-    return { data, removed: [] };
-  }
-
-  const removed = new Set<string>();
-  for (const issue of result.error.issues) {
-    if (issue.code === "unrecognized_keys" && issue.path.length === 0) {
-      for (const key of issue.keys) {
-        removed.add(key);
-      }
-    }
-  }
-  if (removed.size === 0) {
-    // The frontmatter is invalid for a reason other than stray keys; leave it
-    // for Blume to report when the user runs `blume dev`.
-    return { data, removed: [] };
-  }
-
-  const next: Record<string, unknown> = {};
-  for (const [key, value] of Object.entries(data)) {
-    if (!removed.has(key)) {
-      next[key] = value;
-    }
-  }
-  return { data: next, removed: [...removed] };
 };

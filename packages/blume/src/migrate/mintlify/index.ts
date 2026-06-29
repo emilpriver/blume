@@ -6,6 +6,7 @@ import { dirname, join } from "pathe";
 import { glob } from "tinyglobby";
 
 import type { BlumeConfig } from "../../core/schema.ts";
+import { stripUnknownPageMeta } from "../shared.ts";
 import { loadMintlifyConfig } from "./config.ts";
 import {
   rewriteMintlifyCallouts,
@@ -13,10 +14,7 @@ import {
   rewriteSnippetImports,
   unsupportedMintlifyComponents,
 } from "./content.ts";
-import {
-  normalizeMintlifyPageMeta,
-  stripUnknownPageMeta,
-} from "./frontmatter.ts";
+import { normalizeMintlifyPageMeta } from "./frontmatter.ts";
 import { mintlifyI18n } from "./i18n.ts";
 import { rewriteMintlifySvgIconProps } from "./icons.ts";
 import {
