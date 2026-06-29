@@ -90,7 +90,8 @@ const imageUrlFromRef = (
 };
 
 const resolveClient = async (
-  options: SanitySourceOptions
+  options: SanitySourceOptions,
+  preview: boolean
 ): Promise<SanityClientLike> => {
   if (options.client) {
     return options.client;
@@ -110,9 +111,11 @@ const resolveClient = async (
   return createClient({
     apiVersion: options.apiVersion ?? "2024-01-01",
     dataset: options.dataset,
+    // Preview reads draft documents through the API; published builds use the CDN.
+    perspective: preview ? "previewDrafts" : "published",
     projectId: options.projectId,
     token: options.token ?? process.env.SANITY_TOKEN,
-    useCdn: true,
+    useCdn: !preview,
   });
 };
 
@@ -177,11 +180,18 @@ export const sanitySource = (
   };
 
   const load = async (): Promise<SourceLoadResult> => {
-    const result = await loadWithCache(options.name, cache, async () => {
-      const client = await resolveClient(options);
-      const docs = await client.fetch<Record<string, unknown>[]>(options.query);
-      return docs.map(toEntry);
-    });
+    const result = await loadWithCache(
+      options.name,
+      cache,
+      async () => {
+        const client = await resolveClient(options, ctx?.preview ?? false);
+        const docs = await client.fetch<Record<string, unknown>[]>(
+          options.query
+        );
+        return docs.map(toEntry);
+      },
+      ctx?.refresh ?? true
+    );
     snapshot = new Map(result.entries.map((entry) => [entry.ref, entry]));
     return result;
   };

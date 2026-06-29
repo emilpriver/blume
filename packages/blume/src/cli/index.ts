@@ -9,6 +9,7 @@ import { ejectCommand } from "./commands/eject.ts";
 import { initCommand } from "./commands/init.ts";
 import { migrateCommand } from "./commands/migrate.ts";
 import { previewCommand } from "./commands/preview.ts";
+import { syncCommand } from "./commands/sync.ts";
 import { validateCommand } from "./commands/validate.ts";
 
 const main = defineCommand({
@@ -26,6 +27,7 @@ const main = defineCommand({
     init: initCommand,
     migrate: migrateCommand,
     preview: previewCommand,
+    sync: syncCommand,
     validate: validateCommand,
   },
 });

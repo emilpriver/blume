@@ -180,10 +180,15 @@ export const mdxRemoteSource = (
   };
 
   const load = async (): Promise<SourceLoadResult> => {
-    const result = await loadWithCache(options.name, cache, async () => {
-      const refs = await enumerate();
-      return await Promise.all(refs.map(fetchEntry));
-    });
+    const result = await loadWithCache(
+      options.name,
+      cache,
+      async () => {
+        const refs = await enumerate();
+        return await Promise.all(refs.map(fetchEntry));
+      },
+      ctx.refresh ?? true
+    );
     snapshot = new Map(result.entries.map((entry) => [entry.ref, entry]));
     return result;
   };

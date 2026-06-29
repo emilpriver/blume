@@ -219,7 +219,7 @@ describe("resolveSources (sanity)", () => {
       root: "/p",
     } as ProjectContext;
 
-    const sources = resolveSources(config, context, "build");
+    const sources = resolveSources(config, context, { mode: "build" });
     expect(sources).toHaveLength(1);
     expect(sources[0]?.name).toBe("guides");
     expect(sources[0]?.staged).toBe(true);

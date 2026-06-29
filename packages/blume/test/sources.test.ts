@@ -405,6 +405,39 @@ describe("remote watch", () => {
       typeof mdxRemoteSource({ ...base, pollInterval: 30 }, ctx).watch
     ).toBe("function");
   });
+
+  it("serves the cache without fetching when refresh is false", async () => {
+    const dir = await makeProject({});
+    const cacheDir = join(dir, ".cache");
+    await mkdir(cacheDir, { recursive: true });
+    await writeFile(
+      join(cacheDir, "entries.json"),
+      JSON.stringify([
+        {
+          body: { format: "mdx", text: "# A" },
+          data: {},
+          raw: "# A",
+          ref: "a.mdx",
+        },
+      ])
+    );
+    const failing = (() =>
+      Promise.reject(new Error("should not fetch"))) as unknown as typeof fetch;
+    const source = mdxRemoteSource(
+      {
+        fetchImpl: failing,
+        files: ["a.mdx"],
+        include: ["**/*.mdx"],
+        name: "sdk",
+        url: "https://example.com",
+      },
+      { cacheDir, mode: "dev", projectRoot: dir, refresh: false }
+    );
+    const { entries, diagnostics } = await source.load();
+    // Cache-first (not a fallback), so the entry is served with no diagnostic.
+    expect(entries).toHaveLength(1);
+    expect(diagnostics).toHaveLength(0);
+  });
 });
 
 describe("filesystemSource watch", () => {

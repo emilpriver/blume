@@ -155,6 +155,29 @@ are signed and expire**, so the adapter downloads them at build time into the
 site's assets and rewrites the references — a CMS image never rots a static
 build.
 
+## Preview and sync
+
+Two flags control how remote content is fetched and what's included:
+
+- **`--preview`** on `blume dev` or `blume build` renders drafts and pulls
+  unpublished CMS content — Sanity switches to its `previewDrafts` perspective,
+  and Notion stops filtering by `Status`. Production builds without the flag
+  exclude drafts as usual, so a preview build is a safe way to review
+  unpublished work before it ships.
+- **`blume sync`** re-fetches every remote source and regenerates the runtime.
+  Dev is cache-first — a remote source is fetched once and served from
+  `.blume/cache` on restart (fast and offline-tolerant), so `blume sync` is how
+  you pull the latest CMS content without restarting the dev server (a running
+  server hot-reloads). Add `--force` to drop the cache first, or set
+  `pollInterval` on a source to refresh automatically.
+
+```sh
+blume dev --preview      # author workflow: see drafts live
+blume build --preview    # render a full preview build
+blume sync               # refresh remote content now
+blume sync --force        # ...ignoring any cached snapshot
+```
+
 ## Custom sources
 
 Any object implementing the `ContentSource` interface can be passed directly,

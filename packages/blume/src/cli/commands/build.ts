@@ -16,6 +16,10 @@ import { prepareProject } from "../prepare.ts";
 
 export const buildCommand = defineCommand({
   args: {
+    preview: {
+      description: "Include drafts and unpublished CMS content.",
+      type: "boolean",
+    },
     strict: { description: "Fail on diagnostics.", type: "boolean" },
   },
   meta: {
@@ -26,6 +30,7 @@ export const buildCommand = defineCommand({
     const root = process.cwd();
     const project = await prepareProject({
       mode: "build",
+      preview: args.preview,
       root,
       strict: args.strict,
     });

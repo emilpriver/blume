@@ -390,22 +390,27 @@ export const notionSource = (
 
   const load = async (): Promise<SourceLoadResult> => {
     const assetDiagnostics: Diagnostic[] = [];
-    const result = await loadWithCache(options.name, cache, async () => {
-      const client = await resolveClient();
-      const pages = await collectAll((cursor) =>
-        client.databases.query({
-          database_id: options.database,
-          start_cursor: cursor,
-        })
-      );
-      const built = await Promise.all(
-        pages.map((page) => toEntry(client, page))
-      );
-      for (const item of built) {
-        assetDiagnostics.push(...item.diagnostics);
-      }
-      return built.map((item) => item.entry);
-    });
+    const result = await loadWithCache(
+      options.name,
+      cache,
+      async () => {
+        const client = await resolveClient();
+        const pages = await collectAll((cursor) =>
+          client.databases.query({
+            database_id: options.database,
+            start_cursor: cursor,
+          })
+        );
+        const built = await Promise.all(
+          pages.map((page) => toEntry(client, page))
+        );
+        for (const item of built) {
+          assetDiagnostics.push(...item.diagnostics);
+        }
+        return built.map((item) => item.entry);
+      },
+      ctx?.refresh ?? true
+    );
     snapshot = new Map(result.entries.map((entry) => [entry.ref, entry]));
     return {
       diagnostics: [...result.diagnostics, ...assetDiagnostics],

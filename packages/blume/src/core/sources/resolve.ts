@@ -23,23 +23,32 @@ const uniqueNamer = (): ((base: string) => string) => {
   };
 };
 
+/** Runtime knobs for a scan: dev/build mode, preview, and cache refresh. */
+export interface SourceRuntime {
+  mode: "dev" | "build";
+  preview?: boolean;
+  refresh?: boolean;
+}
+
 const sourceContext = (
   context: ProjectContext,
   name: string,
-  mode: "dev" | "build"
+  runtime: SourceRuntime
 ): SourceContext => ({
   assetsBaseUrl: `/blume-assets/${name}`,
   assetsDir: join(context.outDir, "public", "blume-assets", name),
   cacheDir: join(context.outDir, "cache", name),
-  mode,
+  mode: runtime.mode,
+  preview: runtime.preview,
   projectRoot: context.root,
+  refresh: runtime.refresh ?? runtime.mode === "build",
 });
 
 const buildSource = (
   def: ContentSourceConfig,
   name: string,
   context: ProjectContext,
-  mode: "dev" | "build"
+  runtime: SourceRuntime
 ): ContentSource => {
   if (def.type === "filesystem") {
     return filesystemSource({
@@ -68,7 +77,7 @@ const buildSource = (
         projectId: def.projectId,
         query: def.query,
       },
-      sourceContext(context, name, mode)
+      sourceContext(context, name, runtime)
     );
   }
   if (def.type === "notion") {
@@ -81,7 +90,7 @@ const buildSource = (
         properties: def.properties,
         publishedValue: def.publishedValue,
       },
-      sourceContext(context, name, mode)
+      sourceContext(context, name, runtime)
     );
   }
   return mdxRemoteSource(
@@ -94,7 +103,7 @@ const buildSource = (
       prefix: def.prefix,
       url: def.url,
     },
-    sourceContext(context, name, mode)
+    sourceContext(context, name, runtime)
   );
 };
 
@@ -114,7 +123,7 @@ const baseName = (def: ContentSourceConfig): string => {
 export const resolveSources = (
   config: ResolvedConfig,
   context: ProjectContext,
-  mode: "dev" | "build"
+  runtime: SourceRuntime
 ): ContentSource[] => {
   const defs = config.content.sources;
   if (!defs || defs.length === 0) {
@@ -131,6 +140,6 @@ export const resolveSources = (
 
   const nameFor = uniqueNamer();
   return defs.map((def) =>
-    buildSource(def, nameFor(baseName(def)), context, mode)
+    buildSource(def, nameFor(baseName(def)), context, runtime)
   );
 };

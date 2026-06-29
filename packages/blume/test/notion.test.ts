@@ -249,7 +249,7 @@ describe("resolveSources (notion)", () => {
       outDir: "/p/.blume",
       root: "/p",
     } as ProjectContext;
-    const sources = resolveSources(config, context, "build");
+    const sources = resolveSources(config, context, { mode: "build" });
     expect(sources[0]?.name).toBe("handbook");
     expect(sources[0]?.staged).toBe(true);
   });

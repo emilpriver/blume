@@ -55,6 +55,17 @@ export interface SourceContext {
   assetsDir?: string;
   /** Public URL prefix the downloaded assets are served under. */
   assetsBaseUrl?: string;
+  /**
+   * Re-fetch remote content instead of serving the cached snapshot. True for
+   * builds and `blume sync`; false in dev (cache-first for fast, offline-tolerant
+   * restarts — refresh with `blume sync` or an opt-in `pollInterval`).
+   */
+  refresh?: boolean;
+  /**
+   * Preview unpublished content: drafts are kept and CMS adapters fetch draft
+   * documents (Sanity's `previewDrafts` perspective). Off for production builds.
+   */
+  preview?: boolean;
 }
 
 /**

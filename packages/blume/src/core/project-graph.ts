@@ -43,15 +43,20 @@ export interface BlumeProject {
  */
 export const scanProject = async (
   root: string,
-  options: { mode?: BuildMode } = {}
+  options: { mode?: BuildMode; preview?: boolean; refresh?: boolean } = {}
 ): Promise<BlumeProject> => {
   const mode = options.mode ?? "dev";
+  const preview = options.preview ?? false;
   const { config } = await loadConfig(root);
   const context = resolveProjectContext(root, config);
 
   // Each source validates itself (e.g. the filesystem source checks its root
   // exists), replacing the single hard `contentRoot` check.
-  const sources = resolveSources(config, context, mode);
+  const sources = resolveSources(config, context, {
+    mode,
+    preview,
+    refresh: options.refresh,
+  });
   for (const source of sources) {
     source.validate?.();
   }
@@ -84,9 +89,11 @@ export const scanProject = async (
     }
   }
 
-  // Drafts render in dev but are excluded from production builds.
+  // Drafts render in dev and in preview, but are excluded from production builds.
   const pages =
-    mode === "build" ? allPages.filter((page) => !page.meta.draft) : allPages;
+    mode === "build" && !preview
+      ? allPages.filter((page) => !page.meta.draft)
+      : allPages;
 
   // Resolve "last updated" dates before the graph is built so the manifest
   // (which shares these page objects) picks them up. Frontmatter always wins;

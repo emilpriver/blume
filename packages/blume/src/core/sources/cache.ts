@@ -82,15 +82,23 @@ export const snapshotCache = (cacheDir: string): SnapshotCache => {
 };
 
 /**
- * Run a remote `fetchEntries`, caching the result. On failure, serve the
- * last-known-good snapshot with a warning so a CMS/network outage doesn't fail
- * the build; if there is no snapshot either, surface a hard error.
+ * Run a remote `fetchEntries`, caching the result. When `refresh` is false and a
+ * snapshot exists, serve it without fetching (cache-first dev). On fetch failure,
+ * serve the last-known-good snapshot with a warning so a CMS/network outage
+ * doesn't fail the build; if there is no snapshot either, surface a hard error.
  */
 export const loadWithCache = async (
   name: string,
   cache: SnapshotCache,
-  fetchEntries: () => Promise<SourceEntry[]>
+  fetchEntries: () => Promise<SourceEntry[]>,
+  refresh = true
 ): Promise<SourceLoadResult> => {
+  if (!refresh) {
+    const cached = await cache.read();
+    if (cached.length > 0) {
+      return { diagnostics: [], entries: cached };
+    }
+  }
   try {
     const entries = await fetchEntries();
     await cache.write(entries);

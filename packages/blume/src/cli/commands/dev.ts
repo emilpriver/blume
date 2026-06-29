@@ -13,6 +13,10 @@ export const devCommand = defineCommand({
     host: { description: "Network host to bind.", type: "string" },
     open: { description: "Open the browser on start.", type: "boolean" },
     port: { description: "Port to listen on.", type: "string" },
+    preview: {
+      description: "Include drafts and unpublished CMS content.",
+      type: "boolean",
+    },
     strict: { description: "Fail on diagnostics.", type: "boolean" },
   },
   meta: {
@@ -21,8 +25,10 @@ export const devCommand = defineCommand({
   },
   async run({ args }) {
     const root = process.cwd();
+    const preview = args.preview ?? false;
     const project = await prepareProject({
       mode: "dev",
+      preview,
       root,
       strict: args.strict,
     });
@@ -46,7 +52,7 @@ export const devCommand = defineCommand({
       }
       timer = setTimeout(async () => {
         try {
-          const next = await scanProject(root, { mode: "dev" });
+          const next = await scanProject(root, { mode: "dev", preview });
           await generateRuntime(next);
         } catch (error) {
           logger.error(`Regeneration failed: ${(error as Error).message}`);
