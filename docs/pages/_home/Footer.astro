@@ -1,0 +1,50 @@
+---
+// Landing footer: logo, copyright, and a short nav. Shares the page container
+// width with the main content above it.
+import data from "blume:data";
+
+const { config } = data;
+const title = config.title;
+const logoSvg = config.logo?.svg;
+const repoUrl = config.repoUrl;
+const docsHref = "/docs";
+const year = new Date().getFullYear();
+---
+
+<footer>
+  <div
+    class="mx-auto flex max-w-[1400px] flex-wrap items-center justify-between gap-4 px-6 py-8 text-muted-foreground text-sm"
+  >
+    <div class="flex items-center gap-2">
+      {
+        logoSvg && (
+          <span
+            aria-hidden="true"
+            class="inline-flex h-4 items-center [&>svg]:h-4 [&>svg]:w-auto"
+            set:html={logoSvg}
+          />
+        )
+      }
+      <span>© {year} {title}. MIT licensed.</span>
+    </div>
+    <nav class="flex items-center gap-5">
+      <a class="transition-colors hover:text-foreground" href={docsHref}>Docs</a>
+      <a
+        class="transition-colors hover:text-foreground"
+        href="/docs/configuration">Configuration</a
+      >
+      {
+        repoUrl && (
+          <a
+            class="transition-colors hover:text-foreground"
+            href={repoUrl}
+            rel="noreferrer"
+            target="_blank"
+          >
+            GitHub
+          </a>
+        )
+      }
+    </nav>
+  </div>
+</footer>

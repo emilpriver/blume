@@ -1,0 +1,122 @@
+---
+// Landing hero: latest-release badge, headline, install box, and doc/GitHub
+// links. The install box copy button uses the page-level delegated
+// `data-blume-copy-install` handler in index.astro.
+import data from "blume:data";
+import { installBox } from "./shared.ts";
+
+const { config } = data;
+const repoUrl = config.repoUrl;
+const docsHref = "/docs";
+const chevronRight = '<path d="m9 18 6-6-6-6"/>';
+
+// Latest GitHub release for the hero badge, resolved at build time. Falls back
+// to 0.0.0 when there's no release — or the API is unreachable/rate-limited — so
+// the build never fails on a network hiccup.
+const releasesUrl = repoUrl ? `${repoUrl}/releases` : null;
+const repoMatch = repoUrl?.match(
+  /github\.com\/(?<owner>[^/]+)\/(?<repo>[^/]+?)(?:\.git)?\/?$/u
+);
+let latestVersion = "0.0.0";
+if (repoMatch?.groups) {
+  try {
+    const response = await fetch(
+      `https://api.github.com/repos/${repoMatch.groups.owner}/${repoMatch.groups.repo}/releases/latest`,
+      {
+        headers: {
+          Accept: "application/vnd.github+json",
+          "User-Agent": "blume-docs",
+        },
+        signal: AbortSignal.timeout(3000),
+      }
+    );
+    if (response.ok) {
+      const release = await response.json();
+      if (typeof release?.tag_name === "string") {
+        latestVersion = release.tag_name.replace(/^v/u, "");
+      }
+    }
+  } catch {
+    // Keep the 0.0.0 fallback on any network or rate-limit failure.
+  }
+}
+---
+
+<section class="text-center">
+  {
+    releasesUrl ? (
+      <a
+        class="inline-flex items-center px-3 py-1 text-muted-foreground text-xs transition-colors hover:text-foreground"
+        href={releasesUrl}
+        rel="noreferrer"
+        target="_blank"
+      >
+        Latest update, v{latestVersion}
+      </a>
+    ) : (
+      <span class="inline-flex items-center px-3 py-1 text-muted-foreground text-xs">
+        Latest update, v{latestVersion}
+      </span>
+    )
+  }
+  <h1
+    class="mx-auto mt-6 max-w-3xl text-balance font-medium text-4xl tracking-tight sm:text-5xl lg:text-6xl"
+  >
+    <span class="block">Documentation that's fast,</span>
+    <span class="block text-muted-foreground">AI-ready, and zero-config.</span>
+  </h1>
+  <p class="mx-auto mt-6 max-w-xl text-balance text-lg text-muted-foreground">
+    Drop Markdown into a folder and ship a production-grade docs site — no app
+    boilerplate to write or maintain. Free and open source, forever.
+  </p>
+
+  <!-- Install command -->
+  <div class="mt-9" set:html={installBox}></div>
+
+  <div class="mt-7 flex items-center justify-center gap-6 text-sm">
+    <a
+      class="inline-flex items-center gap-1 font-medium text-muted-foreground transition-colors hover:text-foreground"
+      href={docsHref}
+    >
+      Read the docs
+      <svg
+        class="size-3.5"
+        fill="none"
+        height="14"
+        stroke="currentColor"
+        stroke-linecap="round"
+        stroke-linejoin="round"
+        stroke-width="2"
+        viewBox="0 0 24 24"
+        width="14"
+        xmlns="http://www.w3.org/2000/svg"
+        set:html={chevronRight}
+      ></svg>
+    </a>
+    {
+      repoUrl && (
+        <a
+          class="inline-flex items-center gap-1 font-medium text-muted-foreground transition-colors hover:text-foreground"
+          href={repoUrl}
+          rel="noreferrer"
+          target="_blank"
+        >
+          GitHub
+          <svg
+            class="size-3.5"
+            fill="none"
+            height="14"
+            stroke="currentColor"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            stroke-width="2"
+            viewBox="0 0 24 24"
+            width="14"
+            xmlns="http://www.w3.org/2000/svg"
+            set:html={chevronRight}
+          />
+        </a>
+      )
+    }
+  </div>
+</section>

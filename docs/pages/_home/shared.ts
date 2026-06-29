@@ -34,3 +34,10 @@ export const icons = {
 
 export const copyIcon =
   '<rect width="14" height="14" x="8" y="8" rx="2" ry="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/>';
+
+// The single-line install box (x.ai-style): a `$` prompt, the command, and a
+// copy button. Shared by the hero and the install CTA so they stay identical.
+// Buttons use the page-level delegated `data-blume-copy-install` handler in
+// index.astro.
+export const installCommand = "npm i blume";
+export const installBox = `<div class="mx-auto flex w-full max-w-xs items-center gap-3 rounded-blume border border-border bg-background py-2 pr-2 pl-4"><span aria-hidden="true" class="select-none font-mono text-muted-foreground text-sm">$</span><code class="flex-1 truncate text-left font-mono text-foreground text-sm">${installCommand}</code><button aria-label="Copy install command" class="inline-flex size-8 shrink-0 cursor-pointer items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-muted hover:text-foreground" data-blume-copy-install data-command="${installCommand}" type="button"><svg class="size-4" fill="none" height="16" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" viewBox="0 0 24 24" width="16">${copyIcon}</svg></button></div>`;
