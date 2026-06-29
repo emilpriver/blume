@@ -1,4 +1,11 @@
 import type { FolderMeta } from "../../core/schema.ts";
+import {
+  parseKey,
+  readString,
+  scanObject,
+  splitKeyValue,
+  stripJsComments,
+} from "../shared.ts";
 
 /**
  * Read Nextra `_meta` files (ordering + per-entry config) and map them onto
@@ -7,7 +14,8 @@ import type { FolderMeta } from "../../core/schema.ts";
  * a map of string titles and simple config objects — rather than executing user
  * code (matching the other migrators, which never eval). Entries whose value is
  * an expression (JSX title, imported component, computed) keep their slug for
- * ordering but are otherwise flagged `unparseable`.
+ * ordering but are otherwise flagged `unparseable`. The low-level JS scanners
+ * live in `../shared.ts` so the Starlight migrator reuses them.
  */
 
 export interface NextraMetaEntry {
@@ -20,150 +28,6 @@ export interface NextraMetaEntry {
   /** The value couldn't be read beyond its key (e.g. a JSX/expression title). */
   unparseable: boolean;
 }
-
-/** Index of a string within a JS source: the close quote matching `s[open]`. */
-const findStringEnd = (s: string, open: number): number => {
-  const quote = s[open];
-  for (let index = open + 1; index < s.length; index += 1) {
-    if (s[index] === "\\") {
-      index += 1;
-      continue;
-    }
-    if (s[index] === quote) {
-      return index;
-    }
-  }
-  return -1;
-};
-
-const unescapeString = (inner: string): string =>
-  inner.replaceAll(/\\(?<ch>["'`\\nt])/gu, (_match, ch: string) => {
-    if (ch === "n") {
-      return "\n";
-    }
-    if (ch === "t") {
-      return "\t";
-    }
-    return ch;
-  });
-
-interface ScanResult {
-  end: number;
-  entries: string[];
-}
-
-/** Index of the last char of a `//` or block comment at `index`, else `index`. */
-const skipComment = (source: string, index: number): number => {
-  if (source[index + 1] === "/") {
-    const newline = source.indexOf("\n", index + 2);
-    return newline === -1 ? source.length : newline;
-  }
-  if (source[index + 1] === "*") {
-    const close = source.indexOf("*/", index + 2);
-    return close === -1 ? source.length : close + 1;
-  }
-  return index;
-};
-
-const pushEntry = (
-  entries: string[],
-  source: string,
-  start: number,
-  end: number
-): void => {
-  const raw = source.slice(start, end).trim();
-  if (raw) {
-    entries.push(raw);
-  }
-};
-
-/**
- * Walk a `{…}` object literal starting at `openIndex`, returning the matching
- * close-brace index and the raw `key: value` text of each top-level entry.
- * Quote-, comment-, and bracket-aware so commas/braces nested in strings,
- * arrays, or child objects don't split entries. Returns null if unterminated.
- */
-const scanObject = (source: string, openIndex: number): ScanResult | null => {
-  let depth = 0;
-  const entries: string[] = [];
-  let entryStart = openIndex + 1;
-
-  for (let index = openIndex; index < source.length; index += 1) {
-    const char = source[index];
-
-    if (char === '"' || char === "'" || char === "`") {
-      const end = findStringEnd(source, index);
-      index = end === -1 ? source.length : end;
-      continue;
-    }
-    if (char === "/") {
-      const skipped = skipComment(source, index);
-      if (skipped !== index) {
-        index = skipped;
-        continue;
-      }
-    }
-    if (char === "{" || char === "[" || char === "(") {
-      depth += 1;
-      continue;
-    }
-    if (char === "}" || char === "]" || char === ")") {
-      depth -= 1;
-      if (char === "}" && depth === 0) {
-        pushEntry(entries, source, entryStart, index);
-        return { end: index, entries };
-      }
-      continue;
-    }
-    if (char === "," && depth === 1) {
-      pushEntry(entries, source, entryStart, index);
-      entryStart = index + 1;
-    }
-  }
-
-  return null;
-};
-
-/**
- * Strip `//` and block comments so they don't leak into entry text (the scanner
- * splits on slices, so an inter-entry comment would otherwise attach to the next
- * entry). String literals are preserved verbatim.
- */
-const stripJsComments = (source: string): string => {
-  let out = "";
-  let quote: string | null = null;
-  for (let index = 0; index < source.length; index += 1) {
-    const char = source[index];
-    if (quote) {
-      out += char;
-      if (char === "\\") {
-        out += source[index + 1] ?? "";
-        index += 1;
-      } else if (char === quote) {
-        quote = null;
-      }
-      continue;
-    }
-    if (char === '"' || char === "'" || char === "`") {
-      quote = char;
-      out += char;
-      continue;
-    }
-    if (char === "/" && source[index + 1] === "/") {
-      const newline = source.indexOf("\n", index + 2);
-      index = newline === -1 ? source.length - 1 : newline - 1;
-      continue;
-    }
-    if (char === "/" && source[index + 1] === "*") {
-      const close = source.indexOf("*/", index + 2);
-      index = close === -1 ? source.length - 1 : close + 1;
-      out += " ";
-      continue;
-    }
-    out += char;
-  }
-  return out;
-};
 
 const DEFAULT_EXPORT = /(?:export\s+default|module\.exports\s*=)\s*/u;
 
@@ -182,77 +46,6 @@ const extractObjectEntries = (source: string): string[] | null => {
     return null;
   }
   return scanObject(clean, index)?.entries ?? null;
-};
-
-interface KeyValue {
-  key: string;
-  value: string;
-}
-
-/** Split a raw `key: value` entry at its top-level colon. */
-const splitKeyValue = (entry: string): KeyValue | null => {
-  let index = 0;
-  while (index < entry.length && /\s/u.test(entry[index] ?? "")) {
-    index += 1;
-  }
-  const first = entry[index];
-  if (first === "[") {
-    // Computed key — not something we can resolve statically.
-    return null;
-  }
-
-  let key: string;
-  if (first === '"' || first === "'" || first === "`") {
-    const close = findStringEnd(entry, index);
-    if (close === -1) {
-      return null;
-    }
-    key = entry.slice(index, close + 1);
-    index = close + 1;
-  } else {
-    const start = index;
-    while (index < entry.length && !/[\s:]/u.test(entry[index] ?? "")) {
-      index += 1;
-    }
-    key = entry.slice(start, index);
-  }
-
-  while (index < entry.length && /\s/u.test(entry[index] ?? "")) {
-    index += 1;
-  }
-  if (entry[index] !== ":") {
-    return { key, value: "" };
-  }
-  return { key, value: entry.slice(index + 1).trim() };
-};
-
-const parseKey = (key: string): string => {
-  const trimmed = key.trim();
-  const [quote] = trimmed;
-  if (quote === '"' || quote === "'" || quote === "`") {
-    const end = findStringEnd(trimmed, 0);
-    if (end !== -1) {
-      return unescapeString(trimmed.slice(1, end));
-    }
-  }
-  return trimmed;
-};
-
-/** Read a clean string literal value, or null if it's an expression. */
-const readString = (value: string): string | null => {
-  const trimmed = value.trim();
-  const [quote] = trimmed;
-  if (quote !== '"' && quote !== "'" && quote !== "`") {
-    return null;
-  }
-  if (quote === "`" && trimmed.includes("${")) {
-    return null;
-  }
-  const end = findStringEnd(trimmed, 0);
-  if (end === -1 || trimmed.slice(end + 1).trim() !== "") {
-    return null;
-  }
-  return unescapeString(trimmed.slice(1, end));
 };
 
 const applyField = (

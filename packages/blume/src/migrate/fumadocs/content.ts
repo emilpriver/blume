@@ -4,7 +4,7 @@ import { readFile as readFileFromDisk } from "node:fs/promises";
 import matter from "gray-matter";
 import { dirname, resolve } from "pathe";
 
-import { findOpenTagEnd, rewriteCallouts } from "../shared.ts";
+import { findOpenTagEnd, renameTag, rewriteCallouts } from "../shared.ts";
 
 /**
  * Source-to-source rewrites that turn Fumadocs-only MDX into idiomatic Blume
@@ -61,13 +61,6 @@ export const rewriteFumadocsCallouts = (source: string): string =>
 // ---------------------------------------------------------------------------
 // Container component renames
 // ---------------------------------------------------------------------------
-
-/** Rename a JSX tag (open and close) while preserving its attributes. */
-const renameTag = (source: string, from: string, to: string): string =>
-  source.replaceAll(
-    new RegExp(`<(?<close>/?)${from}(?=[\\s/>])`, "gu"),
-    `<$<close>${to}`
-  );
 
 /**
  * Rename Fumadocs container components to their Blume equivalents. The

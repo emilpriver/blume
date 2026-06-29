@@ -217,3 +217,407 @@ export const stripUnknownPageMeta = (
   }
   return { data: next, removed: [...removed] };
 };
+
+// ---------------------------------------------------------------------------
+// JSX tag renaming
+// ---------------------------------------------------------------------------
+
+/**
+ * Rename a JSX tag (open and close) while preserving its attributes. The
+ * trailing lookahead means a longer tag (e.g. `CardGrid`) is never matched by a
+ * rule for its shorter prefix (`Card`), so prefix-sharing renames can be chained
+ * — run the item-level rename before the container rename.
+ */
+export const renameTag = (source: string, from: string, to: string): string =>
+  source.replaceAll(
+    new RegExp(`<(?<close>/?)${from}(?=[\\s/>])`, "gu"),
+    `<$<close>${to}`
+  );
+
+// ---------------------------------------------------------------------------
+// JavaScript literal scanning
+// ---------------------------------------------------------------------------
+
+/**
+ * Static readers for JS/TS config files (Nextra `_meta`, Starlight
+ * `astro.config`). Config is parsed by walking the source as text — quote-,
+ * comment-, and bracket-aware — rather than executing user code, matching the
+ * other migrators (which never eval). Values that aren't pure literals (an
+ * identifier, call, JSX, or interpolated template) are reported as `UNPARSEABLE`
+ * so the caller can drop the field and warn.
+ */
+
+/** Index of a string within a JS source: the close quote matching `s[open]`. */
+export const findStringEnd = (s: string, open: number): number => {
+  const quote = s[open];
+  for (let index = open + 1; index < s.length; index += 1) {
+    if (s[index] === "\\") {
+      index += 1;
+      continue;
+    }
+    if (s[index] === quote) {
+      return index;
+    }
+  }
+  return -1;
+};
+
+export const unescapeString = (inner: string): string =>
+  inner.replaceAll(/\\(?<ch>["'`\\nt])/gu, (_match, ch: string) => {
+    if (ch === "n") {
+      return "\n";
+    }
+    if (ch === "t") {
+      return "\t";
+    }
+    return ch;
+  });
+
+/** Index of the last char of a `//` or block comment at `index`, else `index`. */
+const skipComment = (source: string, index: number): number => {
+  if (source[index + 1] === "/") {
+    const newline = source.indexOf("\n", index + 2);
+    return newline === -1 ? source.length : newline;
+  }
+  if (source[index + 1] === "*") {
+    const close = source.indexOf("*/", index + 2);
+    return close === -1 ? source.length : close + 1;
+  }
+  return index;
+};
+
+const pushSlice = (
+  parts: string[],
+  source: string,
+  start: number,
+  end: number
+): void => {
+  const raw = source.slice(start, end).trim();
+  if (raw) {
+    parts.push(raw);
+  }
+};
+
+export interface ObjectScanResult {
+  end: number;
+  entries: string[];
+}
+
+/**
+ * Walk a `{…}` object literal starting at `openIndex`, returning the matching
+ * close-brace index and the raw `key: value` text of each top-level entry.
+ * Quote-, comment-, and bracket-aware so commas/braces nested in strings,
+ * arrays, or child objects don't split entries. Returns null if unterminated.
+ */
+export const scanObject = (
+  source: string,
+  openIndex: number
+): ObjectScanResult | null => {
+  let depth = 0;
+  const entries: string[] = [];
+  let entryStart = openIndex + 1;
+
+  for (let index = openIndex; index < source.length; index += 1) {
+    const char = source[index];
+
+    if (char === '"' || char === "'" || char === "`") {
+      const end = findStringEnd(source, index);
+      index = end === -1 ? source.length : end;
+      continue;
+    }
+    if (char === "/") {
+      const skipped = skipComment(source, index);
+      if (skipped !== index) {
+        index = skipped;
+        continue;
+      }
+    }
+    if (char === "{" || char === "[" || char === "(") {
+      depth += 1;
+      continue;
+    }
+    if (char === "}" || char === "]" || char === ")") {
+      depth -= 1;
+      if (char === "}" && depth === 0) {
+        pushSlice(entries, source, entryStart, index);
+        return { end: index, entries };
+      }
+      continue;
+    }
+    if (char === "," && depth === 1) {
+      pushSlice(entries, source, entryStart, index);
+      entryStart = index + 1;
+    }
+  }
+
+  return null;
+};
+
+export interface ArrayScanResult {
+  elements: string[];
+  end: number;
+}
+
+/**
+ * Walk a `[…]` array literal starting at `openIndex`, returning the matching
+ * close-bracket index and the raw text of each top-level element. The sibling of
+ * {@link scanObject}; a trailing comma yields no empty element.
+ */
+export const scanArray = (
+  source: string,
+  openIndex: number
+): ArrayScanResult | null => {
+  let depth = 0;
+  const elements: string[] = [];
+  let elementStart = openIndex + 1;
+
+  for (let index = openIndex; index < source.length; index += 1) {
+    const char = source[index];
+
+    if (char === '"' || char === "'" || char === "`") {
+      const end = findStringEnd(source, index);
+      index = end === -1 ? source.length : end;
+      continue;
+    }
+    if (char === "/") {
+      const skipped = skipComment(source, index);
+      if (skipped !== index) {
+        index = skipped;
+        continue;
+      }
+    }
+    if (char === "{" || char === "[" || char === "(") {
+      depth += 1;
+      continue;
+    }
+    if (char === "}" || char === ")") {
+      depth -= 1;
+      continue;
+    }
+    if (char === "]") {
+      depth -= 1;
+      if (depth === 0) {
+        pushSlice(elements, source, elementStart, index);
+        return { elements, end: index };
+      }
+      continue;
+    }
+    if (char === "," && depth === 1) {
+      pushSlice(elements, source, elementStart, index);
+      elementStart = index + 1;
+    }
+  }
+
+  return null;
+};
+
+/**
+ * Strip `//` and block comments so they don't leak into entry text (the scanner
+ * splits on slices, so an inter-entry comment would otherwise attach to the next
+ * entry). String literals are preserved verbatim.
+ */
+export const stripJsComments = (source: string): string => {
+  let out = "";
+  let quote: string | null = null;
+  for (let index = 0; index < source.length; index += 1) {
+    const char = source[index];
+    if (quote) {
+      out += char;
+      if (char === "\\") {
+        out += source[index + 1] ?? "";
+        index += 1;
+      } else if (char === quote) {
+        quote = null;
+      }
+      continue;
+    }
+    if (char === '"' || char === "'" || char === "`") {
+      quote = char;
+      out += char;
+      continue;
+    }
+    if (char === "/" && source[index + 1] === "/") {
+      const newline = source.indexOf("\n", index + 2);
+      index = newline === -1 ? source.length - 1 : newline - 1;
+      continue;
+    }
+    if (char === "/" && source[index + 1] === "*") {
+      const close = source.indexOf("*/", index + 2);
+      index = close === -1 ? source.length - 1 : close + 1;
+      out += " ";
+      continue;
+    }
+    out += char;
+  }
+  return out;
+};
+
+export interface KeyValue {
+  key: string;
+  value: string;
+}
+
+/** Split a raw `key: value` entry at its top-level colon. */
+export const splitKeyValue = (entry: string): KeyValue | null => {
+  let index = 0;
+  while (index < entry.length && /\s/u.test(entry[index] ?? "")) {
+    index += 1;
+  }
+  const first = entry[index];
+  if (first === "[") {
+    // Computed key — not something we can resolve statically.
+    return null;
+  }
+
+  let key: string;
+  if (first === '"' || first === "'" || first === "`") {
+    const close = findStringEnd(entry, index);
+    if (close === -1) {
+      return null;
+    }
+    key = entry.slice(index, close + 1);
+    index = close + 1;
+  } else {
+    const start = index;
+    while (index < entry.length && !/[\s:]/u.test(entry[index] ?? "")) {
+      index += 1;
+    }
+    key = entry.slice(start, index);
+  }
+
+  while (index < entry.length && /\s/u.test(entry[index] ?? "")) {
+    index += 1;
+  }
+  if (entry[index] !== ":") {
+    return { key, value: "" };
+  }
+  return { key, value: entry.slice(index + 1).trim() };
+};
+
+/** Read an object key, unquoting it when it is a string literal. */
+export const parseKey = (key: string): string => {
+  const trimmed = key.trim();
+  const [quote] = trimmed;
+  if (quote === '"' || quote === "'" || quote === "`") {
+    const end = findStringEnd(trimmed, 0);
+    if (end !== -1) {
+      return unescapeString(trimmed.slice(1, end));
+    }
+  }
+  return trimmed;
+};
+
+/** Read a clean string literal value, or null if it's an expression. */
+export const readString = (value: string): string | null => {
+  const trimmed = value.trim();
+  const [quote] = trimmed;
+  if (quote !== '"' && quote !== "'" && quote !== "`") {
+    return null;
+  }
+  if (quote === "`" && trimmed.includes("${")) {
+    return null;
+  }
+  const end = findStringEnd(trimmed, 0);
+  if (end === -1 || trimmed.slice(end + 1).trim() !== "") {
+    return null;
+  }
+  return unescapeString(trimmed.slice(1, end));
+};
+
+/** A value that isn't a pure literal (identifier, call, JSX, computed, …). */
+export const UNPARSEABLE = Symbol("unparseable");
+
+export type LiteralValue =
+  | LiteralValue[]
+  | boolean
+  | null
+  | number
+  | string
+  | typeof UNPARSEABLE
+  | { [key: string]: LiteralValue };
+
+const NUMERIC = /^-?\d/u;
+
+const parseScalarLiteral = (trimmed: string): LiteralValue => {
+  if (trimmed === "true") {
+    return true;
+  }
+  if (trimmed === "false") {
+    return false;
+  }
+  if (trimmed === "null") {
+    return null;
+  }
+  if (NUMERIC.test(trimmed)) {
+    const num = Number(trimmed);
+    if (!Number.isNaN(num)) {
+      return num;
+    }
+  }
+  return UNPARSEABLE;
+};
+
+const parseObjectLiteral = (trimmed: string): LiteralValue => {
+  const scan = scanObject(trimmed, 0);
+  if (!scan || trimmed.slice(scan.end + 1).trim() !== "") {
+    return UNPARSEABLE;
+  }
+  const out: Record<string, LiteralValue> = {};
+  for (const entry of scan.entries) {
+    const kv = splitKeyValue(entry);
+    if (kv?.key && kv.value !== "") {
+      // oxlint-disable-next-line no-use-before-define -- mutual recursion
+      out[parseKey(kv.key)] = parseLiteral(kv.value);
+    }
+  }
+  return out;
+};
+
+const parseArrayLiteral = (trimmed: string): LiteralValue => {
+  const scan = scanArray(trimmed, 0);
+  if (!scan || trimmed.slice(scan.end + 1).trim() !== "") {
+    return UNPARSEABLE;
+  }
+  // oxlint-disable-next-line no-use-before-define -- mutual recursion
+  return scan.elements.map((element) => parseLiteral(element));
+};
+
+/**
+ * Evaluate a JS literal expression (string / number / boolean / null / array /
+ * object) into its value without executing it. Anything else resolves to
+ * {@link UNPARSEABLE}; inside arrays the sentinel keeps the element's position,
+ * inside objects it stays as the field's value so the caller can warn and drop.
+ */
+export const parseLiteral = (source: string): LiteralValue => {
+  const trimmed = source.trim();
+  if (trimmed === "") {
+    return UNPARSEABLE;
+  }
+  const [first] = trimmed;
+  if (first === '"' || first === "'" || first === "`") {
+    return readString(trimmed) ?? UNPARSEABLE;
+  }
+  if (first === "{") {
+    return parseObjectLiteral(trimmed);
+  }
+  if (first === "[") {
+    return parseArrayLiteral(trimmed);
+  }
+  return parseScalarLiteral(trimmed);
+};
+
+/** Narrow a parsed literal to a string. */
+export const asLiteralString = (
+  value: LiteralValue | undefined
+): string | undefined => (typeof value === "string" ? value : undefined);
+
+/** Narrow a parsed literal to a plain object (not an array or `UNPARSEABLE`). */
+export const isLiteralObject = (
+  value: LiteralValue | undefined
+): value is Record<string, LiteralValue> =>
+  typeof value === "object" && value !== null && !Array.isArray(value);
+
+/** Narrow a parsed literal to an array. */
+export const asLiteralArray = (
+  value: LiteralValue | undefined
+): LiteralValue[] | undefined => (Array.isArray(value) ? value : undefined);

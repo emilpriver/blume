@@ -1,45 +1,12 @@
-import { existsSync } from "node:fs";
-import { mkdir, rename } from "node:fs/promises";
-
-import { dirname, join, relative } from "pathe";
-import { glob } from "tinyglobby";
-
 import { migrateFumadocsProject } from "./fumadocs/index.ts";
 import { migrateMintlifyProject } from "./mintlify/index.ts";
 import { migrateNextraProject } from "./nextra/index.ts";
-import { writeBlumeConfig } from "./shared.ts";
+import { migrateStarlightProject } from "./starlight/index.ts";
 
 export interface MigrationResult {
   moved: number;
   warnings: string[];
 }
-
-/** Move files into `docs/`, returning how many moved and any skips. */
-const moveIntoDocs = async (
-  root: string,
-  absoluteFiles: string[],
-  options: { from?: string } = {}
-): Promise<MigrationResult> => {
-  const base = options.from ? join(root, options.from) : root;
-  const warnings: string[] = [];
-  let moved = 0;
-
-  for (const file of absoluteFiles) {
-    const rel = relative(base, file);
-    const dest = join(root, "docs", rel);
-    if (existsSync(dest)) {
-      warnings.push(`Skipped ${rel} (target already exists)`);
-      continue;
-    }
-    // oxlint-disable-next-line no-await-in-loop -- sequential fs moves
-    await mkdir(dirname(dest), { recursive: true });
-    // oxlint-disable-next-line no-await-in-loop -- sequential fs moves
-    await rename(file, dest);
-    moved += 1;
-  }
-
-  return { moved, warnings };
-};
 
 /**
  * Migrate a Mintlify project (`docs.json`/`mint.json` + MDX). Translates the
@@ -66,31 +33,14 @@ export const migrateNextra = (root: string): Promise<MigrationResult> =>
 export const migrateFumadocs = (root: string): Promise<MigrationResult> =>
   migrateFumadocsProject(root);
 
-const migrateFromContentDir = async (
-  root: string,
-  sourceDir: string,
-  options: { title: string }
-): Promise<MigrationResult> => {
-  if (!existsSync(join(root, sourceDir))) {
-    return {
-      moved: 0,
-      warnings: [`Content directory ${sourceDir} not found.`],
-    };
-  }
-
-  const files = await glob(["**/*.{md,mdx,mdoc}"], {
-    absolute: true,
-    cwd: join(root, sourceDir),
-  });
-  const result = await moveIntoDocs(root, files, { from: sourceDir });
-
-  await writeBlumeConfig(root, { title: options.title });
-  return result;
-};
-
-/** Migrate a Starlight project (src/content/docs). */
+/**
+ * Migrate a Starlight project (`src/content/docs` + `astro.config.*`). Translates
+ * the `starlight({...})` options into `blume.config.ts` and rewrites each page to
+ * idiomatic Blume MDX in place (asides → directives, component renames,
+ * frontmatter mapping). Content stays under `src/content/docs`.
+ */
 export const migrateStarlight = (root: string): Promise<MigrationResult> =>
-  migrateFromContentDir(root, "src/content/docs", { title: "Documentation" });
+  migrateStarlightProject(root);
 
 export const migrators: Record<
   string,
