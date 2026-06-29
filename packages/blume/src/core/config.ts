@@ -1,3 +1,4 @@
+import { applyDeploymentEnv } from "./deployment-env.ts";
 import { BlumeError, diagnosticsFromZod } from "./diagnostics.ts";
 import { createModuleLoader } from "./load-module.ts";
 import { findConfigFile } from "./project.ts";
@@ -59,7 +60,7 @@ export const loadConfig = async (root: string): Promise<ConfigLoadResult> => {
   }
 
   return {
-    config: parsed.data,
+    config: applyDeploymentEnv(parsed.data),
     configFile,
     diagnostics: [],
   };

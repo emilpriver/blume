@@ -88,6 +88,7 @@ export const buildCommand = defineCommand({
       [
         `Output     ${config.deployment.output}`,
         `Adapter    ${config.deployment.adapter ?? "none"}`,
+        `Site       ${config.deployment.site ?? "not set"}`,
         `Search     ${config.search.provider}`,
         `Redirects  ${config.redirects.length}`,
         `Sitemap    ${sitemap ? "yes" : "no (set deployment.site)"}`,
