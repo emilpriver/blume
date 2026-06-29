@@ -1,86 +1,177 @@
 ---
-// "Migrate in one command." — bring an existing Mintlify, Fumadocs, Starlight,
-// or Nextra site into Blume. The copy buttons use the page-level delegated
+// "Migrate in one command." — one interactive demo: the headline reads
+// "Migrate from [Fumadocs]" where the bracketed brand is a dropdown trigger
+// (logo + name + chevron). Picking another source swaps the trigger, the body
+// copy, and the single command box below. With no JS the default (Fumadocs)
+// panel stays visible. The copy button reuses the page-level delegated
 // `data-blume-copy-install` handler in index.astro.
-import { copyIcon, icons } from "./shared.ts";
+import { copyIcon } from "./shared.ts";
 
-const tools = [
-  {
-    body: "Your docs.json (or mint.json) is translated to a blume.config.ts, every page is rewritten to idiomatic Blume MDX, and images are relocated alongside them — navigation, theming, and i18n come across with it.",
-    command: "npx blume migrate mintlify",
-    icon: icons.migrate,
-    title: "From Mintlify",
-  },
+// Brand marks, each a full <svg> so it can be injected via set:html (and copied
+// into the trigger by the client script). Monochrome marks use currentColor so
+// they track the theme; brand-coloured marks stay fixed.
+const logos = {
+  fumadocs:
+    '<svg class="size-full" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><defs><linearGradient id="blume-fuma" x1="3" y1="3" x2="21" y2="21" gradientUnits="userSpaceOnUse"><stop stop-color="#2563eb"/><stop offset="1" stop-color="#7c3aed"/></linearGradient></defs><circle cx="12" cy="12" r="11" fill="url(#blume-fuma)"/></svg>',
+  mintlify:
+    '<svg class="size-full" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path fill="#18E299" d="M15.158.002a8.807 8.807 0 0 0-6.249 2.59l-.062.063h-.003L2.655 8.844a.605.605 0 0 0-.062.058 8.838 8.838 0 0 0-.83 11.55l6.251-6.249.065-.063a8.778 8.778 0 0 1-1.758-5.385 8.784 8.784 0 0 1 .283-2.151 8.993 8.993 0 0 1 2.151-.286 8.802 8.802 0 0 1 5.386 1.76 8.81 8.81 0 0 1 3.032 4.11 8.879 8.879 0 0 1 .225 5.21 8.784 8.784 0 0 0-.341.082 8.846 8.846 0 0 1-4.868-.303 8.679 8.679 0 0 1-2.323-1.25l-.064.065L3.55 22.24a8.85 8.85 0 0 0 11.548-.83l.06-.062 6.19-6.187a8.801 8.801 0 0 1-.367.337c.125-.11.247-.224.366-.341l.063-.058A8.817 8.817 0 0 0 24 8.844V.002Z"/></svg>',
+  nextra:
+    '<svg class="size-full" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path fill="currentColor" d="M22.68 21.031c-4.98-4.98-4.98-13.083 0-18.063l.978-.978c.22-.22.342-.513.342-.825 0-.311-.122-.604-.342-.824-.44-.441-1.207-.44-1.648 0l-.979.978c-4.98 4.98-13.084 4.98-18.063 0L1.99.34a1.17 1.17 0 0 0-1.649 0 1.168 1.168 0 0 0 0 1.649l.978.978c4.98 4.98 4.98 13.083 0 18.063l-.977.978c-.221.22-.342.513-.342.825 0 .31.121.604.341.824.442.443 1.21.441 1.65 0l.977-.977c4.98-4.983 13.083-4.98 18.064 0l.978.977c.22.22.513.342.824.342.312 0 .605-.122.824-.342.22-.22.342-.512.342-.824 0-.313-.122-.605-.342-.825l-.977-.978z"/></svg>',
+  starlight:
+    '<svg class="size-full" viewBox="0 0 25 26" fill="none" xmlns="http://www.w3.org/2000/svg"><path fill="#bc52ee" fill-rule="evenodd" clip-rule="evenodd" d="M15.22 7.77 12.06.94 8.91 7.77l-.15.29L7 6.3a1.18 1.18 0 1 0-1.68 1.68l1.75 1.74-.2.1-.04.02L0 13l6.83 3.16.24.11-1.75 1.76A1.18 1.18 0 1 0 7 19.7l1.76-1.76.15.3 3.15 6.82 3.16-6.83.12-.24 1.71 1.71a1.18 1.18 0 1 0 1.68-1.67L17 16.3l.29-.15L24.13 13 17.3 9.84 17 9.7l1.73-1.73a1.18 1.18 0 1 0-1.68-1.67L15.35 8a4.15 4.15 0 0 1-.12-.21l-.01-.03Zm-3.17.36-.42.9a7.27 7.27 0 0 1-3.55 3.55l-.9.42.9.42a7.27 7.27 0 0 1 3.55 3.55l.42.9.42-.9a7.27 7.27 0 0 1 3.55-3.55l.9-.42-.9-.42a7.27 7.27 0 0 1-3.55-3.55l-.42-.9Z"/></svg>',
+};
+
+const sources = [
   {
     body: "Your content/docs tree moves into place and every meta.json becomes a typed meta.ts — frontmatter and folder ordering intact. Run blume dev and your pages are live.",
     command: "npx blume migrate fumadocs",
-    icon: icons.fileCode,
-    title: "From Fumadocs",
+    id: "fumadocs",
+    logo: logos.fumadocs,
+    name: "Fumadocs",
+  },
+  {
+    body: "Your docs.json (or mint.json) is translated to a blume.config.ts, every page is rewritten to idiomatic Blume MDX, and images are relocated alongside them — navigation, theming, and i18n come across with it.",
+    command: "npx blume migrate mintlify",
+    id: "mintlify",
+    logo: logos.mintlify,
+    name: "Mintlify",
   },
   {
     body: "Your src/content/docs collection lands straight into place — Markdown, MDX, and Markdoc pages all come across with their frontmatter untouched, ready to render through Blume's components.",
     command: "npx blume migrate starlight",
-    icon: icons.star,
-    title: "From Starlight",
+    id: "starlight",
+    logo: logos.starlight,
+    name: "Starlight",
   },
   {
     body: "Your Nextra pages come across as Blume MDX and every _meta file becomes a typed meta.ts — navigation order and frontmatter intact. Run blume dev and your docs are live.",
     command: "npx blume migrate nextra",
-    icon: icons.fileText,
-    title: "From Nextra",
+    id: "nextra",
+    logo: logos.nextra,
+    name: "Nextra",
   },
 ];
+
+const active = sources[0];
+
+// Open/close the brand menu, then mirror the chosen option into the trigger
+// (logo + label), reveal its panel, and collapse. Click-outside / Escape close.
+const migrateScript = `(()=>{const root=document.querySelector("[data-migrate]");if(!root){return;}const trigger=root.querySelector("[data-migrate-trigger]");const menu=root.querySelector("[data-migrate-menu]");const labelEl=trigger.querySelector("[data-trigger-label]");const logoEl=trigger.querySelector("[data-trigger-logo]");const options=[...root.querySelectorAll("[data-migrate-option]")];const panels=[...root.querySelectorAll("[data-migrate-panel]")];const setOpen=(o)=>{trigger.setAttribute("aria-expanded",String(o));menu.dataset.open=String(o);};const select=(id)=>{options.forEach((o)=>o.setAttribute("aria-selected",String(o.dataset.migrateOption===id)));panels.forEach((p)=>{p.dataset.active=String(p.dataset.migratePanel===id);});const o=options.find((it)=>it.dataset.migrateOption===id);if(o){labelEl.textContent=o.dataset.label;logoEl.innerHTML=o.querySelector("[data-option-logo]").innerHTML;}setOpen(false);};trigger.addEventListener("click",()=>setOpen(trigger.getAttribute("aria-expanded")!=="true"));options.forEach((o)=>o.addEventListener("click",()=>select(o.dataset.migrateOption)));document.addEventListener("click",(e)=>{if(!root.contains(e.target)){setOpen(false);}});document.addEventListener("keydown",(e)=>{if(e.key==="Escape"){setOpen(false);}});})();`;
 ---
 
-<!-- Migrate in one command -->
-<section class="mx-auto max-w-4xl">
-  <div class="mx-auto max-w-2xl text-center">
-    <h2 class="text-balance font-medium text-3xl tracking-tight sm:text-4xl">
-      Migrate in one command.
-    </h2>
-    <p class="mt-4 text-balance text-muted-foreground">
-      Already have a docs site? Bring it across as-is. Blume reads your existing
-      config and content and ports both into a working project — no copy-paste,
-      no rebuild from scratch.
-    </p>
+<!-- Migrate: the heading itself is the interactive brand picker -->
+<section class="mx-auto max-w-2xl text-center" data-migrate>
+  <!-- "Migrate from [Brand]" — the trigger is bare inline text (logo + name +
+       chevron) with no button chrome; only the hover underline hints it's a
+       control. -->
+  <div
+    aria-level="2"
+    class="flex flex-wrap items-center justify-center gap-x-3 gap-y-1 text-balance font-medium text-3xl tracking-tight sm:text-4xl"
+    role="heading"
+  >
+    <span>Migrate from</span>
+    <div class="relative">
+      <button
+        aria-expanded="false"
+        aria-haspopup="listbox"
+        class="group inline-flex cursor-pointer items-center gap-2"
+        data-migrate-trigger
+        type="button"
+      >
+        <span
+          class="inline-flex size-[0.85em] shrink-0 items-center justify-center"
+          data-trigger-logo
+          set:html={active.logo}
+        />
+        <span
+          class="underline decoration-2 decoration-transparent underline-offset-[6px] transition-colors group-hover:decoration-muted-foreground"
+          data-trigger-label
+        >
+          {active.name}
+        </span>
+        <svg
+          class="size-[0.7em] shrink-0 text-muted-foreground transition-transform group-aria-[expanded=true]:rotate-180"
+          fill="none"
+          stroke="currentColor"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+          stroke-width="2"
+          viewBox="0 0 24 24"
+        >
+          <path d="m6 9 6 6 6-6"></path>
+        </svg>
+      </button>
+
+      <!-- Brand menu (this keeps its own dropdown chrome) -->
+      <div
+        class="pointer-events-none absolute left-1/2 z-20 mt-3 w-56 -translate-x-1/2 translate-y-1 rounded-blume border border-border bg-background p-1.5 text-left font-normal text-base tracking-normal opacity-0 shadow-black/5 shadow-lg transition data-[open=true]:pointer-events-auto data-[open=true]:translate-y-0 data-[open=true]:opacity-100"
+        data-migrate-menu
+        data-open="false"
+        role="listbox"
+      >
+        {
+          sources.map((source) => (
+            <button
+              aria-selected={source.id === active.id ? "true" : "false"}
+              class="group flex w-full items-center gap-3 rounded-md px-3 py-2 text-left text-foreground text-sm transition-colors hover:bg-muted aria-selected:bg-muted"
+              data-label={source.name}
+              data-migrate-option={source.id}
+              role="option"
+              type="button"
+            >
+              <span
+                class="flex size-5 shrink-0 items-center justify-center"
+                data-option-logo
+                set:html={source.logo}
+              />
+              <span class="font-medium">{source.name}</span>
+              <svg
+                class="ml-auto size-4 text-accent opacity-0 transition-opacity group-aria-selected:opacity-100"
+                fill="none"
+                height="16"
+                stroke="currentColor"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="2"
+                viewBox="0 0 24 24"
+                width="16"
+              >
+                <path d="M20 6 9 17l-5-5" />
+              </svg>
+            </button>
+          ))
+        }
+      </div>
+    </div>
   </div>
-  <div class="mt-12 grid gap-4 sm:grid-cols-2">
+
+  <!-- Per-source description + command, right under the heading (no card) -->
+  <div class="mt-6">
     {
-      tools.map((tool) => (
-        <div class="rounded-blume border border-border p-6">
-          <span class="inline-flex size-10 items-center justify-center rounded-blume bg-muted text-accent">
-            <svg
-              class="size-5"
-              fill="none"
-              height="20"
-              stroke="currentColor"
-              stroke-linecap="round"
-              stroke-linejoin="round"
-              stroke-width="2"
-              viewBox="0 0 24 24"
-              width="20"
-              set:html={tool.icon}
-            />
-          </span>
-          <h3 class="mt-4 font-medium text-base text-foreground">{tool.title}</h3>
-          <p class="mt-2 text-muted-foreground text-sm leading-relaxed">
-            {tool.body}
+      sources.map((source) => (
+        <div
+          class="hidden data-[active=true]:block"
+          data-active={source.id === active.id ? "true" : "false"}
+          data-migrate-panel={source.id}
+        >
+          <p class="mx-auto max-w-xl text-balance text-muted-foreground leading-relaxed sm:min-h-[4.5rem]">
+            {source.body}
           </p>
-          <div class="mt-5 flex items-center gap-3 rounded-blume border border-border bg-muted/30 py-2 pr-2 pl-4">
+          <div class="mx-auto mt-6 flex max-w-md items-center gap-3 rounded-blume border border-border bg-muted/30 py-2 pr-2 pl-4">
             <span
               aria-hidden="true"
               class="select-none font-mono text-muted-foreground text-sm"
             >
               $
             </span>
-            <code class="flex-1 truncate font-mono text-foreground text-sm">
-              {tool.command}
+            <code class="flex-1 truncate text-left font-mono text-foreground text-sm">
+              {source.command}
             </code>
             <button
-              aria-label={`Copy ${tool.title} command`}
+              aria-label={`Copy ${source.name} command`}
               class="inline-flex size-8 shrink-0 cursor-pointer items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
               data-blume-copy-install
-              data-command={tool.command}
+              data-command={source.command}
               type="button"
             >
               <svg
@@ -102,3 +193,5 @@ const tools = [
     }
   </div>
 </section>
+
+<script is:inline set:html={migrateScript} />
