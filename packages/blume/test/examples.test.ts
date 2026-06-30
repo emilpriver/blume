@@ -119,4 +119,29 @@ describe("discoverExamples", () => {
 
     await rm(reg, { force: true, recursive: true });
   });
+
+  it("accepts a glob, keying paths relative to its static prefix", async () => {
+    // A shadcn registry colocates each component's source (named exports, no
+    // default — the registry payload) with its example (default export). A bare
+    // dir would glob the sources too and fail to wrap them; a glob targets only
+    // the examples, keyed relative to the static prefix before the first wildcard.
+    const reg = await mkdtemp(join(tmpdir(), "blume-examples-glob-"));
+    const dir = join(reg, "registry", "files-sdk", "file-list");
+    const source = join(dir, "file-list.tsx");
+    const example = join(dir, "examples", "file-list-basic.tsx");
+    await mkdir(dirname(example), { recursive: true });
+    await writeFile(source, "export function FileList() {}");
+    await writeFile(example, "export default function Basic() {}");
+
+    const map = byPath(
+      await discoverExamples(reg, "registry/files-sdk/**/examples/*")
+    );
+    // The example is addressable, keyed relative to `registry/files-sdk`.
+    expect(map.has("file-list/examples/file-list-basic")).toBe(true);
+    // The colocated source (no default export to wrap) isn't swept in.
+    expect(map.has("file-list/file-list")).toBe(false);
+    expect(map.size).toBe(1);
+
+    await rm(reg, { force: true, recursive: true });
+  });
 });

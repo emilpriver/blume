@@ -1022,11 +1022,17 @@ export const blumeConfigSchema = z
     deployment: deploymentConfigSchema.default({}),
     description: z.string().optional(),
     /**
-     * Directory (relative to the project root) that `<Component path>` resolves
-     * live previews and their source against. Defaults to `examples`; point it
-     * elsewhere when examples live outside a top-level `examples/` — e.g. a
-     * registry layout like `registry/<pkg>`, where a `<Component path>` key is
-     * then relative to that directory.
+     * Where `<Component path>` resolves live previews and their source from,
+     * relative to the project root. Defaults to the `examples` directory; point
+     * it elsewhere when examples live outside a top-level `examples/`.
+     *
+     * May be a glob (anything with `*`/`?`/`[]`/`{}`/`!`), in which case only
+     * matching files are discovered and a `<Component path>` key is relative to
+     * the glob's static prefix. Use this for a registry layout that colocates
+     * component sources with their examples — `registry/<pkg>/**\/examples/*`
+     * targets just the examples, leaving the sources (which have no default
+     * export to wrap) out, so the registry needn't be forked into its own
+     * examples directory.
      */
     examples: z.string().default("examples"),
     export: exportConfigSchema.default(false),

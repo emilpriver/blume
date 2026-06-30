@@ -589,6 +589,26 @@ export default defineConfig({
 <Component path="file-list/basic" />
 ```
 
+`examples` can also be a glob (anything with `*`, `?`, `[]`, `{}`, or `!`). Only
+matching files are discovered, and `path` is relative to the glob's static prefix
+(the part before the first wildcard). This is for a registry that colocates each
+component's source with its example — point at just the examples so the sources,
+which have no default export to preview, aren't swept in:
+
+```ts
+// blume.config.ts
+export default defineConfig({
+  // registry/files-sdk/file-list/file-list.tsx — source, left out
+  // registry/files-sdk/file-list/examples/basic.tsx — discovered
+  examples: "registry/files-sdk/**/examples/*",
+});
+```
+
+```astro
+<!-- keyed relative to registry/files-sdk -->
+<Component path="file-list/examples/basic" />
+```
+
 <Component path="counter" />
 
 ```astro

@@ -40,25 +40,62 @@ const FRAMEWORK_BY_EXT: Record<string, ExampleFramework> = {
 };
 
 // Captures the extension so we can strip it from the path key and pick the
-// framework. Kept in sync with the glob below.
+// framework. Kept in sync with the glob below — non-matching files a user glob
+// happens to sweep in (e.g. a registry's `.ts` sources) are dropped here.
 const EXAMPLE_FILE = /\.(?<ext>astro|jsx|svelte|tsx|vue)$/u;
 
+// Renderable example files when `examples` names a plain directory.
+const DEFAULT_EXAMPLE_GLOB = "**/*.{astro,jsx,svelte,tsx,vue}";
+
+// Glob magic that turns `examples` from a plain directory into a pattern. `()`,
+// `@`, and `+` are excluded so literal path segments (npm scopes, parens) keep
+// resolving as directories; the extglob leads `*?!` still trigger here.
+const GLOB_MAGIC = /[!*?[\]{}]/u;
+
 /**
- * Discover preview examples under `<root>/<subdir>` (the `examples` config,
- * default `examples`). Every `.astro`/`.tsx`/`.jsx`/`.vue`/`.svelte` file
- * becomes addressable by `<Component path="...">`, where the path is the file's
- * location under that directory without its extension (e.g. `forms/login.tsx` →
- * `forms/login`). Discovery is path-based (a glob), so no example code is
- * executed. Framework examples carry a hydration mode (default `client:visible`,
- * overridable via `export const client`); `.astro` examples render statically
- * with no client directive.
+ * Split a glob into its static directory prefix and the remaining pattern, so
+ * discovered files can be keyed relative to that prefix (e.g.
+ * `registry/x/**\/examples/*` → `{ base: "registry/x", rest: "**\/examples/*" }`).
+ */
+const splitGlobBase = (pattern: string): { base: string; rest: string } => {
+  const segments = pattern.split("/");
+  const firstMagic = segments.findIndex((segment) => GLOB_MAGIC.test(segment));
+  if (firstMagic === -1) {
+    return { base: pattern, rest: "" };
+  }
+  return {
+    base: segments.slice(0, firstMagic).join("/"),
+    rest: segments.slice(firstMagic).join("/"),
+  };
+};
+
+/**
+ * Discover preview examples for the `examples` config (default `examples`).
+ * Every `.astro`/`.tsx`/`.jsx`/`.vue`/`.svelte` file becomes addressable by
+ * `<Component path="...">`, where the path is the file's location without its
+ * extension (e.g. `forms/login.tsx` → `forms/login`).
+ *
+ * `pattern` is a directory by default, but may be a glob (anything with
+ * `*`/`?`/`[]`/`{}`/`!`) — then only matching files are discovered and each
+ * `<Component path>` key is relative to the glob's static prefix. This lets a
+ * registry layout that colocates component sources with their examples be
+ * targeted directly (e.g. `registry/<pkg>/**\/examples/*`) without the sources —
+ * which have no default export and so can't be wrapped — being swept in.
+ *
+ * Discovery is path-based (a glob), so no example code is executed. Framework
+ * examples carry a hydration mode (default `client:visible`, overridable via
+ * `export const client`); `.astro` examples render statically with no client
+ * directive.
  */
 export const discoverExamples = async (
   root: string,
-  subdir = "examples"
+  pattern = "examples"
 ): Promise<ExampleDiscovery> => {
-  const dir = join(root, subdir);
-  const matches = await glob(["**/*.{astro,jsx,svelte,tsx,vue}"], {
+  const { base, rest } = GLOB_MAGIC.test(pattern)
+    ? splitGlobBase(pattern)
+    : { base: pattern, rest: DEFAULT_EXAMPLE_GLOB };
+  const dir = join(root, base);
+  const matches = await glob([rest], {
     absolute: true,
     cwd: dir,
     onlyFiles: true,

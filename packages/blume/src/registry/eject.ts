@@ -73,7 +73,7 @@ export const eject = async (root: string): Promise<string[]> => {
         : Promise.resolve(""),
       buildRawMarkdown(project),
       discoverIslands(root),
-      discoverExamples(root),
+      discoverExamples(root, config.examples),
     ]);
   // Island/example frameworks drive which Astro renderers the ejected config
   // wires in; React also switches on for project `.tsx`/`.jsx` and Ask AI.
