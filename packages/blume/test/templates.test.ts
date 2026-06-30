@@ -22,6 +22,7 @@ import {
   mcpEndpointTemplate,
   mcpPageFile,
   mixedbreadSearchEndpointTemplate,
+  notFoundPageTemplate,
   ogEndpointTemplate,
   rawMarkdownEndpointTemplate,
   rssEndpointTemplate,
@@ -270,6 +271,25 @@ describe("changelogIndexTemplate", () => {
       'import AskAI from "blume/components/islands/AskAI.astro"'
     );
     expect(out).toContain('<AskAI slot="ask"');
+  });
+});
+
+describe("notFoundPageTemplate", () => {
+  it("renders through PageLayout, prerendered and noindex", () => {
+    const out = notFoundPageTemplate();
+    expect(out).toContain(
+      'import PageLayout from "blume/components/layout/PageLayout.astro"'
+    );
+    expect(out).toContain("export const prerender = true;");
+    expect(out).toContain("noindex={true}");
+  });
+
+  it("pulls its copy from the translatable notFound UI strings", () => {
+    const out = notFoundPageTemplate();
+    expect(out).toContain("const nf = data.ui.notFound;");
+    expect(out).toContain("{nf.title}");
+    expect(out).toContain("{nf.description}");
+    expect(out).toContain("{nf.home}");
   });
 });
 

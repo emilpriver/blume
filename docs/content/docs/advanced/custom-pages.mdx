@@ -247,6 +247,44 @@ releases. When you want a layout that's fully yours,
 standard Astro project you own outright.
 :::
 
+## 404 page
+
+Blume ships a default **not found** page out of the box: a centered "404" message
+wrapped in the site chrome (header, search, theme), served for any unmatched URL.
+`blume build` writes it to `404.html`, which static hosts serve automatically, and
+`blume dev` shows it for unknown routes.
+
+To replace it with your own, add a `pages/404.astro`. It owns the `/404` route the
+same way `pages/changelog.astro` takes over the changelog — your page wins and the
+default is dropped. Build it like any other custom page, in `PageLayout` or
+`RootLayout`:
+
+```astro pages/404.astro lineNumbers
+---
+import PageLayout from "blume/components/layout/PageLayout.astro";
+import data from "blume:data";
+---
+
+<PageLayout
+  site={{ title: data.config.title, description: data.config.description }}
+  logo={data.config.logo}
+  navigation={data.navigation}
+  themeMode={data.config.theme.mode}
+  searchEnabled={data.config.search.enabled}
+  page={{ title: "Page not found", route: "/404" }}
+  noindex={true}
+>
+  <section class="mx-auto max-w-2xl px-6 py-24 text-center">
+    <h1>This page took a wrong turn</h1>
+    <a href="/">Back to home</a>
+  </section>
+</PageLayout>
+```
+
+To keep the default design but change its wording — including for other languages
+— override the `notFound` [UI strings](/docs/content/i18n) (`title`, `description`,
+`home`) via `i18n.ui`.
+
 ## Interactive pages
 
 Custom pages are ordinary Astro, so you can drop in React (or any framework)

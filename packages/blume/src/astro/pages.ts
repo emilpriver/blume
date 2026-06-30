@@ -27,6 +27,20 @@ export const discoverPages = async (
   });
 };
 
+/**
+ * Whether the project already owns `route` — through a custom `.astro` page
+ * (injected, so matched on `pattern`) or a content page (matched on `route`).
+ * Used to skip a generated default page (e.g. `/404`, `/changelog`) so a
+ * user-authored page overrides it without a route collision.
+ */
+export const routeIsTaken = (
+  pages: { pattern: string }[],
+  contentPages: { route: string }[],
+  route: string
+): boolean =>
+  pages.some((page) => page.pattern === route) ||
+  contentPages.some((page) => page.route === route);
+
 /** A custom-page route that should get a generated OG card. */
 export interface OgCustomRoute {
   /** `og/<slug>.png` path segment; `index` for the site root. */

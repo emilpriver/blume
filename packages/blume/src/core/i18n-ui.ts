@@ -50,6 +50,15 @@ const uiStringsObject = z.object({
       untranslated: z.string().default("Not translated"),
     })
     .default({}),
+  notFound: z
+    .object({
+      description: z
+        .string()
+        .default("We couldn't find the page you're looking for."),
+      home: z.string().default("Back to home"),
+      title: z.string().default("Page not found"),
+    })
+    .default({}),
   page: z
     .object({
       lastUpdated: z.string().default("Last updated on"),

@@ -12,7 +12,7 @@ import {
   detectNeedsReact,
 } from "../astro/generate.ts";
 import { discoverIslands } from "../astro/islands.ts";
-import { customOgRoutes, discoverPages } from "../astro/pages.ts";
+import { customOgRoutes, discoverPages, routeIsTaken } from "../astro/pages.ts";
 import {
   askEndpointTemplate,
   astroConfigTemplate,
@@ -25,6 +25,7 @@ import {
   islandMapTemplate,
   islandWrapperTemplate,
   mixedbreadSearchEndpointTemplate,
+  notFoundPageTemplate,
   ogEndpointTemplate,
   rawMarkdownEndpointTemplate,
   rssEndpointTemplate,
@@ -203,6 +204,16 @@ export const eject = async (root: string): Promise<string[]> => {
         customOgRoutes(pages, config.title, config.description)
       ),
       path: join(srcDir, "pages", "og", "[...slug].png.ts"),
+    });
+  }
+
+  // Default 404 page, unless the project already owns `/404` (a custom
+  // `pages/404.astro` or a `404.md` content page). The ejected project owns the
+  // file afterwards and can edit or remove it.
+  if (!routeIsTaken(pages, project.graph.pages, "/404")) {
+    files.push({
+      content: notFoundPageTemplate(),
+      path: join(srcDir, "pages", "404.astro"),
     });
   }
 

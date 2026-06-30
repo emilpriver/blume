@@ -45,7 +45,7 @@ import { buildThemeCss } from "../theme/palette.ts";
 import { twoslashCss } from "../theme/twoslash.ts";
 import { discoverExamples } from "./examples.ts";
 import { discoverIslands } from "./islands.ts";
-import { customOgRoutes, discoverPages } from "./pages.ts";
+import { customOgRoutes, discoverPages, routeIsTaken } from "./pages.ts";
 import {
   askEndpointTemplate,
   astroConfigTemplate,
@@ -61,6 +61,7 @@ import {
   mcpEndpointTemplate,
   mcpPageFile,
   mixedbreadSearchEndpointTemplate,
+  notFoundPageTemplate,
   ogEndpointTemplate,
   rawMarkdownEndpointTemplate,
   rssEndpointTemplate,
@@ -786,6 +787,25 @@ const writeMcpFiles = async (
   ]);
 };
 
+/**
+ * Write the default 404 page at Astro's reserved `src/pages/404.astro` path so
+ * static builds emit `dist/404.html`. Skipped when the project already owns
+ * `/404` (a custom `pages/404.astro` or a `404.md` content page), letting it be
+ * fully overridden without a route collision; `pruneOrphans` then removes any
+ * previously-generated copy.
+ */
+const writeNotFoundPage = async (
+  write: (path: string, content: string) => Promise<boolean>,
+  srcDir: string,
+  pages: { pattern: string }[],
+  contentPages: { route: string }[]
+): Promise<void> => {
+  if (routeIsTaken(pages, contentPages, "/404")) {
+    return;
+  }
+  await write(join(srcDir, "pages", "404.astro"), notFoundPageTemplate());
+};
+
 export interface GenerateResult {
   /** Whether any structural file changed (config/page/content config). */
   structuralChange: boolean;
@@ -984,6 +1004,9 @@ export const generateRuntime = async (
       changelogIndexTemplate({ askEnabled, exportEpub, exportPdf })
     );
   }
+
+  // The default 404 page (`/404`), unless the project already owns the route.
+  await writeNotFoundPage(write, srcDir, pages, project.graph.pages);
 
   // The provider-specific client loader behind the `blume:search-client` alias
   // is always (re)generated so the alias resolves even when search is disabled.

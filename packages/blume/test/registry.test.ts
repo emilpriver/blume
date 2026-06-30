@@ -90,6 +90,8 @@ describe("eject", () => {
     expect(has("src/pages/api/search.ts")).toBe(true);
     expect(has("src/pages/[section]/rss.xml.ts")).toBe(true);
     expect(has("src/pages/reference.astro")).toBe(true);
+    // The default 404 ships unless a custom page owns the route.
+    expect(has("src/pages/404.astro")).toBe(true);
 
     // Materialized assets copied across; the hidden runtime is removed.
     expect(has("public/blume-assets/img.png")).toBe(true);
@@ -130,6 +132,22 @@ describe("eject", () => {
 
     expect(existsSync(join(root, "src/generated/search.json"))).toBe(true);
     expect(existsSync(join(root, "src/pages/blume-search.json.ts"))).toBe(true);
+  });
+
+  it("keeps a custom pages/404.astro instead of the default", async () => {
+    const root = await mkdtemp(join(tmpdir(), "blume-eject-"));
+    ejectDirs.push(root);
+    await writeFiles(root, {
+      "docs/index.md": "---\ntitle: Home\n---\n# Home\n",
+      "pages/404.astro": "<h1>Gone</h1>\n",
+    });
+
+    await eject(root);
+
+    // The user's injected `/404` owns the route, so no default is written.
+    expect(existsSync(join(root, "src/pages/404.astro"))).toBe(false);
+    const astroConfig = readFileSync(join(root, "astro.config.mjs"), "utf-8");
+    expect(astroConfig).toContain("pages/404.astro");
   });
 });
 

@@ -416,6 +416,7 @@ describe("generateRuntime", () => {
     expect(has("src/pages/api/ask.ts")).toBe(true);
     expect(has("src/pages/og/[...slug].png.ts")).toBe(true);
     expect(has("src/pages/changelog.astro")).toBe(true);
+    expect(has("src/pages/404.astro")).toBe(true);
     expect(has("src/pages/blume-search.json.ts")).toBe(true);
     expect(has("src/generated/search.json")).toBe(true);
     expect(has("src/pages/[section]/rss.xml.ts")).toBe(true);
@@ -446,6 +447,37 @@ describe("generateRuntime", () => {
     );
     expect(catchAll).toContain("Math.astro");
     expect(catchAll).toContain("AskAI.astro");
+
+    // The default 404 renders through PageLayout and is kept out of search.
+    const notFound = await readFile(join(out, "src/pages/404.astro"), "utf-8");
+    expect(notFound).toContain("PageLayout");
+    expect(notFound).toContain("export const prerender = true;");
+    expect(notFound).toContain("noindex={true}");
+  });
+
+  it("skips the default 404 when a custom pages/404.astro owns the route", async () => {
+    const project = await scanProject(
+      await writeProject({
+        "docs/index.md": "# Home\n",
+        "pages/404.astro": "<h1>Gone</h1>\n",
+      })
+    );
+    const out = project.context.outDir;
+    await generateRuntime(project);
+    // The user's injected `/404` is the only one, so Blume writes no default.
+    expect(existsSync(join(out, "src/pages/404.astro"))).toBe(false);
+  });
+
+  it("skips the default 404 when a 404.md content page owns the route", async () => {
+    const project = await scanProject(
+      await writeProject({
+        "docs/404.md": "---\ntitle: Gone\n---\n# Gone\n",
+        "docs/index.md": "# Home\n",
+      })
+    );
+    const out = project.context.outDir;
+    await generateRuntime(project);
+    expect(existsSync(join(out, "src/pages/404.astro"))).toBe(false);
   });
 
   it("rewrites nothing on a second identical pass", async () => {
