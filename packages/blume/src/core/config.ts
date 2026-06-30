@@ -1,3 +1,5 @@
+import { detectMintlifyBridge } from "./bridge.ts";
+import type { BridgeDetection } from "./bridge.ts";
 import { applyDeploymentEnv } from "./deployment-env.ts";
 import { BlumeError, diagnosticsFromZod } from "./diagnostics.ts";
 import { createModuleLoader } from "./load-module.ts";
@@ -12,11 +14,20 @@ import type { Diagnostic } from "./types.ts";
  */
 export const defineConfig = (config: BlumeConfig): BlumeConfig => config;
 
+/** Bridge mode info: a foreign docs tool Blume is serving without migrating. */
+export interface ConfigBridge {
+  tool: "mintlify";
+  /** Absolute path of the foreign config file (`docs.json`/`mint.json`). */
+  configFile: string;
+}
+
 /** Result of loading + validating a project config. */
 export interface ConfigLoadResult {
   config: ResolvedConfig;
   /** Absolute path of the config file used, or null when defaults were used. */
   configFile: string | null;
+  /** Set when a foreign docs config (e.g. Mintlify) is being bridged. */
+  bridge: ConfigBridge | null;
   diagnostics: Diagnostic[];
 }
 
@@ -37,6 +48,9 @@ export const loadConfig = async (
 ): Promise<ConfigLoadResult> => {
   const configFile = findConfigFile(root);
 
+  // With no Blume config, a Mintlify `docs.json` activates bridge mode: serve
+  // the unconverted project by synthesizing config + a `mintlify` content source.
+  let bridge: BridgeDetection | null = null;
   let raw: unknown = {};
   if (configFile) {
     try {
@@ -49,18 +63,24 @@ export const loadConfig = async (
         severity: "error",
       });
     }
+  } else {
+    bridge = await detectMintlifyBridge(root);
+    if (bridge) {
+      ({ raw } = bridge);
+    }
   }
 
+  const sourceFile = bridge?.configFile ?? configFile;
   const parsed = blumeConfigSchema.safeParse(raw ?? {});
   if (!parsed.success) {
     const diagnostics = diagnosticsFromZod(parsed.error, {
       code: "BLUME_CONFIG_INVALID",
-      file: configFile ?? undefined,
+      file: sourceFile ?? undefined,
     });
     throw new BlumeError(
       diagnostics[0] ?? {
         code: "BLUME_CONFIG_INVALID",
-        file: configFile ?? undefined,
+        file: sourceFile ?? undefined,
         message: "Invalid Blume config.",
         severity: "error",
       }
@@ -78,12 +98,15 @@ export const loadConfig = async (
   const ogEnabled = config.seo.og.enabled ?? Boolean(site);
 
   return {
+    bridge: bridge
+      ? { configFile: bridge.configFile, tool: bridge.tool }
+      : null,
     config: {
       ...config,
       deployment: { ...config.deployment, site },
       seo: { ...config.seo, og: { ...config.seo.og, enabled: ogEnabled } },
     },
-    configFile,
+    configFile: sourceFile,
     diagnostics: [],
   };
 };

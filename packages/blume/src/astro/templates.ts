@@ -323,6 +323,15 @@ export const contentConfigTemplate = (options: {
   const { context, config } = options;
   const stagedBase = options.stagedBase ?? stagedContentDir(context.outDir);
 
+  // Fold the content excludes into the glob as negative patterns so the `docs`
+  // collection never walks into ignored trees. This matters when `content.root`
+  // is the project root (Mintlify bridge mode, or a migrated `.`-rooted project):
+  // without it the collection would scan `node_modules`, `snippets`, etc.
+  const docsPattern = [
+    ...config.content.include,
+    ...(config.content.exclude ?? []).map((pattern) => `!${pattern}`),
+  ];
+
   // Non-filesystem sources render through a parallel `staged` collection backed
   // by materialized MDX, so the filesystem `docs` collection stays untouched.
   const stagedBlock = options.staged
@@ -343,7 +352,7 @@ import { glob } from "astro/loaders";
 
 const docs = defineCollection({
   loader: glob({
-    pattern: ${JSON.stringify(config.content.include)},
+    pattern: ${JSON.stringify(docsPattern)},
     base: ${JSON.stringify(context.contentRoot)},
     generateId: ({ entry }) => entry,
   }),

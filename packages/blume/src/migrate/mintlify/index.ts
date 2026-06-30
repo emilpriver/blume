@@ -1,35 +1,18 @@
 import { existsSync } from "node:fs";
 import { mkdir, readFile, rename, rm, writeFile } from "node:fs/promises";
 
-import matter from "gray-matter";
 import { dirname, join } from "pathe";
 import { glob } from "tinyglobby";
 
 import type { BlumeConfig } from "../../core/schema.ts";
-import { stripUnknownPageMeta } from "../shared.ts";
 import { loadMintlifyConfig } from "./config.ts";
-import {
-  rewriteMintlifyCallouts,
-  rewriteMintlifyExampleBlocks,
-  rewriteSnippetImports,
-  unsupportedMintlifyComponents,
-} from "./content.ts";
-import { normalizeMintlifyPageMeta } from "./frontmatter.ts";
 import { mintlifyI18n } from "./i18n.ts";
-import { rewriteMintlifySvgIconProps } from "./icons.ts";
-import {
-  rewriteMintlifyGlobalVariables,
-  rewriteMintlifyMarkdownSnippets,
-  rewriteMintlifySnippetVariables,
-  rewriteMintlifyUserVariable,
-} from "./snippets.ts";
+import { transformMintlifyContent } from "./transform.ts";
 
 export interface MintlifyMigrationResult {
   moved: number;
   warnings: string[];
 }
-
-const USER_REFERENCE = /\{[^{}]*\buser\b/u;
 
 /** Recursively drop `undefined`, empty arrays, and empty objects. */
 const prune = (value: unknown): unknown => {
@@ -67,55 +50,6 @@ const writeBlumeConfig = async (
 ): Promise<void> => {
   const body = `import { defineConfig } from "blume";\n\nexport default defineConfig(${JSON.stringify(prune(config), null, 2)});\n`;
   await writeFile(join(root, "blume.config.ts"), body, "utf-8");
-};
-
-/** Apply the per-file source transforms that turn Mintlify MDX into Blume MDX. */
-const transformContent = async (
-  raw: string,
-  options: { filePath: string; root: string; variables: Record<string, string> }
-): Promise<{
-  components: string[];
-  content: string;
-  removed: string[];
-  unsupported: string[];
-}> => {
-  let text = await rewriteMintlifyMarkdownSnippets(raw, {
-    filePath: options.filePath,
-    root: options.root,
-  });
-  text = await rewriteMintlifySnippetVariables(text, {
-    filePath: options.filePath,
-    root: options.root,
-  });
-  text = rewriteMintlifyGlobalVariables(text, options.variables);
-  if (USER_REFERENCE.test(text)) {
-    text = rewriteMintlifyUserVariable(text);
-  }
-  const snippetImports = rewriteSnippetImports(text, {
-    filePath: options.filePath,
-    root: options.root,
-  });
-  text = snippetImports.source;
-  text = rewriteMintlifySvgIconProps(text);
-  text = rewriteMintlifyExampleBlocks(text);
-  text = rewriteMintlifyCallouts(text);
-
-  const unsupported = unsupportedMintlifyComponents(text);
-
-  const parsed = matter(text);
-  const mapped = normalizeMintlifyPageMeta(parsed.data);
-  const { data, removed } = stripUnknownPageMeta(mapped);
-  const content =
-    Object.keys(data).length > 0
-      ? matter.stringify(parsed.content, data)
-      : parsed.content;
-
-  return {
-    components: snippetImports.components,
-    content,
-    removed,
-    unsupported,
-  };
 };
 
 /** Move a referenced top-level asset path (file or dir) under `public/`. */
@@ -275,7 +209,7 @@ export const migrateMintlifyProject = async (
     // oxlint-disable-next-line no-await-in-loop -- sequential fs writes
     const raw = await readFile(file, "utf-8");
     // oxlint-disable-next-line no-await-in-loop -- sequential transforms
-    const result = await transformContent(raw, {
+    const result = await transformMintlifyContent(raw, {
       filePath: file,
       root,
       variables,

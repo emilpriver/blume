@@ -284,6 +284,30 @@ const notionSourceSchema = z.object({
 });
 
 /**
+ * In-place Mintlify content (`docs.json` + MDX). Powers "bridge mode": Blume
+ * reads an unconverted Mintlify project, transforming each page to Blume MDX at
+ * scan time. Injected automatically by `loadConfig` when a `docs.json` is found
+ * and no `blume.config.*` exists; can also be configured explicitly.
+ */
+const mintlifySourceSchema = z
+  .object({
+    /** Absolute path of the `docs.json`/`mint.json`, watched for changes in dev. */
+    configFile: z.string().optional(),
+    /** Patterns excluded from page discovery (Mintlify defaults are merged in). */
+    exclude: z.array(z.string()).default([]),
+    /** Glob patterns for Mintlify content files. */
+    include: z.array(z.string()).default(["**/*.{md,mdx}"]),
+    /** Namespaces the source's routes under `/<prefix>/`. */
+    prefix: z.string().optional(),
+    /** Content root, absolute or relative to the project root (Mintlify: `.`). */
+    root: z.string().default("."),
+    type: z.literal("mintlify"),
+    /** `docs.json` variables, inlined into content (`{{name}}`) at scan time. */
+    variables: z.record(z.string(), z.string()).default({}),
+  })
+  .strict();
+
+/**
  * A user-provided `ContentSource` instance, passed straight through from
  * `blume.config.ts`. This is the extension point that lets adapters with custom
  * serializers (or any backend) ship without their SDKs touching core.
@@ -306,6 +330,7 @@ const contentSourceSchema = z.discriminatedUnion("type", [
   mdxRemoteSourceSchema,
   sanitySourceSchema,
   notionSourceSchema,
+  mintlifySourceSchema,
   customSourceSchema,
 ]);
 

@@ -39,6 +39,12 @@ export const devCommand = defineCommand({
       strict: args.strict,
     });
 
+    if (project.bridge) {
+      logger.info(
+        'Detected docs.json — running in Mintlify bridge mode (no migration). Run "blume migrate mintlify" to convert permanently.'
+      );
+    }
+
     const server = await dev({
       logLevel: "info",
       root: project.context.outDir,

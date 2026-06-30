@@ -1,4 +1,5 @@
 import { loadConfig } from "./config.ts";
+import type { ConfigBridge } from "./config.ts";
 import { buildContentGraph } from "./graph.ts";
 import { i18nDiagnostics } from "./i18n.ts";
 import {
@@ -33,6 +34,8 @@ export interface BlumeProject {
   diagnostics: Diagnostic[];
   /** The instantiated content sources, for lazy entry reads (search/AI/raw). */
   sources: ContentSource[];
+  /** Set when serving a foreign docs config (e.g. Mintlify) without migrating. */
+  bridge: ConfigBridge | null;
 }
 
 /**
@@ -52,7 +55,7 @@ export const scanProject = async (
 ): Promise<BlumeProject> => {
   const mode = options.mode ?? "dev";
   const preview = options.preview ?? false;
-  const { config } = await loadConfig(root, {
+  const { bridge, config } = await loadConfig(root, {
     devServerUrl: options.devServerUrl,
   });
   const context = resolveProjectContext(root, config);
@@ -133,6 +136,7 @@ export const scanProject = async (
   const i18nWarnings = config.i18n ? i18nDiagnostics(pages, config.i18n) : [];
 
   return {
+    bridge,
     config,
     context,
     diagnostics: [
