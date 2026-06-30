@@ -76,6 +76,27 @@ const isolatedFixture = async (): Promise<{
   return { outDir, pkgDir, store };
 };
 
+// A hoisted layout where a sibling pulled a *different* astro to the project
+// root, shadowing Blume's own. `.blume/` resolves the wrong one by walking up,
+// while Blume's matching astro lives nested under the package. `mdxCoLocated`
+// toggles whether Blume's integration sits beside its astro (a repairable set)
+// or is hoisted away from it (a split layout only a root override can fix).
+const hoistedConflictFixture = async (
+  mdxCoLocated = true
+): Promise<{ depsDir: string; outDir: string; pkgDir: string }> => {
+  const projectModules = join(root, "node_modules");
+  await fakePackage(projectModules, "astro");
+  const pkgDir = join(projectModules, "blume");
+  const depsDir = join(pkgDir, "node_modules");
+  await fakePackage(depsDir, "astro");
+  // Co-located: the integration sits beside Blume's astro (a repairable set).
+  // Split: it's hoisted beside the shadowing astro instead.
+  await fakePackage(mdxCoLocated ? depsDir : projectModules, "@astrojs/mdx");
+  const outDir = join(root, ".blume");
+  await mkdir(outDir, { recursive: true });
+  return { depsDir, outDir, pkgDir };
+};
+
 describe("blumeDepsDir", () => {
   it("finds deps nested under the package (workspace source layout)", async () => {
     const pkgDir = join(root, "pkg");
@@ -135,6 +156,54 @@ describe("ensureDepsLink", () => {
     expect(resolvesAstro(outDir)).toBe(true);
 
     await ensureDepsLink(outDir, join(root, "does-not-matter"));
+
+    expect(existsSync(join(outDir, "node_modules"))).toBe(false);
+  });
+
+  it("is a no-op when .blume resolves Blume's own hoisted astro", async () => {
+    // Clean hoist: Blume's astro + integration sit at the project root, and
+    // `.blume/` walks up to the very same copy Blume uses. Nothing to repair.
+    const projectModules = join(root, "node_modules");
+    await fakePackage(projectModules, "astro");
+    await fakePackage(projectModules, "@astrojs/mdx");
+    const pkgDir = join(projectModules, "blume");
+    await mkdir(pkgDir, { recursive: true });
+    const outDir = join(root, ".blume");
+    await mkdir(outDir, { recursive: true });
+
+    await ensureDepsLink(outDir, pkgDir);
+
+    expect(existsSync(join(outDir, "node_modules"))).toBe(false);
+  });
+
+  it("links Blume's deps when the project resolves a shadowing astro", async () => {
+    // A hoisted sibling pulled a *different* astro to the project root; `.blume/`
+    // resolves it by walking up. Astro "resolves", but to the wrong copy — the
+    // old can-astro-resolve guard skipped this and @astrojs/mdx bound to the
+    // shadow. Now we link Blume's own consistent (astro + mdx) set in.
+    const { depsDir, outDir, pkgDir } = await hoistedConflictFixture();
+    expect(resolvesAstro(outDir)).toBe(true);
+
+    await ensureDepsLink(outDir, pkgDir);
+
+    const link = join(outDir, "node_modules");
+    const stats = await lstat(link);
+    expect(stats.isSymbolicLink()).toBe(true);
+    expect(await readlink(link)).toBe(depsDir);
+    expect(existsSync(join(link, "astro", "package.json"))).toBe(true);
+    expect(existsSync(join(link, "@astrojs", "mdx", "package.json"))).toBe(
+      true
+    );
+  });
+
+  it("leaves a split layout (integration hoisted away from astro) untouched", async () => {
+    // Blume's astro is nested but @astrojs/mdx is hoisted beside the shadowing
+    // astro — no single directory holds a consistent set, so a symlink can't
+    // fix it. We leave it for a root `overrides`/`resolutions` pin rather than
+    // half-fix astro while mdx still binds to the wrong copy.
+    const { outDir, pkgDir } = await hoistedConflictFixture(false);
+
+    await ensureDepsLink(outDir, pkgDir);
 
     expect(existsSync(join(outDir, "node_modules"))).toBe(false);
   });

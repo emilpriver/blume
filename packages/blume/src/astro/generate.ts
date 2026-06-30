@@ -1,4 +1,4 @@
-import { existsSync, readFileSync } from "node:fs";
+import { existsSync, readFileSync, realpathSync } from "node:fs";
 import {
   lstat,
   mkdir,
@@ -86,16 +86,29 @@ const canResolveFrom = (fromDir: string, spec: string): boolean => {
   }
 };
 
-/** Whether Astro resolves from a directory via normal node resolution. */
-const canResolveAstro = (fromDir: string): boolean =>
-  canResolveFrom(fromDir, "astro/package.json");
+/**
+ * Realpath of the `astro` package node resolves from a directory, or null when
+ * none resolves. Comparing this for `.blume/` against Blume's own deps tells
+ * whether the runtime would bind to the *same* astro Blume uses or a different
+ * one shadowing it (the hoisted-conflict failure mode).
+ */
+const resolvedAstroPath = (fromDir: string): string | null => {
+  try {
+    const pkg = createRequire(
+      pathToFileURL(join(fromDir, "_.js")).href
+    ).resolve("astro/package.json");
+    return realpathSync(pkg);
+  } catch {
+    return null;
+  }
+};
 
 /**
  * Locate the directory that holds Blume's installed dependencies (Astro and its
  * integrations).
  *
- * With hoisted installs this is moot — the deps sit in a `node_modules` the
- * generated `.blume/` already walks up into, and {@link canResolveAstro}
+ * With a clean hoisted install this is moot — the deps sit in a `node_modules`
+ * the generated `.blume/` already walks up into, and {@link ensureDepsLink}
  * short-circuits before we need it. But under isolated linkers (Bun's
  * `isolated` mode, pnpm) Blume's deps are NOT hoisted into the project; they
  * live beside the Blume package in a virtual store, invisible to the upward
@@ -115,30 +128,45 @@ export const blumeDepsDir = (pkgDir: string = packageRoot()): string | null => {
 };
 
 /**
- * Make the generated runtime resolve Astro and its integrations. When they are
- * hoisted into the project (the usual case for published installs), resolution
- * already works and this is a no-op. When they are unreachable from `.blume/`
- * (workspaces under isolated linkers, strict package managers), symlink Blume's
- * dependency directory in as `.blume/node_modules`, so the generated config's
- * bare specifiers (`astro`, `@astrojs/mdx`, …) resolve without the project
- * having to redeclare Blume's deps.
+ * Make the generated runtime resolve Astro and its integrations against Blume's
+ * own dependency set. Two failure modes this repairs:
+ *
+ *   - Astro is *unreachable* from `.blume/` (workspaces under isolated linkers,
+ *     pnpm) — the deps live in a store the upward walk can't see.
+ *   - Astro *resolves to the wrong copy* — a hoisted sibling pinned an older
+ *     major (e.g. `astro@6` for a type-only import) that shadows Blume's
+ *     `astro@7`, so `@astrojs/mdx@7` binds to it and crashes the build on a
+ *     missing export. Resolving merely *an* astro isn't enough; it must be the
+ *     same one Blume uses.
+ *
+ * In both cases we symlink Blume's dependency directory in as
+ * `.blume/node_modules` so the generated config's bare specifiers (`astro`,
+ * `@astrojs/mdx`, …) bind to the matching set. We only do this when those deps
+ * are a *co-located, consistent* set (astro beside the `@astrojs/mdx` that binds
+ * to it). A split layout — an integration hoisted away from a conflicting astro
+ * — can't be made consistent by a single symlink and needs a root `overrides`/
+ * `resolutions` pin instead, so we leave it untouched rather than half-fix it.
  */
 export const ensureDepsLink = async (
   outDir: string,
   pkgDir: string = packageRoot()
 ): Promise<void> => {
-  if (canResolveAstro(outDir)) {
+  const depsDir = blumeDepsDir(pkgDir);
+  if (!depsDir || !existsSync(join(depsDir, "@astrojs", "mdx"))) {
     return;
   }
-  const depsDir = blumeDepsDir(pkgDir);
-  if (!depsDir) {
+  // Already correct when `.blume/` resolves the very same astro Blume's deps
+  // provide — the clean hoisted case. Otherwise (unreachable, or a different
+  // astro shadowing Blume's) link Blume's deps in.
+  const blumeAstro = resolvedAstroPath(depsDir);
+  if (blumeAstro && resolvedAstroPath(outDir) === blumeAstro) {
     return;
   }
   const link = join(outDir, "node_modules");
   // `lstat`, not `existsSync`, so a broken junction (target since moved) is
   // still detected — `existsSync` follows the link and reports a dangling one
-  // as absent. Reaching here means Astro doesn't resolve from `outDir`, so any
-  // existing link is stale: replace a link we own (a junction/symlink) and
+  // as absent. Reaching here means `outDir` doesn't resolve Blume's astro, so
+  // any existing link is stale: replace a link we own (a junction/symlink) and
   // leave a real directory untouched.
   const existing = await lstat(link).catch(() => null);
   if (existing) {
