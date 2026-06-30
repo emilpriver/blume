@@ -1,3 +1,4 @@
+import GithubSlugger from "github-slugger";
 import { extname } from "pathe";
 
 import { diagnosticsFromZod } from "../diagnostics.ts";
@@ -19,7 +20,12 @@ const stripNumericPrefix = (segment: string): string =>
 const groupLabel = (segment: string): string | null =>
   segment.match(GROUP_FOLDER)?.groups?.label ?? null;
 
-/** GitHub-style heading slugifier. */
+/**
+ * Slugify a content/route slug (Sanity, Notion, frontmatter `slug`). Heading
+ * anchor ids are *not* slugged here — they use a `github-slugger` in
+ * {@link extractHeadings}, matching the renderer (see `markdown/heading-anchors`)
+ * so `blume validate` checks anchors against the exact rendered heading ids.
+ */
 export const slugify = (text: string): string =>
   text
     .toLowerCase()
@@ -70,9 +76,19 @@ const mapRoute = (
 const CODE_FENCE = /^```/u;
 const ATX_HEADING = /^(?<hashes>#{1,6})\s+(?<text>.+?)\s*#*$/u;
 
-/** Extract ATX headings from markdown body, skipping fenced code blocks. */
+/**
+ * Extract ATX headings from a markdown body, skipping fenced code blocks. Each
+ * heading's anchor slug comes from a per-document `github-slugger` — the exact
+ * slugger the renderer uses (`markdown/heading-anchors`) — advanced over every
+ * `#`–`######` in document order. Matching it (rather than a hand-rolled
+ * slugify) keeps the manifest's anchor ids identical to the rendered ones, so
+ * `blume validate` stops false-flagging links like `#the-read--write-fallback`
+ * (a hand slugify collapses `--`; github-slugger keeps it) and resolves repeated
+ * headings the same way (`setup`, `setup-1`).
+ */
 export const extractHeadings = (body: string): Heading[] => {
   const headings: Heading[] = [];
+  const slugger = new GithubSlugger();
   let inFence = false;
 
   for (const line of body.split("\n")) {
@@ -87,7 +103,7 @@ export const extractHeadings = (body: string): Heading[] => {
     if (match?.groups) {
       const depth = match.groups.hashes?.length ?? 1;
       const text = (match.groups.text ?? "").trim();
-      headings.push({ depth, slug: slugify(text), text });
+      headings.push({ depth, slug: slugger.slug(text), text });
     }
   }
 

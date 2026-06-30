@@ -209,6 +209,20 @@ describe(extractHeadings, () => {
     const headings = extractHeadings(body);
     expect(headings.map((h) => h.text)).toStrictEqual(["Title", "Real"]);
   });
+
+  it("slugs anchors like the renderer: keeps `--` and disambiguates dupes", () => {
+    const body = ["## The read & write fallback", "## Setup", "## Setup"].join(
+      "\n"
+    );
+    // A hand slugify would collapse `--` and repeat `setup`, mismatching the
+    // github-slugger ids the renderer emits — the source of validate's false
+    // "broken anchor" reports.
+    expect(extractHeadings(body).map((h) => h.slug)).toStrictEqual([
+      "the-read--write-fallback",
+      "setup",
+      "setup-1",
+    ]);
+  });
 });
 
 describe("content graph", () => {
