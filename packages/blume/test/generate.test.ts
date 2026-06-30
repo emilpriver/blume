@@ -308,6 +308,59 @@ describe("buildRuntimeData", () => {
       type: "image/svg+xml",
     });
   });
+
+  it("references a public apple touch icon by url", async () => {
+    const project = await scanProject(
+      await writeProject({
+        "docs/index.md": "# Home\n",
+        "public/apple-icon.png": "FAKEPNG",
+      })
+    );
+    const data = JSON.parse(buildRuntimeData(project));
+    expect(data.config.appleIcon).toEqual({
+      href: "/apple-icon.png",
+      type: "image/png",
+    });
+  });
+
+  it("maps the apple touch icon mime for jpg files", async () => {
+    const project = await scanProject(
+      await writeProject({
+        "docs/index.md": "# Home\n",
+        "public/apple-icon.jpg": "FAKEJPG",
+      })
+    );
+    const data = JSON.parse(buildRuntimeData(project));
+    expect(data.config.appleIcon).toEqual({
+      href: "/apple-icon.jpg",
+      type: "image/jpeg",
+    });
+  });
+
+  it("inlines a root apple touch icon as a data uri", async () => {
+    const project = await scanProject(
+      await writeProject({
+        "apple-touch-icon.png": "FAKEPNG",
+        "docs/index.md": "# Home\n",
+      })
+    );
+    const data = JSON.parse(buildRuntimeData(project));
+    expect(
+      data.config.appleIcon.href.startsWith("data:image/png;base64,")
+    ).toBe(true);
+  });
+
+  it("emits no apple touch icon when the project ships none", async () => {
+    const project = await scanProject(
+      await writeProject({
+        "docs/index.md": "# Home\n",
+      })
+    );
+    const data = JSON.parse(buildRuntimeData(project));
+    expect(data.config.appleIcon).toBeNull();
+    // The favicon is independent and still falls back to the bundled default.
+    expect(data.config.favicon.href.startsWith("data:image/png")).toBe(true);
+  });
 });
 
 const KITCHEN_SINK: Record<string, string> = {

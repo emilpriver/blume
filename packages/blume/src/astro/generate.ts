@@ -307,6 +307,8 @@ const FAVICON_CANDIDATES = [
 /** `<link type>` MIME for the favicon extensions we recognize. */
 const FAVICON_TYPES: Record<string, string> = {
   ico: "image/x-icon",
+  jpeg: "image/jpeg",
+  jpg: "image/jpeg",
   png: "image/png",
   svg: "image/svg+xml",
 };
@@ -328,27 +330,58 @@ const defaultFavicon = (): ResolvedFavicon => ({
 });
 
 /**
- * Resolve the site favicon by convention. An `icon.*`/`favicon.*` file in
- * `public/` is served as-is and referenced by URL; one at the project root is
- * inlined as a data URI (the root isn't a served directory). Falls back to the
- * bundled Blume mark when the project ships no icon.
+ * Apple touch icon filenames Blume auto-detects, in priority order. Mirrors the
+ * Next.js `apple-icon.*` convention (plus the `apple-touch-icon.png` most favicon
+ * generators emit): a match in `public/` or the project root becomes the iOS
+ * home-screen icon, no config required.
  */
-const resolveFavicon = (project: BlumeProject): ResolvedFavicon => {
+const APPLE_ICON_CANDIDATES = [
+  "apple-icon.png",
+  "apple-icon.jpg",
+  "apple-icon.jpeg",
+  "apple-touch-icon.png",
+];
+
+/**
+ * Resolve an icon file by convention. A candidate in `public/` is served as-is
+ * and referenced by URL; one at the project root is inlined as a data URI (the
+ * root isn't a served directory). Returns null when the project ships none.
+ */
+const resolveIconFile = (
+  project: BlumeProject,
+  candidates: string[]
+): ResolvedFavicon | null => {
   const { root } = project.context;
-  for (const name of FAVICON_CANDIDATES) {
+  for (const name of candidates) {
     if (existsSync(join(root, "public", name))) {
       return { href: `/${name}`, type: faviconType(name) };
     }
   }
-  for (const name of FAVICON_CANDIDATES) {
+  for (const name of candidates) {
     const file = join(root, name);
     if (existsSync(file)) {
       const type = faviconType(name);
       return { href: inlineDataUri(file, type ?? "image/x-icon"), type };
     }
   }
-  return defaultFavicon();
+  return null;
 };
+
+/**
+ * Resolve the site favicon by convention, falling back to the bundled Blume mark
+ * when the project ships no `icon.*`/`favicon.*` file.
+ */
+const resolveFavicon = (project: BlumeProject): ResolvedFavicon =>
+  resolveIconFile(project, FAVICON_CANDIDATES) ?? defaultFavicon();
+
+/**
+ * Resolve the Apple touch icon by convention, or null when the project ships
+ * none (unlike the favicon, there's no bundled default). Note: iOS ignores
+ * `data:`-URI apple-touch-icons, so a `public/` file (served by URL) is the
+ * reliable path; a root-level file is still inlined for symmetry with favicons.
+ */
+const resolveAppleIcon = (project: BlumeProject): ResolvedFavicon | null =>
+  resolveIconFile(project, APPLE_ICON_CANDIDATES);
 
 /** The announcement banner shape the runtime consumes. */
 interface ResolvedBanner {
@@ -443,6 +476,7 @@ export const buildRuntimeData = (project: BlumeProject): string => {
   const data = {
     config: {
       analytics: config.analytics ?? null,
+      appleIcon: resolveAppleIcon(project),
       banner: resolveBanner(config),
       codeWrap: config.markdown.code.wrap,
       description: config.description,
