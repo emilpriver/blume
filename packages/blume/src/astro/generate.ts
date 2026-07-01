@@ -814,6 +814,28 @@ export interface GenerateResult {
 }
 
 /**
+ * Whether to generate the default `/changelog` index. Written when there are
+ * `type: changelog` entries — or when a release-backed changelog source is
+ * configured, so its route (and any nav tab pointing at it) still resolves to an
+ * empty timeline on a build where the source could not be fetched (e.g. CI
+ * without a token). Skipped when a user content page already owns `/changelog`.
+ */
+const shouldGenerateChangelog = (project: BlumeProject): boolean => {
+  const hasChangelog = project.graph.pages.some(
+    (page) =>
+      page.contentType === "changelog" &&
+      !(page.meta.draft || page.meta.sidebar.hidden)
+  );
+  const hasChangelogSource = (project.config.content.sources ?? []).some(
+    (source) => source.type === "github-releases"
+  );
+  const changelogRouteTaken = project.graph.pages.some(
+    (page) => page.route === "/changelog"
+  );
+  return (hasChangelog || hasChangelogSource) && !changelogRouteTaken;
+};
+
+/**
  * Write (or update) the generated `.blume/` Astro runtime for a project.
  * Only files whose content changed are rewritten so Vite HMR stays fast.
  */
@@ -987,18 +1009,8 @@ export const generateRuntime = async (
     );
   }
 
-  // Changelog index (`/changelog`): a timeline of every `type: changelog` entry,
-  // rendered through the Update layout. Skipped when there are no entries, or
-  // when a user content page already occupies the `/changelog` route.
-  const hasChangelog = project.graph.pages.some(
-    (page) =>
-      page.contentType === "changelog" &&
-      !(page.meta.draft || page.meta.sidebar.hidden)
-  );
-  const changelogRouteTaken = project.graph.pages.some(
-    (page) => page.route === "/changelog"
-  );
-  if (hasChangelog && !changelogRouteTaken) {
+  // Changelog index (`/changelog`), rendered through the Update timeline layout.
+  if (shouldGenerateChangelog(project)) {
     await write(
       join(srcDir, "pages", "changelog.astro"),
       changelogIndexTemplate({

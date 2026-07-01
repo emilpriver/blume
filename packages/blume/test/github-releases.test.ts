@@ -312,7 +312,7 @@ describe("githubReleasesSource", () => {
     );
   });
 
-  it("throws when the API fails and no cache exists", async () => {
+  it("degrades to an empty changelog with a warning when the API fails and no cache exists", async () => {
     const source = githubReleasesSource(
       {
         fetchImpl: failingFetch,
@@ -322,7 +322,12 @@ describe("githubReleasesSource", () => {
       },
       ctxFor(await tempDir())
     );
-    expect(source.load()).rejects.toThrow();
+    const result = await source.load();
+    expect(result.entries).toHaveLength(0);
+    expect(result.diagnostics[0]?.code).toBe("BLUME_SOURCE_UNAVAILABLE");
+    expect(result.diagnostics[0]?.severity).toBe("warning");
+    // read() is safe after a failed load.
+    expect(await source.read?.("anything.md")).toBe("");
   });
 
   it("serves the cached snapshot when a later fetch fails", async () => {
@@ -460,5 +465,50 @@ describe("generateRuntime with a staged changelog source", () => {
     expect(existsSync(changelog)).toBe(true);
     const source = await readFile(changelog, "utf-8");
     expect(source).toContain('...(await getCollection("staged")),');
+  });
+
+  it("still generates the /changelog page when the releases source yields nothing", async () => {
+    const root = await mkdtemp(join(tmpdir(), "blume-empty-cl-"));
+    dirs.push(root);
+    const files: Record<string, string> = {
+      "blume.config.ts": `export default {
+  content: {
+    sources: [
+      { root: "docs", type: "filesystem" },
+      { owner: "acme", prefix: "changelog", repo: "sdk", type: "github-releases" },
+    ],
+  },
+};
+`,
+      "docs/index.md": "# Home\n",
+    };
+    await Promise.all(
+      Object.entries(files).map(async ([rel, content]) => {
+        const abs = join(root, rel);
+        await mkdir(dirname(abs), { recursive: true });
+        await writeFile(abs, content);
+      })
+    );
+
+    // The releases API returns no releases, so the source materializes nothing —
+    // the page must still be generated so its nav tab does not 404.
+    const originalFetch = globalThis.fetch;
+    globalThis.fetch = (() =>
+      Promise.resolve({
+        json: () => Promise.resolve([]),
+        ok: true,
+        status: 200,
+      } as unknown as Response)) as unknown as typeof fetch;
+    try {
+      const project = await scanProject(root, { mode: "build" });
+      await generateRuntime(project);
+      const changelog = join(
+        project.context.outDir,
+        "src/pages/changelog.astro"
+      );
+      expect(existsSync(changelog)).toBe(true);
+    } finally {
+      globalThis.fetch = originalFetch;
+    }
   });
 });

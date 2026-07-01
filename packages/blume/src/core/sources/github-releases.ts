@@ -146,17 +146,35 @@ export const githubReleasesSource = (
   };
 
   const load = async (): Promise<SourceLoadResult> => {
-    const result = await loadWithCache(
-      options.name,
-      cache,
-      async () => {
-        const releases = await fetchReleases();
-        return releases.map(releaseToEntry);
-      },
-      ctx.refresh ?? true
-    );
-    snapshot = new Map(result.entries.map((entry) => [entry.ref, entry]));
-    return result;
+    try {
+      const result = await loadWithCache(
+        options.name,
+        cache,
+        async () => {
+          const releases = await fetchReleases();
+          return releases.map(releaseToEntry);
+        },
+        ctx.refresh ?? true
+      );
+      snapshot = new Map(result.entries.map((entry) => [entry.ref, entry]));
+      return result;
+    } catch (error) {
+      // A changelog is supplementary. When releases can't be fetched and nothing
+      // is cached (e.g. CI or a deploy without a `GITHUB_TOKEN` for a private
+      // repo), degrade to an empty changelog with a warning rather than failing
+      // the whole build.
+      snapshot = new Map();
+      return {
+        diagnostics: [
+          {
+            code: "BLUME_SOURCE_UNAVAILABLE",
+            message: `Source "${options.name}" could not fetch GitHub releases (${(error as Error).message}); the changelog will be empty. Set GITHUB_TOKEN to include it (required for a private repository).`,
+            severity: "warning",
+          },
+        ],
+        entries: [],
+      };
+    }
   };
 
   const read = async (ref: string): Promise<string> => {
