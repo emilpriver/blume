@@ -5,7 +5,8 @@ description: Author release notes as content, and Blume builds a timeline page a
 
 Blume ships a changelog out of the box. Write each release as a normal content
 file, mark it `type: changelog`, and Blume collects every entry into a generated
-timeline page and an RSS feed — no layout to build, no list to maintain.
+timeline page and an RSS feed — no layout to build, no list to maintain. Or skip
+the files entirely and [source your changelog from GitHub Releases](#from-github-releases).
 
 ## Write an entry
 
@@ -71,6 +72,32 @@ The page appears only when nothing already occupies the `/changelog` route. To
 replace it with your own design, add a [custom page](/docs/advanced/custom-pages) at
 `pages/changelog.astro` — it takes over and Blume stops generating the default
 timeline.
+
+## From GitHub Releases
+
+Rather than authoring entries by hand, point the built-in
+[`github-releases` source](/docs/content/sources#github-releases) at a repo and
+every release becomes a `type: changelog` entry — the same timeline and feed,
+fed straight from the releases you already publish:
+
+```ts blume.config.ts
+content: {
+  sources: [
+    { type: "filesystem", root: "content" },
+    {
+      type: "github-releases",
+      prefix: "changelog",
+      owner: "acme",
+      repo: "sdk",
+    },
+  ],
+}
+```
+
+The release name becomes the title, its tag becomes `changelog.version`, and its
+published date sorts the timeline. A private repo authenticates with the
+`GITHUB_TOKEN` environment variable. See
+[Content sources](/docs/content/sources#github-releases) for every option.
 
 ## The RSS feed
 

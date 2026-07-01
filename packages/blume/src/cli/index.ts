@@ -11,6 +11,7 @@ import { migrateCommand } from "./commands/migrate.ts";
 import { previewCommand } from "./commands/preview.ts";
 import { syncCommand } from "./commands/sync.ts";
 import { validateCommand } from "./commands/validate.ts";
+import { loadEnvFiles } from "./env.ts";
 
 const main = defineCommand({
   meta: {
@@ -31,5 +32,9 @@ const main = defineCommand({
     validate: validateCommand,
   },
 });
+
+// Load `.env`/`.env.local` before any command runs so remote content sources
+// can read their tokens (e.g. `GITHUB_TOKEN`) during the content scan.
+loadEnvFiles(process.cwd());
 
 runMain(main);

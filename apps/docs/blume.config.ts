@@ -14,6 +14,18 @@ export default defineConfig({
   },
   content: {
     root: "content",
+    sources: [
+      // Local docs under content/
+      { root: "content", type: "filesystem" },
+      // The changelog is sourced from this repo's GitHub releases. Private repo,
+      // so the API token is read from GITHUB_TOKEN (.env.local / .env).
+      {
+        owner: "haydenbleasel",
+        prefix: "changelog",
+        repo: "blume",
+        type: "github-releases",
+      },
+    ],
   },
   deployment: {
     site: "https://blume.dev",
@@ -38,6 +50,7 @@ export default defineConfig({
     tabs: [
       { label: "Home", path: "/" },
       { label: "Docs", path: "/docs" },
+      { label: "Changelog", path: "/changelog" },
     ],
   },
   // The "Example API" navbar tab is added automatically from this reference.

@@ -88,6 +88,46 @@ a remote source for changes instead, set `pollInterval` (seconds) on it — the
 dev server re-fetches on that interval and reloads only when the content
 actually changes. Leave it unset to avoid hitting the API while you work.
 
+## GitHub Releases
+
+The built-in `github-releases` source turns a repo's releases into a changelog:
+each release becomes a `type: changelog` entry, so your release notes _are_ your
+changelog — nothing to write twice. Combined with the generated
+[changelog timeline](/docs/advanced/changelog), publishing a GitHub release
+ships a changelog entry.
+
+```ts blume.config.ts
+import { defineConfig } from "blume";
+
+export default defineConfig({
+  content: {
+    sources: [
+      { type: "filesystem", root: "content" },
+      {
+        type: "github-releases",
+        prefix: "changelog",
+        owner: "acme",
+        repo: "sdk",
+        // prereleases: false,  // include prereleases (default off)
+        // drafts: false,       // include drafts (needs a write token)
+        // limit: 100,          // cap releases, newest-first
+      },
+    ],
+  },
+});
+```
+
+Each release maps to the changelog fields automatically: its name (or tag)
+becomes the title, its published date drives the timeline order, the tag becomes
+`changelog.version`, and prereleases are tagged `Prerelease` (others `Release`).
+The notes render as the entry body. Give the source a `prefix` so its release
+pages nest under a route like `/changelog/v1-2-0`.
+
+A private repo authenticates with the `GITHUB_TOKEN` environment variable — the
+same token the other GitHub features use, never inlined into your config. Like
+every remote source it's cached under `.blume/cache/<source>/` and served
+offline if the API is unreachable.
+
 ## Sanity
 
 The built-in `sanity` source runs a GROQ query and maps each document's fields

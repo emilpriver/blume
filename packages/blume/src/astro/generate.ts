@@ -1001,7 +1001,12 @@ export const generateRuntime = async (
   if (hasChangelog && !changelogRouteTaken) {
     await write(
       join(srcDir, "pages", "changelog.astro"),
-      changelogIndexTemplate({ askEnabled, exportEpub, exportPdf })
+      changelogIndexTemplate({
+        askEnabled,
+        exportEpub,
+        exportPdf,
+        staged: hasStaged,
+      })
     );
   }
 

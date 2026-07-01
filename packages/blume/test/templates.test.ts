@@ -254,11 +254,23 @@ describe("exampleMapTemplate", () => {
 
 describe("changelogIndexTemplate", () => {
   it("imports layout overrides and passes them to RootLayout", () => {
-    const out = changelogIndexTemplate(exportOpts);
+    const out = changelogIndexTemplate({ ...exportOpts, staged: false });
     expect(out).toContain(
       'import { layoutOverrides } from "../generated/components.ts"'
     );
     expect(out).toContain("layout={layoutOverrides}");
+  });
+
+  it("reads only the docs collection when no staged sources exist", () => {
+    const out = changelogIndexTemplate({ ...exportOpts, staged: false });
+    expect(out).toContain('...(await getCollection("docs")),');
+    expect(out).not.toContain('getCollection("staged")');
+  });
+
+  it("folds in the staged collection when staged sources exist", () => {
+    const out = changelogIndexTemplate({ ...exportOpts, staged: true });
+    expect(out).toContain('...(await getCollection("docs")),');
+    expect(out).toContain('...(await getCollection("staged")),');
   });
 
   it("includes the AskAI slot when ask is enabled", () => {
@@ -266,6 +278,7 @@ describe("changelogIndexTemplate", () => {
       askEnabled: true,
       exportEpub: false,
       exportPdf: false,
+      staged: false,
     });
     expect(out).toContain(
       'import AskAI from "blume/components/islands/AskAI.astro"'

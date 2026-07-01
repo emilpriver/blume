@@ -3,6 +3,7 @@ import { BlumeError, hasErrors } from "../core/diagnostics.ts";
 import { scanProject } from "../core/project-graph.ts";
 import type { BlumeProject, BuildMode } from "../core/project-graph.ts";
 import { serverFeatures } from "../core/server-features.ts";
+import { loadEnvFiles } from "./env.ts";
 import { logger, reportDiagnostics } from "./log.ts";
 
 export interface PrepareOptions {
@@ -24,6 +25,10 @@ export interface PrepareOptions {
 export const prepareProject = async (
   options: PrepareOptions
 ): Promise<BlumeProject> => {
+  // Honor a `--root` that differs from cwd: remote sources read env during the
+  // scan below, and `loadEnvFiles` is a no-op for vars already set (cwd load).
+  loadEnvFiles(options.root);
+
   let project: BlumeProject;
   try {
     project = await scanProject(options.root, {

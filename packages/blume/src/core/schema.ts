@@ -284,6 +284,31 @@ const notionSourceSchema = z.object({
 });
 
 /**
+ * A repo's GitHub Releases, materialized as `type: changelog` entries — release
+ * notes become the changelog with no files to maintain. A private repo reads a
+ * token from `GITHUB_TOKEN`; it is never inlined here.
+ */
+const githubReleasesSourceSchema = z
+  .object({
+    /** Include draft releases (needs a token with repo write access). */
+    drafts: z.boolean().optional(),
+    /** Cap the number of releases materialized, newest-first. Default 100. */
+    limit: z.number().positive().optional(),
+    /** Repository owner (user or org). */
+    owner: z.string(),
+    /** Opt-in dev polling interval (seconds); omit to freeze for the session. */
+    pollInterval: z.number().positive().optional(),
+    /** Namespaces the source's routes under `/<prefix>/`; e.g. `changelog`. */
+    prefix: z.string().optional(),
+    /** Include prereleases. */
+    prereleases: z.boolean().optional(),
+    /** Repository name. */
+    repo: z.string(),
+    type: z.literal("github-releases"),
+  })
+  .strict();
+
+/**
  * In-place Mintlify content (`docs.json` + MDX). Powers "bridge mode": Blume
  * reads an unconverted Mintlify project, transforming each page to Blume MDX at
  * scan time. Injected automatically by `loadConfig` when a `docs.json` is found
@@ -328,6 +353,7 @@ const customSourceSchema = z.object({
 const contentSourceSchema = z.discriminatedUnion("type", [
   filesystemSourceSchema,
   mdxRemoteSourceSchema,
+  githubReleasesSourceSchema,
   sanitySourceSchema,
   notionSourceSchema,
   mintlifySourceSchema,

@@ -3,6 +3,7 @@ import { join } from "pathe";
 import type { ContentSourceConfig, ResolvedConfig } from "../schema.ts";
 import type { ProjectContext } from "../types.ts";
 import { filesystemSource } from "./filesystem.ts";
+import { githubReleasesSource } from "./github-releases.ts";
 import { mdxRemoteSource } from "./mdx-remote.ts";
 import { mintlifySource } from "./mintlify.ts";
 import { notionSource } from "./notion.ts";
@@ -102,6 +103,21 @@ const buildSource = (
         prefix: def.prefix,
         properties: def.properties,
         publishedValue: def.publishedValue,
+      },
+      sourceContext(context, name, runtime)
+    );
+  }
+  if (def.type === "github-releases") {
+    return githubReleasesSource(
+      {
+        drafts: def.drafts,
+        limit: def.limit,
+        name,
+        owner: def.owner,
+        pollInterval: def.pollInterval,
+        prefix: def.prefix,
+        prereleases: def.prereleases,
+        repo: def.repo,
       },
       sourceContext(context, name, runtime)
     );
