@@ -19,6 +19,8 @@ const BODY = [
   "",
   "Some **bold** text with a [link](/x) and `inlineCode`.",
   "",
+  "A generic `Array<Item>` stays searchable.",
+  "",
   "```js",
   "const secret = 1;",
   "```",
@@ -82,6 +84,8 @@ describe("buildSearchDocuments", () => {
     // Link text is kept while the URL is dropped.
     expect(doc?.content).toContain("link");
     expect(doc?.content).toContain("inlineCode");
+    // Angle-bracket type params inside inline code survive the HTML strip.
+    expect(doc?.content).toContain("Item");
     // Fenced code blocks are removed entirely.
     expect(doc?.content).not.toContain("secret");
     expect(doc?.content).not.toContain("#");

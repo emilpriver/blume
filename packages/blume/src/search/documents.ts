@@ -47,17 +47,35 @@ const MARKDOWN_PUNCT = /[*_~>]+/gu;
 const WHITESPACE = /\s+/gu;
 
 /** Reduce Markdown/MDX to plain, searchable text. */
-const toPlainText = (markdown: string): string =>
-  markdown
+const toPlainText = (markdown: string): string => {
+  const withoutBlocks = markdown
     .replaceAll(CODE_FENCE, " ")
     .replaceAll(IMAGE, " ")
-    .replaceAll(LINK, "$<text>")
-    .replaceAll(HTML_OR_JSX, " ")
-    .replaceAll(INLINE_CODE, "$<code>")
+    .replaceAll(LINK, "$<text>");
+
+  // Strip HTML/JSX from the prose, but keep the contents of inline code — an
+  // angle-bracket span like `<T>` inside `Array<T>` is a type parameter, not a
+  // tag, and stripping it would drop those tokens from the search index. Split
+  // on inline-code spans and only run the HTML strip on the text between them.
+  const pieces: string[] = [];
+  let cursor = 0;
+  for (const match of withoutBlocks.matchAll(INLINE_CODE)) {
+    const start = match.index ?? 0;
+    pieces.push(
+      withoutBlocks.slice(cursor, start).replaceAll(HTML_OR_JSX, " ")
+    );
+    pieces.push(match.groups?.code ?? "");
+    cursor = start + match[0].length;
+  }
+  pieces.push(withoutBlocks.slice(cursor).replaceAll(HTML_OR_JSX, " "));
+
+  return pieces
+    .join("")
     .replaceAll(HEADING_MARK, "")
     .replaceAll(MARKDOWN_PUNCT, " ")
     .replaceAll(WHITESPACE, " ")
     .trim();
+};
 
 interface Crumbs {
   breadcrumb: string[];
