@@ -167,6 +167,51 @@ const posts = (await getCollection("docs"))
 </ul>
 ```
 
+## Runtime helpers
+
+`blume/runtime` bundles the common data patterns so you don't reach into
+`blume:data` internals.
+
+**`getBlumeCollection(data, query?)`** selects content routes — filtered by
+collection, locale, or path prefix, with drafts and hidden pages excluded and the
+result sorted by path — which is exactly what a custom index needs:
+
+```astro pages/blog/index.astro lineNumbers
+---
+import data from "blume:data";
+import { getBlumeCollection } from "blume/runtime";
+
+const posts = getBlumeCollection(data, { prefix: "/blog" });
+---
+
+<ul>
+  {posts.map((post) => (
+    <li><a href={post.path}>{post.title}</a></li>
+  ))}
+</ul>
+```
+
+**`<BlumePage>`** renders a content entry's body inside a custom page, with
+Blume's built-in MDX components (callouts, cards, steps…) already wired in — for
+featuring a doc on a landing page or building a bespoke index that shows real
+content:
+
+```astro pages/index.astro lineNumbers
+---
+import BlumePage from "blume/components/BlumePage.astro";
+import data from "blume:data";
+import { getBlumeCollection } from "blume/runtime";
+
+const [intro] = getBlumeCollection(data, { prefix: "/docs" });
+---
+
+{intro && <BlumePage id={intro.entryId} />}
+```
+
+Pass `components` to add your own overrides or islands (which live in the
+generated runtime and aren't imported by default), and `collection` to read from
+a collection other than `"docs"`.
+
 ## Using the site layout
 
 `RootLayout` gives a custom page the full docs chrome — header, sidebar, search,

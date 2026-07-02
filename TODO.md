@@ -2,7 +2,6 @@
 
 ## P1 — Partially implemented (customization / override API, plan 05 / 16)
 
-- [ ] `blume/runtime` data helpers: `getBlumeCollection`, `<BlumePage>`
 - [ ] React island hooks: `useBlume()`, `usePage()`, `useSearch()`, `useAskAI()`
 - [ ] Export per-component prop types (`import type { CalloutProps } from "blume/components"`)
 
