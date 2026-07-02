@@ -118,8 +118,12 @@ Map old URLs to new ones in `blume.config.ts`:
 redirects: [{ from: "/old", to: "/new", status: 301 }];
 ```
 
-`status` accepts `301`, `302`, `307`, or `308` (default `301`). Static builds
-emit redirect pages; server builds handle redirects at request time.
+`status` accepts `301`, `302`, `307`, or `308` (default `301`). Server builds
+handle redirects at request time. Static builds emit redirect pages **and**
+platform files so your host issues a real HTTP redirect: `_redirects` (Netlify,
+Cloudflare Pages), `vercel.json` (Vercel), and `blume-redirects.json` — a
+structured manifest for anything else (nginx/Apache rules, an edge worker). A
+`_redirects` or `vercel.json` you ship in `public/` is left untouched.
 
 ## Build summary
 

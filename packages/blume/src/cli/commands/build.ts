@@ -6,7 +6,13 @@ import { defineCommand } from "citty";
 import { join } from "pathe";
 
 import { buildLlmsFiles } from "../../ai/llms.ts";
+import type { ResolvedConfig } from "../../core/schema.ts";
 import { serverFeatures } from "../../core/server-features.ts";
+import {
+  buildNetlifyRedirects,
+  buildRedirectManifest,
+  buildVercelConfig,
+} from "../../deploy/redirects.ts";
 import { buildRobots } from "../../deploy/robots.ts";
 import { buildSitemap } from "../../deploy/sitemap.ts";
 import { buildSearchIndex } from "../../search/build.ts";
@@ -15,6 +21,38 @@ import { logger } from "../log.ts";
 import { prepareProject } from "../prepare.ts";
 
 const ADAPTERS = ["vercel", "node", "netlify", "cloudflare"] as const;
+
+/**
+ * Emit platform redirect files for a static build (adapters wire redirects
+ * natively). Always writes the manifest; writes `_redirects`/`vercel.json` only
+ * when the user hasn't shipped one via public/.
+ */
+const emitRedirectFiles = async (
+  config: ResolvedConfig,
+  distDir: string
+): Promise<void> => {
+  const { redirects } = config;
+  if (redirects.length === 0 || config.deployment.output !== "static") {
+    return;
+  }
+  await writeFile(
+    join(distDir, "blume-redirects.json"),
+    buildRedirectManifest(redirects),
+    "utf-8"
+  );
+  const platformFiles = [
+    { content: buildNetlifyRedirects(redirects), name: "_redirects" },
+    { content: buildVercelConfig(redirects), name: "vercel.json" },
+  ];
+  await Promise.all(
+    platformFiles.map((file) =>
+      existsSync(join(distDir, file.name))
+        ? Promise.resolve()
+        : writeFile(join(distDir, file.name), file.content, "utf-8")
+    )
+  );
+  logger.success(`Emitted redirect files for ${redirects.length} redirect(s)`);
+};
 
 const formatBytes = (bytes: number): string =>
   bytes < 1024
@@ -157,6 +195,8 @@ export const buildCommand = defineCommand({
       await writeFile(join(distDir, "robots.txt"), robots, "utf-8");
       logger.success("Generated robots.txt");
     }
+
+    await emitRedirectFiles(project.config, distDir);
 
     const { config } = project;
     const features = serverFeatures(config);

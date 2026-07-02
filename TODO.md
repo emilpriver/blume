@@ -13,7 +13,6 @@
 
 ### Deployment (plan 19)
 
-- [ ] Emit platform redirect files (`_redirects` / `vercel.json`) + a redirect manifest for hosts needing manual wiring
 - [ ] Env-var fail-fast when a feature needs a secret (AI Gateway token, analytics keys, feedback creds)
 
 ### Config (plan 04)
