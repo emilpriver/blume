@@ -389,6 +389,23 @@ describe("astroConfigTemplate", () => {
     expect(out).toContain(`"blume:examples": ${JSON.stringify(EXAMPLES_PATH)}`);
   });
 
+  it("passes resolved content.assets mounts to blumeIntegration", () => {
+    const out = astroConfigTemplate({
+      config: blumeConfigSchema.parse({ content: { assets: ["images"] } }),
+      contentRoutes: ["/"],
+      context: context(),
+      dataPath: DATA_PATH,
+      examplesPath: EXAMPLES_PATH,
+      needsReact: false,
+      pages: [],
+      searchClientPath: SEARCH_CLIENT_PATH,
+      themePath: THEME_PATH,
+    });
+    // The mount's dir is joined to the project root; url gets a leading slash.
+    expect(out).toContain('"dir":"/p/images"');
+    expect(out).toContain('"url":"/images"');
+  });
+
   it("wires the adapter, site, base, redirects, i18n and renderers", () => {
     const serverConfig = blumeConfigSchema.parse({
       deployment: {

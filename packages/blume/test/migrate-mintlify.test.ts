@@ -243,16 +243,20 @@ describe("migrateMintlify end to end", () => {
     expect(page).toContain("Start here");
     expect(page).not.toContain("twitter:card");
 
-    // Assets relocated under public/, originals removed.
-    expect(existsSync(join(root, "public", "logo", "light.svg"))).toBe(true);
+    // Asset dir kept in place and served via content.assets; loose files move.
+    expect(existsSync(join(root, "logo", "light.svg"))).toBe(true);
+    expect(existsSync(join(root, "public", "logo"))).toBe(false);
     expect(existsSync(join(root, "public", "favicon.svg"))).toBe(true);
-    expect(existsSync(join(root, "logo"))).toBe(false);
+    expect(config).toMatch(/"assets":\s*\[\s*"logo"\s*\]/u);
 
     // Snippets inlined and the directory removed.
     expect(existsSync(join(root, "snippets"))).toBe(false);
 
     expect(result.moved).toBeGreaterThan(0);
     expect(result.warnings.some((w) => w.includes("public/"))).toBe(true);
+    expect(result.warnings.some((w) => w.includes("content.assets"))).toBe(
+      true
+    );
     expect(result.warnings.some((w) => w.includes("snippets"))).toBe(true);
   });
 
@@ -754,7 +758,7 @@ describe("snippet inlining edge cases", () => {
 });
 
 describe("migrateMintlify config and asset variants", () => {
-  it("relocates a string logo and an object favicon into public/", async () => {
+  it("serves referenced asset dirs in place via content.assets", async () => {
     const root = await project({
       "brand/logo.svg": "<svg/>",
       "docs.json": JSON.stringify({
@@ -769,10 +773,16 @@ describe("migrateMintlify config and asset variants", () => {
     });
 
     const result = await migrateMintlify(root);
-    expect(existsSync(join(root, "public", "brand", "logo.svg"))).toBe(true);
-    expect(existsSync(join(root, "public", "fav", "light.svg"))).toBe(true);
-    expect(existsSync(join(root, "public", "fav", "dark.svg"))).toBe(true);
-    expect(result.warnings.some((w) => w.includes("public/"))).toBe(true);
+    const config = await readFile(join(root, "blume.config.ts"), "utf-8");
+    // Dirs stay in place; nothing is moved into public/.
+    expect(existsSync(join(root, "brand", "logo.svg"))).toBe(true);
+    expect(existsSync(join(root, "fav", "light.svg"))).toBe(true);
+    expect(existsSync(join(root, "fav", "dark.svg"))).toBe(true);
+    expect(existsSync(join(root, "public"))).toBe(false);
+    expect(config).toMatch(/"assets":\s*\[[^\]]*"brand"[^\]]*"fav"[^\]]*\]/u);
+    expect(result.warnings.some((w) => w.includes("content.assets"))).toBe(
+      true
+    );
   });
 
   it("maps two or more languages to i18n and drops the language selector", async () => {

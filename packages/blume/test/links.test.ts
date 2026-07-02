@@ -1,5 +1,5 @@
 import { afterAll, beforeAll, describe, expect, it } from "bun:test";
-import { mkdtemp, rm, writeFile } from "node:fs/promises";
+import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 
 import { join } from "pathe";
@@ -265,5 +265,48 @@ describe("validateLinks — assets against a public dir", () => {
       makePage({ id: "releases/v1.0.mdx", route: "/releases/v1.0" }),
     ]);
     expect(diagnostics).toHaveLength(0);
+  });
+});
+
+describe("validateLinks — content.assets mounts", () => {
+  let root: string;
+
+  beforeAll(async () => {
+    root = await mkdtemp(join(tmpdir(), "blume-assets-"));
+    await mkdir(join(root, "images"), { recursive: true });
+    await writeFile(join(root, "images", "create.png"), "binary");
+  });
+
+  afterAll(async () => {
+    await rm(root, { force: true, recursive: true });
+  });
+
+  const validateWithMount = (pages: PageRecord[]) =>
+    validateLinks(makeGraph(pages), {
+      assetMounts: [{ dir: join(root, "images"), url: "/images" }],
+      publicDir: null,
+    });
+
+  it("accepts an asset served in place via an asset mount", async () => {
+    const diagnostics = await validateWithMount([
+      makePage({
+        id: "a.mdx",
+        links: [link("/images/create.png")],
+        route: "/a",
+      }),
+    ]);
+    expect(diagnostics).toHaveLength(0);
+  });
+
+  it("warns when a mounted asset is missing (not merely unchecked)", async () => {
+    const diagnostics = await validateWithMount([
+      makePage({
+        id: "a.mdx",
+        links: [link("/images/missing.png")],
+        route: "/a",
+      }),
+    ]);
+    expect(diagnostics).toHaveLength(1);
+    expect(diagnostics[0]?.code).toBe("BLUME_BROKEN_ASSET");
   });
 });

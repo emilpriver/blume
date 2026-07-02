@@ -1,10 +1,13 @@
 import type { IncomingMessage, ServerResponse } from "node:http";
+import { fileURLToPath } from "node:url";
 
 import type { AstroIntegration } from "astro";
 
+import type { AssetMount } from "../core/assets.ts";
 import { enrichDiagnostic } from "../core/diagnostics.ts";
 import type { Diagnostic } from "../core/types.ts";
 import { markdownVariantUrl, prefersMarkdown } from "./markdown-negotiation.ts";
+import { copyAssetMounts, serveAssetMounts } from "./static-assets.ts";
 
 /** The dev server's HMR channel — either `.ws` (Vite ≤5) or `.hot` (Vite 6+). */
 interface OverlayChannel {
@@ -74,6 +77,11 @@ export interface BlumeIntegrationOptions {
   contentRoutes: string[];
   /** Configured `deployment.base`, stripped from dev URLs before matching. */
   base?: string;
+  /**
+   * `content.assets` mounts: top-level dirs served at the site root in dev and
+   * copied into the build output, so root-served assets need no relocation.
+   */
+  assets?: AssetMount[];
 }
 
 /**
@@ -110,6 +118,12 @@ export const blumeIntegration = (
   options: BlumeIntegrationOptions
 ): AstroIntegration => ({
   hooks: {
+    "astro:build:done": async ({ dir }) => {
+      // Copy in-place asset mounts into the build output, mirroring publicDir.
+      if (options.assets?.length) {
+        await copyAssetMounts(options.assets, fileURLToPath(dir));
+      }
+    },
     "astro:config:setup": ({ injectRoute }) => {
       for (const page of options.pages) {
         injectRoute({
@@ -129,6 +143,13 @@ export const blumeIntegration = (
         handle: negotiateMarkdown(new Set(options.contentRoutes), options.base),
         route: "",
       });
+      // Serve `content.assets` mounts (Astro only serves publicDir in dev).
+      if (options.assets?.length) {
+        server.middlewares.stack.unshift({
+          handle: serveAssetMounts(options.assets),
+          route: "",
+        });
+      }
     },
   },
   name: "blume",

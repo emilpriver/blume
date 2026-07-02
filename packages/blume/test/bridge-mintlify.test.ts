@@ -95,6 +95,32 @@ describe("detectMintlifyBridge", () => {
     expect(bridge?.raw.title).toBe("Legacy");
   });
 
+  it("serves referenced root-level asset dirs in place via content.assets", async () => {
+    const root = await makeProject({
+      "docs.json": JSON.stringify({
+        logo: { dark: "/logo/dark.svg", light: "/logo/light.svg" },
+        name: "Garden",
+      }),
+      "images/create.png": "png",
+      "index.mdx": "# Hi\n",
+      "logo/light.svg": "<svg/>",
+    });
+    const bridge = await detectMintlifyBridge(root);
+    // `/images` (conventional) and the logo dir exist on disk, so both mount.
+    expect(bridge?.raw.content?.assets).toContain("images");
+    expect(bridge?.raw.content?.assets).toContain("logo");
+  });
+
+  it("omits content.assets entries that don't exist on disk", async () => {
+    const root = await makeProject({
+      "docs.json": JSON.stringify({ name: "Garden" }),
+      "index.mdx": "# Hi\n",
+    });
+    const bridge = await detectMintlifyBridge(root);
+    // No `images/` dir was created, so nothing is mounted.
+    expect(bridge?.raw.content?.assets ?? []).toStrictEqual([]);
+  });
+
   it("maps languages to i18n and drops the language selector", async () => {
     const root = await makeProject({
       "docs.json": JSON.stringify({

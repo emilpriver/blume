@@ -3,6 +3,7 @@ import { readFile } from "node:fs/promises";
 
 import { join } from "pathe";
 
+import { assetSegments } from "../migrate/mintlify/assets.ts";
 import { loadMintlifyConfig } from "../migrate/mintlify/config.ts";
 import { mintlifyI18n } from "../migrate/mintlify/i18n.ts";
 import type { BlumeConfig } from "./schema.ts";
@@ -64,11 +65,20 @@ export const detectMintlifyBridge = async (
   const root_ = config.content?.root ?? ".";
   const exclude = config.content?.exclude ?? [];
 
+  // Mintlify serves assets from the project root; the bridge never moves files,
+  // so referenced root-level asset folders (e.g. `images/`) are served in place
+  // via `content.assets` instead. This is the read-only twin of the migrator's
+  // relocation — same referenced segments, just no `public/` move.
+  const assets = assetSegments(config).filter(
+    (segment) => segment !== "public" && existsSync(join(root, segment))
+  );
+
   return {
     configFile,
     raw: {
       ...config,
       content: {
+        assets,
         // Mirror the excludes onto `content.exclude` too: the generated Astro
         // `docs` collection globs `content.root` (here the project root) and
         // must skip node_modules/snippets just like the source does.

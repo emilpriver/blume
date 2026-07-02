@@ -177,6 +177,17 @@ content: {
 | `exclude` | `["**/_*", "**/.*"]` | Globs to ignore (underscore- and dot-files). |
 | `pages` | `"pages"` | Folder for custom `.astro` pages. |
 | `defaultType` | `"doc"` | Page `type` used when frontmatter omits it. |
+| `assets` | `[]` | Extra top-level directories served at the site root, alongside `public/`. |
+
+Assets normally live in `public/` — a file at `public/logo.png` is served at `/logo.png`. Use `assets` to serve additional root-level folders in place instead of moving them under `public/`. Each entry is a directory relative to your project root, served at the matching URL and copied into `dist/` on build:
+
+```ts blume.config.ts
+content: {
+  assets: ["images"], // /images/create.png → images/create.png
+}
+```
+
+This is mainly useful after migrating from a tool that serves assets from the project root (like Mintlify), so references such as `![](/images/create.png)` keep resolving without relocating every file.
 
 ## Last modified
 

@@ -1,10 +1,11 @@
 import { existsSync } from "node:fs";
-import { mkdir, readFile, rename, rm, writeFile } from "node:fs/promises";
+import { mkdir, readFile, rename, rm, stat, writeFile } from "node:fs/promises";
 
 import { dirname, join } from "pathe";
 import { glob } from "tinyglobby";
 
 import type { BlumeConfig } from "../../core/schema.ts";
+import { assetSegments } from "./assets.ts";
 import { loadMintlifyConfig } from "./config.ts";
 import { mintlifyI18n } from "./i18n.ts";
 import { transformMintlifyContent } from "./transform.ts";
@@ -52,26 +53,35 @@ const writeBlumeConfig = async (
   await writeFile(join(root, "blume.config.ts"), body, "utf-8");
 };
 
-/** Move a referenced top-level asset path (file or dir) under `public/`. */
+interface RelocatedAssets {
+  /** Top-level dirs served in place via `content.assets` (no files moved). */
+  served: string[];
+  /** Top-level files moved under `public/`. */
+  moved: string[];
+}
+
+/**
+ * Make referenced top-level assets resolvable in Blume. Directories (e.g.
+ * Mintlify's `images/`) are left in place and served via `content.assets`, so
+ * the migration doesn't churn every file under them; loose top-level files
+ * (a root `favicon.png`, `logo.png`) are moved under `public/` since a mount
+ * points at a directory.
+ */
 const relocateAssets = async (
   root: string,
-  refs: unknown[]
-): Promise<string[]> => {
-  const segments = new Set<string>();
-  for (const ref of refs) {
-    if (typeof ref !== "string" || !ref.startsWith("/")) {
-      continue;
-    }
-    const [segment] = ref.replace(/^\/+/u, "").split("/");
-    if (segment) {
-      segments.add(segment);
-    }
-  }
-
+  segments: string[]
+): Promise<RelocatedAssets> => {
+  const served: string[] = [];
   const moved: string[] = [];
   for (const segment of segments) {
     const source = join(root, segment);
     if (!existsSync(source) || segment === "public") {
+      continue;
+    }
+    // oxlint-disable-next-line no-await-in-loop -- sequential fs stats
+    const stats = await stat(source);
+    if (stats.isDirectory()) {
+      served.push(segment);
       continue;
     }
     const dest = join(root, "public", segment);
@@ -84,7 +94,32 @@ const relocateAssets = async (
     await rename(source, dest);
     moved.push(segment);
   }
-  return moved;
+  return { moved, served };
+};
+
+/**
+ * Fold relocated assets into the config (served dirs become `content.assets`)
+ * and record what happened. Served dirs stay in place; only loose files moved.
+ */
+const applyRelocatedAssets = (
+  config: BlumeConfig,
+  assets: RelocatedAssets,
+  warnings: string[]
+): void => {
+  if (assets.served.length > 0) {
+    config.content = {
+      ...config.content,
+      assets: [
+        ...new Set([...(config.content?.assets ?? []), ...assets.served]),
+      ],
+    };
+    warnings.push(
+      `Kept asset dir(s) in place, served via content.assets: ${assets.served.join(", ")}.`
+    );
+  }
+  if (assets.moved.length > 0) {
+    warnings.push(`Moved assets into public/: ${assets.moved.join(", ")}.`);
+  }
 };
 
 /**
@@ -119,31 +154,6 @@ const cleanupSnippets = async (
       `Rewrote ${kept.size} component snippet import(s) to relative paths; verify they resolve.`
     );
   }
-};
-
-/** Asset paths referenced by the resolved config (logo, favicon, backgrounds). */
-const assetRefs = (config: BlumeConfig): unknown[] => {
-  const refs: unknown[] = ["/images"];
-  const logo = config.logo as
-    | string
-    | { dark?: string; light?: string }
-    | undefined;
-  if (typeof logo === "string") {
-    refs.push(logo);
-  } else if (logo) {
-    refs.push(logo.light, logo.dark);
-  }
-  const favicon = config.favicon as
-    | string
-    | { dark?: string; light?: string }
-    | undefined;
-  if (typeof favicon === "string") {
-    refs.push(favicon);
-  } else if (favicon) {
-    refs.push(favicon.light, favicon.dark);
-  }
-  refs.push(config.theme?.backgroundImage, config.theme?.backgroundImageDark);
-  return refs;
 };
 
 /**
@@ -232,21 +242,19 @@ export const migrateMintlifyProject = async (
     moved += 1;
   }
 
-  const movedAssets = await relocateAssets(root, assetRefs(config));
+  const assets = await relocateAssets(root, assetSegments(config));
   await cleanupSnippets(root, keptComponents, warnings);
 
   if (config.content?.exclude) {
     config.content.exclude = [...new Set(config.content.exclude)];
   }
+  applyRelocatedAssets(config, assets, warnings);
   await writeBlumeConfig(root, config);
 
   if (Object.keys(variables).length > 0) {
     warnings.push(
       `Inlined ${Object.keys(variables).length} docs.json variable(s) into content; Blume has no runtime variable substitution.`
     );
-  }
-  if (movedAssets.length > 0) {
-    warnings.push(`Moved assets into public/: ${movedAssets.join(", ")}.`);
   }
   if (removedKeys.size > 0) {
     warnings.push(

@@ -3,6 +3,7 @@ import { existsSync } from "node:fs";
 import { defineCommand } from "citty";
 import { join } from "pathe";
 
+import { resolveAssetMounts } from "../../core/assets.ts";
 import { BlumeError } from "../../core/diagnostics.ts";
 import { validateLinks } from "../../core/links.ts";
 import { scanProject } from "../../core/project-graph.ts";
@@ -47,6 +48,7 @@ export const validateCommand = defineCommand({
       const publicDir = join(root, "public");
       diagnostics.push(
         ...(await validateLinks(project.graph, {
+          assetMounts: resolveAssetMounts(root, project.config.content.assets),
           checkExternal: Boolean(args.external),
           publicDir: existsSync(publicDir) ? publicDir : null,
           redirects: project.config.redirects,

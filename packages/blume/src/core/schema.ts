@@ -365,6 +365,13 @@ export type ContentSourceConfig = z.infer<typeof contentSourceSchema>;
 
 const contentConfigSchema = z
   .object({
+    /**
+     * Extra top-level directories (relative to the project root) served as
+     * static assets at the site root, alongside `public/`. Lets projects keep
+     * root-served asset folders in place — e.g. a Mintlify migration keeps
+     * `images/` where it is instead of relocating it under `public/`.
+     */
+    assets: z.array(z.string()).default([]),
     defaultType: z.string().default("doc"),
     exclude: z.array(z.string()).default(["**/_*", "**/.*"]),
     include: z.array(z.string()).default(["**/*.{md,mdx}"]),
