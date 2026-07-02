@@ -502,6 +502,41 @@ describe("loadMintlifyConfig branding", () => {
     expect(config.markdown?.math).toBe(false);
   });
 
+  it("translates path-to-regexp wildcard redirects to Astro segments", async () => {
+    const root = await project({
+      "docs.json": JSON.stringify({
+        name: "Wildcards",
+        redirects: [
+          { destination: "/new/:slug*", source: "/old/:slug*" },
+          { destination: "/users/:id", source: "/people/:id" },
+          { destination: "/b", source: "/a" },
+          {
+            destination: "https://x.example/:slug*",
+            source: "/ext/:slug*",
+          },
+        ],
+      }),
+    });
+
+    const config = await loadMintlifyConfig(root, join(root, "docs.json"));
+
+    expect(config.redirects).toContainEqual({
+      from: "/old/[...slug]",
+      to: "/new/[...slug]",
+    });
+    expect(config.redirects).toContainEqual({
+      from: "/people/[id]",
+      to: "/users/[id]",
+    });
+    // Paths without params pass through untouched.
+    expect(config.redirects).toContainEqual({ from: "/a", to: "/b" });
+    // Params convert, but the protocol colon is left alone.
+    expect(config.redirects).toContainEqual({
+      from: "/ext/[...slug]",
+      to: "https://x.example/[...slug]",
+    });
+  });
+
   it("drops empty logo/favicon objects and maps code-theme variants", async () => {
     const empty = await project({
       "docs.json": JSON.stringify({

@@ -593,6 +593,16 @@ const mintignorePatterns = async (root: string): Promise<string[]> => {
   }
 };
 
+// path-to-regexp param (:slug, :slug*, :id?) → Astro dynamic segment.
+// *,+ (repeatable) → spread [...name]; bare/? → single [name]. Name must start
+// with a letter/underscore so URL ports (:8080) and protocols (https:) are left alone.
+const REDIRECT_PARAM = /:(?<name>[A-Za-z_]\w*)(?<modifier>[*+?])?/gu;
+
+const toAstroRedirectPath = (path: string): string =>
+  path.replaceAll(REDIRECT_PARAM, (_match, name: string, modifier?: string) =>
+    modifier === "*" || modifier === "+" ? `[...${name}]` : `[${name}]`
+  );
+
 const mintlifyRedirects = (
   spec: JsonObject
 ): NonNullable<BlumeConfig["redirects"]> =>
@@ -609,7 +619,7 @@ const mintlifyRedirects = (
     if (!from || !to) {
       return [];
     }
-    return [{ from, to }];
+    return [{ from: toAstroRedirectPath(from), to: toAstroRedirectPath(to) }];
   });
 
 const mintlifyLogo = (value: unknown): BlumeConfig["logo"] => {
