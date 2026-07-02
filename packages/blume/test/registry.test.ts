@@ -134,6 +134,22 @@ describe("eject", () => {
     expect(existsSync(join(root, "src/pages/blume-search.json.ts"))).toBe(true);
   });
 
+  it("preserves an existing tsconfig.json instead of overwriting it", async () => {
+    const root = await mkdtemp(join(tmpdir(), "blume-eject-"));
+    ejectDirs.push(root);
+    const tuned = '{\n  "compilerOptions": { "strict": true }\n}\n';
+    await writeFiles(root, {
+      "docs/index.md": "---\ntitle: Home\n---\n# Home\n",
+      "tsconfig.json": tuned,
+    });
+
+    const files = await eject(root);
+
+    // The user's tuned config is untouched and not reported as ejected.
+    expect(readFileSync(join(root, "tsconfig.json"), "utf-8")).toBe(tuned);
+    expect(files.some((file) => file.endsWith("tsconfig.json"))).toBe(false);
+  });
+
   it("keeps a custom pages/404.astro instead of the default", async () => {
     const root = await mkdtemp(join(tmpdir(), "blume-eject-"));
     ejectDirs.push(root);

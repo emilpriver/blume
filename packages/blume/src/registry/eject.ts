@@ -140,7 +140,12 @@ export const eject = async (root: string): Promise<string[]> => {
   const hasStaged = staged.size > 0;
   const stagedDir = "blume-staged";
 
-  const files: { path: string; content: string }[] = [
+  const files: {
+    path: string;
+    content: string;
+    /** Don't overwrite a file the user already owns (e.g. a tuned tsconfig). */
+    skipIfExists?: boolean;
+  }[] = [
     {
       content: astroConfigTemplate({
         config,
@@ -160,6 +165,8 @@ export const eject = async (root: string): Promise<string[]> => {
     {
       content: runtimeTsconfigTemplate(),
       path: join(root, "tsconfig.json"),
+      // Never clobber a hand-tuned tsconfig; only write ours if none exists.
+      skipIfExists: true,
     },
     { content: envTemplate(), path: join(srcDir, "env.d.ts") },
     {
@@ -327,8 +334,11 @@ export const eject = async (root: string): Promise<string[]> => {
     files.push({ content, path: join(root, stagedDir, entryId) });
   }
 
+  const written = files.filter(
+    (file) => !(file.skipIfExists && existsSync(file.path))
+  );
   await Promise.all(
-    files.map(async (file) => {
+    written.map(async (file) => {
       await mkdir(join(file.path, ".."), { recursive: true });
       await writeFile(file.path, file.content, "utf-8");
     })
@@ -347,5 +357,5 @@ export const eject = async (root: string): Promise<string[]> => {
   // The hidden runtime is no longer the source of truth.
   await rm(context.outDir, { force: true, recursive: true });
 
-  return files.map((file) => file.path);
+  return written.map((file) => file.path);
 };

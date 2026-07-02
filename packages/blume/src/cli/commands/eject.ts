@@ -39,7 +39,7 @@ export const ejectCommand = defineCommand({
 
     if (!args.yes) {
       logger.warn(
-        "Eject is one-way: it writes astro.config.mjs and src/ into your project and removes .blume."
+        "Eject is one-way: it writes astro.config.mjs, src/, and (if absent) tsconfig.json, rewrites your package.json scripts, and removes .blume. An existing tsconfig.json is left untouched."
       );
       logger.info("Re-run with --yes to proceed.");
       return;
