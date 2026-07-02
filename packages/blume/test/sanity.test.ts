@@ -217,6 +217,26 @@ describe("sanitySource (field + client resolution edge cases)", () => {
     expect(entries[0]?.ref).toBe("x.md");
   });
 
+  it("keeps distinct refs when slugs slugify to empty (non-ASCII)", async () => {
+    const source = sanitySource(
+      {
+        client: clientReturning([
+          { _id: "doc-a", slug: { current: "こんにちは" } },
+          { _id: "doc-b", slug: { current: "你好" } },
+        ]),
+        dataset: "production",
+        name: "guides",
+        projectId: "p1",
+        query: "*",
+      },
+      ctxFor(await tempDir())
+    );
+    const { entries } = await source.load();
+    const refs = entries.map((entry) => entry.ref).toSorted();
+    // Each falls back to its unique `_id`, not a shared `untitled.md`.
+    expect(refs).toStrictEqual(["doc-a.md", "doc-b.md"]);
+  });
+
   it("skips images whose asset ref is malformed", async () => {
     const source = sanitySource(
       {

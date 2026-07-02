@@ -140,7 +140,11 @@ export const sanitySource = (
       asString(getPath(doc, fields.slug ?? "slug.current")) ??
       asString(doc._id) ??
       "untitled";
-    const slug = slugify(slugValue) || "untitled";
+    // Fall back to the unique `_id` when a slug (e.g. a non-ASCII `slug.current`)
+    // slugifies to empty, so distinct documents don't all collapse to the same
+    // `untitled.md` ref and silently overwrite each other.
+    const slug =
+      slugify(slugValue) || slugify(asString(doc._id) ?? "") || "untitled";
 
     const data: Record<string, unknown> = {};
     const title = asString(getPath(doc, fields.title ?? "title"));
