@@ -13,7 +13,6 @@
 
 - [ ] `init`: `--template docs|api|sdk|changelog`, `--package-manager`, `--eject`
 - [ ] `dev`: `--content-dir`, `--debug`
-- [ ] `build`: `--output static|server`, `--adapter`, `--base`, `--analyze`
 
 ### Navigation (plan 06)
 

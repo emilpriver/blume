@@ -24,6 +24,41 @@ import type {
 /** Build mode: drafts are kept in `dev` and dropped in `build`. */
 export type BuildMode = "dev" | "build";
 
+/** CLI-supplied overrides applied over the loaded config (see `scanProject`). */
+export interface ConfigOverrides {
+  /** Override `content.root` (`blume dev --content-dir`). */
+  contentRoot?: string;
+  /** Override `deployment.adapter` (`blume build --adapter`). */
+  adapter?: ResolvedConfig["deployment"]["adapter"];
+  /** Override `deployment.base` (`blume build --base`). */
+  base?: string;
+  /** Override `deployment.output` (`blume build --output`). */
+  output?: ResolvedConfig["deployment"]["output"];
+}
+
+/** Apply CLI config overrides onto a resolved config (returns a new object). */
+const applyConfigOverrides = (
+  config: ResolvedConfig,
+  overrides?: ConfigOverrides
+): ResolvedConfig => {
+  if (!overrides) {
+    return config;
+  }
+  return {
+    ...config,
+    content: {
+      ...config.content,
+      root: overrides.contentRoot ?? config.content.root,
+    },
+    deployment: {
+      ...config.deployment,
+      adapter: overrides.adapter ?? config.deployment.adapter,
+      base: overrides.base ?? config.deployment.base,
+      output: overrides.output ?? config.deployment.output,
+    },
+  };
+};
+
 /** Everything Blume knows about a project after a full scan. */
 export interface BlumeProject {
   mode: BuildMode;
@@ -51,13 +86,17 @@ export const scanProject = async (
     mode?: BuildMode;
     preview?: boolean;
     refresh?: boolean;
+    /** CLI overrides applied over the loaded config (e.g. `--output`). */
+    overrides?: ConfigOverrides;
   } = {}
 ): Promise<BlumeProject> => {
   const mode = options.mode ?? "dev";
   const preview = options.preview ?? false;
-  const { bridge, config } = await loadConfig(root, {
+  const configResult = await loadConfig(root, {
     devServerUrl: options.devServerUrl,
   });
+  const { bridge } = configResult;
+  const config = applyConfigOverrides(configResult.config, options.overrides);
   const context = resolveProjectContext(root, config);
 
   // Each source validates itself (e.g. the filesystem source checks its root

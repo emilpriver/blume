@@ -1,5 +1,5 @@
 import { existsSync } from "node:fs";
-import { writeFile } from "node:fs/promises";
+import { readdir, stat, writeFile } from "node:fs/promises";
 
 import { build } from "astro";
 import { defineCommand } from "citty";
@@ -14,8 +14,67 @@ import { syncSearchProvider } from "../../search/sync/index.ts";
 import { logger } from "../log.ts";
 import { prepareProject } from "../prepare.ts";
 
+const ADAPTERS = ["vercel", "node", "netlify", "cloudflare"] as const;
+
+const formatBytes = (bytes: number): string =>
+  bytes < 1024
+    ? `${bytes} B`
+    : `${(bytes / 1024).toFixed(bytes < 1024 * 100 ? 1 : 0)} kB`;
+
+/**
+ * Print the client JavaScript Astro shipped, largest first, plus the total. A
+ * dependency-free bundle report — the interactive weight of a docs site is its
+ * `_astro/*.js`, so this surfaces regressions without a visualizer.
+ */
+const reportBundleSizes = async (distDir: string): Promise<void> => {
+  const astroDir = join(distDir, "_astro");
+  if (!existsSync(astroDir)) {
+    logger.info("No client JavaScript emitted — the site ships zero JS.");
+    return;
+  }
+  const entries = await readdir(astroDir);
+  const files = entries.filter((name) => name.endsWith(".js"));
+  const sized = await Promise.all(
+    files.map(async (name) => {
+      const info = await stat(join(astroDir, name));
+      return { name, size: info.size };
+    })
+  );
+  sized.sort((a, b) => b.size - a.size);
+  const total = sized.reduce((sum, file) => sum + file.size, 0);
+  const rows = sized
+    .slice(0, 15)
+    .map((file) => `  ${formatBytes(file.size).padStart(8)}  ${file.name}`);
+  logger.box(
+    [
+      `Client JavaScript — ${sized.length} file(s), ${formatBytes(total)} total`,
+      "",
+      ...rows,
+      sized.length > 15 ? `  … and ${sized.length - 15} more` : null,
+    ]
+      .filter((line) => line !== null)
+      .join("\n")
+  );
+};
+
 export const buildCommand = defineCommand({
   args: {
+    adapter: {
+      description: "Server adapter: vercel | node | netlify | cloudflare.",
+      type: "string",
+    },
+    analyze: {
+      description: "Report client JavaScript bundle sizes after the build.",
+      type: "boolean",
+    },
+    base: {
+      description: "Base path the site is served under (e.g. /docs).",
+      type: "string",
+    },
+    output: {
+      description: "Output mode: static | server.",
+      type: "string",
+    },
     preview: {
       description: "Include drafts and unpublished CMS content.",
       type: "boolean",
@@ -28,8 +87,25 @@ export const buildCommand = defineCommand({
   },
   async run({ args }) {
     const root = process.cwd();
+
+    if (args.output && args.output !== "static" && args.output !== "server") {
+      logger.error(`Invalid --output "${args.output}" (use static | server).`);
+      process.exit(1);
+    }
+    if (args.adapter && !ADAPTERS.includes(args.adapter as never)) {
+      logger.error(
+        `Invalid --adapter "${args.adapter}" (use ${ADAPTERS.join(" | ")}).`
+      );
+      process.exit(1);
+    }
+
     const project = await prepareProject({
       mode: "build",
+      overrides: {
+        adapter: args.adapter as (typeof ADAPTERS)[number] | undefined,
+        base: args.base,
+        output: args.output as "server" | "static" | undefined,
+      },
       preview: args.preview,
       root,
       strict: args.strict,
@@ -97,6 +173,10 @@ export const buildCommand = defineCommand({
         `Server features  ${features.length > 0 ? features.join(", ") : "none"}`,
       ].join("\n")
     );
+
+    if (args.analyze) {
+      await reportBundleSizes(distDir);
+    }
 
     logger.success(`Built to ${distDir}`);
   },

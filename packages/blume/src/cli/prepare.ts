@@ -1,7 +1,11 @@
 import { generateRuntime } from "../astro/generate.ts";
 import { BlumeError, hasErrors } from "../core/diagnostics.ts";
 import { scanProject } from "../core/project-graph.ts";
-import type { BlumeProject, BuildMode } from "../core/project-graph.ts";
+import type {
+  BlumeProject,
+  BuildMode,
+  ConfigOverrides,
+} from "../core/project-graph.ts";
 import { serverFeatures } from "../core/server-features.ts";
 import { loadEnvFiles } from "./env.ts";
 import { reportInternalError } from "./internal-error.ts";
@@ -17,6 +21,8 @@ export interface PrepareOptions {
   preview?: boolean;
   /** Force remote sources to re-fetch instead of serving the cached snapshot. */
   refresh?: boolean;
+  /** CLI config overrides (e.g. `--output`, `--content-dir`). */
+  overrides?: ConfigOverrides;
 }
 
 /**
@@ -35,6 +41,7 @@ export const prepareProject = async (
     project = await scanProject(options.root, {
       devServerUrl: options.devServerUrl,
       mode: options.mode,
+      overrides: options.overrides,
       preview: options.preview,
       refresh: options.refresh,
     });
