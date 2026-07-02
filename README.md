@@ -21,9 +21,13 @@ Blume needs **Node.js 22.12 or newer** and a content folder with at least one
 `.md`/`.mdx` file — there's nothing else to set up.
 
 ```bash
-npm i blume
-blume init      # scaffold a content folder + blume.config.ts
-blume dev       # dev server with hot reload
+npx blume init
+```
+
+Run the dev server with hot reload:
+
+```bash
+blume dev
 ```
 
 Build static HTML, with a local search index, into `dist/`:
