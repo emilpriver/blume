@@ -132,6 +132,20 @@ const checkPathLink = (
   site: LinkSite,
   ctx: LinkContext
 ): LinkResult => {
+  // A real route always wins over the asset-extension heuristic, so a path
+  // whose last segment merely contains a dot (e.g. a page at `/releases/v1.0`)
+  // isn't misread as a missing asset.
+  const route = toRoute(resolved);
+  if (ctx.routes.has(route)) {
+    return fragment ? checkAnchor(route, fragment, site, ctx) : null;
+  }
+  // A configured `redirect.from` resolves at runtime, so it's a valid target.
+  // Its destination (and any anchor there) is validated on its own page, so we
+  // don't follow the redirect to check the fragment here.
+  if (ctx.redirects.has(route)) {
+    return null;
+  }
+
   if (FILE_EXT.test(resolved) && !DOC_EXT.test(resolved)) {
     if (ctx.publicDir === null) {
       return "asset-unchecked";
@@ -148,16 +162,6 @@ const checkPathLink = (
     };
   }
 
-  const route = toRoute(resolved);
-  if (ctx.routes.has(route)) {
-    return fragment ? checkAnchor(route, fragment, site, ctx) : null;
-  }
-  // A configured `redirect.from` resolves at runtime, so it's a valid target.
-  // Its destination (and any anchor there) is validated on its own page, so we
-  // don't follow the redirect to check the fragment here.
-  if (ctx.redirects.has(route)) {
-    return null;
-  }
   return {
     ...site,
     code: "BLUME_BROKEN_LINK",

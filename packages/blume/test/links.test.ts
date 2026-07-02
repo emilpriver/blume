@@ -249,4 +249,14 @@ describe("validateLinks — assets against a public dir", () => {
     expect(diagnostics[0]?.severity).toBe("warning");
     expect(diagnostics[0]?.suggestion).toContain("public/missing.png");
   });
+
+  it("treats a dotted route as a page, not a missing asset", async () => {
+    // `/releases/v1.0` looks like a file (`.0`) but is a real route — the
+    // route check must win over the asset heuristic.
+    const diagnostics = await validateWithPublic([
+      makePage({ id: "a.mdx", links: [link("/releases/v1.0")], route: "/a" }),
+      makePage({ id: "releases/v1.0.mdx", route: "/releases/v1.0" }),
+    ]);
+    expect(diagnostics).toHaveLength(0);
+  });
 });
