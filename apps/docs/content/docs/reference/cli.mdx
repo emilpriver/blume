@@ -37,6 +37,9 @@ blume <command> [options]
 - `blume eject --yes` — skip the confirmation prompt.
 - `blume validate --external` — also check external links over the network.
 - `blume validate --strict` — exit non-zero on warnings too.
+- `blume validate --json` / `blume doctor --json` — emit diagnostics as JSON on
+  stdout (with `code`, `severity`, `file`, `line`/`column`, and `docsUrl`) for CI
+  and editor integrations.
 
 ## Type-checking
 

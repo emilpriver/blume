@@ -4,16 +4,22 @@ import { BlumeError } from "../../core/diagnostics.ts";
 import { scanProject } from "../../core/project-graph.ts";
 import { serverFeatures } from "../../core/server-features.ts";
 import type { Diagnostic } from "../../core/types.ts";
-import { logger, reportDiagnostics } from "../log.ts";
+import { logger, reportDiagnostics, reportDiagnosticsJson } from "../log.ts";
 
 const MIN_NODE_MAJOR = 20;
 
 export const doctorCommand = defineCommand({
+  args: {
+    json: {
+      description: "Emit diagnostics as JSON on stdout (for CI/editors).",
+      type: "boolean",
+    },
+  },
   meta: {
     description: "Diagnose common configuration and content problems.",
     name: "doctor",
   },
-  async run() {
+  async run({ args }) {
     const root = process.cwd();
     const diagnostics: Diagnostic[] = [];
 
@@ -52,15 +58,24 @@ export const doctorCommand = defineCommand({
         });
       }
 
-      logger.info(`Pages: ${project.graph.pages.length}`);
-      logger.info(`Output: ${config.deployment.output}`);
-      logger.info(`Search: ${config.search.provider}`);
+      if (!args.json) {
+        logger.info(`Pages: ${project.graph.pages.length}`);
+        logger.info(`Output: ${config.deployment.output}`);
+        logger.info(`Search: ${config.search.provider}`);
+      }
     } catch (error) {
       if (error instanceof BlumeError) {
         diagnostics.push(error.diagnostic);
       } else {
         throw error;
       }
+    }
+
+    if (args.json) {
+      if (reportDiagnosticsJson(diagnostics, root)) {
+        process.exit(1);
+      }
+      return;
     }
 
     const hadErrors = reportDiagnostics(diagnostics, root);

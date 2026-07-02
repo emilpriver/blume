@@ -1,4 +1,5 @@
 import { consola } from "consola";
+import { relative } from "pathe";
 
 import {
   countBySeverity,
@@ -9,6 +10,31 @@ import {
 import type { Diagnostic } from "../core/types.ts";
 
 export const logger = consola.withTag("blume");
+
+/**
+ * Print diagnostics as a JSON document on stdout for CI and editors: each is
+ * enriched with its `docsUrl` and its `file` made root-relative. Returns whether
+ * any were errors, matching {@link reportDiagnostics}.
+ */
+export const reportDiagnosticsJson = (
+  diagnostics: Diagnostic[],
+  root?: string
+): boolean => {
+  const enriched = diagnostics.map((diagnostic) => {
+    const withDocs = enrichDiagnostic(diagnostic);
+    return withDocs.file && root
+      ? { ...withDocs, file: relative(root, withDocs.file) }
+      : withDocs;
+  });
+  process.stdout.write(
+    `${JSON.stringify(
+      { diagnostics: enriched, summary: countBySeverity(diagnostics) },
+      null,
+      2
+    )}\n`
+  );
+  return hasErrors(diagnostics);
+};
 
 /** Print a batch of diagnostics and return whether any were errors. */
 export const reportDiagnostics = (

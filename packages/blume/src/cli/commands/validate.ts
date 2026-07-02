@@ -7,12 +7,16 @@ import { BlumeError } from "../../core/diagnostics.ts";
 import { validateLinks } from "../../core/links.ts";
 import { scanProject } from "../../core/project-graph.ts";
 import type { Diagnostic } from "../../core/types.ts";
-import { logger, reportDiagnostics } from "../log.ts";
+import { logger, reportDiagnostics, reportDiagnosticsJson } from "../log.ts";
 
 export const validateCommand = defineCommand({
   args: {
     external: {
       description: "Check external (HTTP) links over the network.",
+      type: "boolean",
+    },
+    json: {
+      description: "Emit diagnostics as JSON on stdout (for CI/editors).",
       type: "boolean",
     },
     strict: {
@@ -48,6 +52,14 @@ export const validateCommand = defineCommand({
       } else {
         throw error;
       }
+    }
+
+    if (args.json) {
+      const hadErrors = reportDiagnosticsJson(diagnostics, root);
+      if (hadErrors || (Boolean(args.strict) && diagnostics.length > 0)) {
+        process.exit(1);
+      }
+      return;
     }
 
     const hadErrors = reportDiagnostics(diagnostics, root);
