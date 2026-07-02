@@ -6,7 +6,15 @@ import { interpolate, spring, useCurrentFrame, useVideoConfig } from "remotion";
 export interface EcosystemConstellationProps {
   satelliteCount?: number;
   centerLabel?: string;
+  /** Raw SVG string for the center node; overrides `centerLabel` when set. */
+  centerLogo?: string;
   accentColor?: string;
+  /**
+   * Raw SVG strings to use as satellites (each fills its tile edge-to-edge).
+   * When set, the count comes from this array and the built-in brand marks are
+   * ignored.
+   */
+  satellites?: string[];
   speed?: number;
   className?: string;
 }
@@ -137,17 +145,18 @@ const SATELLITE_BRANDS: SatelliteBrand[] = [
 export function EcosystemConstellation({
   satelliteCount = 6,
   centerLabel = "V",
+  centerLogo,
   accentColor = "#a855f7",
+  satellites,
   speed = 1,
   className,
 }: EcosystemConstellationProps) {
   const frame = useCurrentFrame() * speed;
   const { fps } = useVideoConfig();
 
-  const count = Math.max(
-    3,
-    Math.min(SATELLITE_BRANDS.length, Math.floor(satelliteCount)),
-  );
+  const count = satellites
+    ? satellites.length
+    : Math.max(3, Math.min(SATELLITE_BRANDS.length, Math.floor(satelliteCount)));
 
   // Center pulse (0..1)
   const pulse = (Math.sin(frame / 12) + 1) / 2;
@@ -161,7 +170,7 @@ export function EcosystemConstellation({
   const offscreenRadius = 1200; // 150% of width
 
   // Per-satellite assembly spring (staggered)
-  const satellites = Array.from({ length: count }).map((_, i) => {
+  const nodes = Array.from({ length: count }).map((_, i) => {
     const stagger = i * 4;
     const sp = spring({
       frame: frame - stagger,
@@ -208,6 +217,7 @@ export function EcosystemConstellation({
       y,
       Logo: brand.Logo,
       color: brand.bg,
+      svg: satellites ? satellites[i] : null,
       lineOpacity,
       satScale,
       visible: sp > 0.02,
@@ -232,7 +242,7 @@ export function EcosystemConstellation({
         style={{ position: "absolute", inset: 0 }}
       >
         {/* Connection lines */}
-        {satellites.map((s, i) => (
+        {nodes.map((s, i) => (
           <line
             key={`line-${i}`}
             x1={cx}
@@ -263,7 +273,7 @@ export function EcosystemConstellation({
         />
       </svg>
 
-      {/* Center logo */}
+      {/* Center node */}
       <div
         style={{
           position: "absolute",
@@ -273,7 +283,7 @@ export function EcosystemConstellation({
           height: 96,
           marginLeft: -48,
           marginTop: -48,
-          borderRadius: 24,
+          borderRadius: "50%",
           background: `linear-gradient(180deg, ${accentColor} 0%, ${accentColor}cc 100%)`,
           display: "flex",
           alignItems: "center",
@@ -283,16 +293,21 @@ export function EcosystemConstellation({
           fontSize: 52,
           letterSpacing: "-0.05em",
           transform: `scale(${centerScale})`,
-          boxShadow: `0 0 60px ${accentColor}66, inset 0 1px 0 rgba(255,255,255,0.3)`,
-          border: "1px solid rgba(255,255,255,0.15)",
+          boxShadow: `0 0 60px ${accentColor}66, 0 12px 34px rgba(30,40,60,0.18), inset 0 1px 0 rgba(255,255,255,0.3)`,
+          border: "1px solid rgba(0,0,0,0.05)",
         }}
       >
-        {centerLabel}
+        {centerLogo ? (
+          <div style={{ width: 50, height: 56, display: "flex" }} dangerouslySetInnerHTML={{ __html: centerLogo }} />
+        ) : (
+          centerLabel
+        )}
       </div>
 
       {/* Satellites */}
-      {satellites.map((s, i) => {
+      {nodes.map((s, i) => {
         const Logo = s.Logo;
+        const size = s.svg ? 60 : 56;
         return (
           <div
             key={`sat-${i}`}
@@ -300,23 +315,30 @@ export function EcosystemConstellation({
               position: "absolute",
               left: s.x,
               top: s.y,
-              width: 56,
-              height: 56,
-              marginLeft: -28,
-              marginTop: -28,
-              borderRadius: 14,
-              background: `linear-gradient(180deg, ${s.color} 0%, ${s.color}dd 100%)`,
+              width: size,
+              height: size,
+              marginLeft: -size / 2,
+              marginTop: -size / 2,
+              borderRadius: 15,
+              overflow: "hidden",
+              background: s.svg ? "#fff" : `linear-gradient(180deg, ${s.color} 0%, ${s.color}dd 100%)`,
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
               transform: `scale(${s.satScale})`,
-              boxShadow: `0 8px 30px ${s.color}66, inset 0 1px 0 rgba(255,255,255,0.18)`,
-              border: "1px solid rgba(255,255,255,0.12)",
+              boxShadow: s.svg
+                ? "0 10px 28px rgba(30,40,60,0.2), inset 0 1px 0 rgba(255,255,255,0.5)"
+                : `0 8px 30px ${s.color}66, inset 0 1px 0 rgba(255,255,255,0.18)`,
+              border: s.svg ? "1px solid rgba(0,0,0,0.08)" : "1px solid rgba(255,255,255,0.12)",
               opacity: s.visible ? 1 : 0,
               willChange: "transform",
             }}
           >
-            <Logo />
+            {s.svg ? (
+              <div style={{ width: "100%", height: "100%" }} dangerouslySetInnerHTML={{ __html: s.svg }} />
+            ) : (
+              <Logo />
+            )}
           </div>
         );
       })}

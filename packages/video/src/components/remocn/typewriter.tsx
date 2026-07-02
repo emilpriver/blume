@@ -12,6 +12,7 @@ export interface TypewriterProps {
   color?: string;
   cursorColor?: string;
   fontWeight?: number;
+  background?: string;
   className?: string;
 }
 
@@ -24,6 +25,7 @@ export function Typewriter({
   color = "#171717",
   cursorColor = "#171717",
   fontWeight = 600,
+  background = "white",
   className,
 }: TypewriterProps) {
   const tw = useTypewriter(text, { cps: charsPerSecond, speed });
@@ -36,7 +38,7 @@ export function Typewriter({
         display: "flex",
         alignItems: "center",
         justifyContent: "center",
-        background: "white",
+        background,
       }}
     >
       <span
