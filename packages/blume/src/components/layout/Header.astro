@@ -1,9 +1,12 @@
 ---
+import type { ComponentOverride } from "../../core/define-components.ts";
 import type { UIStrings } from "../../core/i18n-ui.ts";
 import type { LocaleSwitchOption, Navigation } from "../../core/types.ts";
 import { GITHUB_MARK } from "../github-mark.ts";
 import Icon from "../Icon.astro";
 import LanguageSwitcher from "./LanguageSwitcher.astro";
+import Logo from "./Logo.astro";
+import { resolveSlot } from "./overrides.ts";
 import Search from "./Search.astro";
 
 interface Props {
@@ -27,6 +30,12 @@ interface Props {
   localeSwitch?: LocaleSwitchOption[];
   /** Active locale for per-language search filtering. */
   searchLocale?: string;
+  /**
+   * Layout-slot overrides forwarded from the root layout. The header honors
+   * `Logo` and `Search` here so those pieces can be replaced without swapping
+   * the whole header.
+   */
+  layout?: Record<string, ComponentOverride>;
 }
 
 const {
@@ -41,15 +50,11 @@ const {
   switcherStrings,
   localeSwitch,
   searchLocale,
+  layout = {},
 } = Astro.props;
 
-// The logo is resolved upstream: an inline `svg` (so a currentColor mark
-// follows the theme) or image URL(s) for an <img>.
-const logoSvg = logo?.svg;
-const logoLight = logo?.light;
-const logoDark = logo?.dark ?? logo?.light;
-const logoAlt = logo?.alt ?? "";
-const brandHref = logo?.href ?? "/";
+const LogoSlot = resolveSlot(layout.Logo, Logo);
+const SearchSlot = resolveSlot(layout.Search, Search);
 
 const iconButton =
   "inline-flex size-9 cursor-pointer items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-muted hover:text-foreground";
@@ -80,37 +85,7 @@ const clickScript = `document.addEventListener("click",(e)=>{const t=e.target.cl
       </button>
     )
   }
-  <a
-    class="inline-flex items-center gap-2 font-semibold text-base text-foreground"
-    href={brandHref}
-  >
-    {
-      logoSvg && (
-        <span
-          aria-hidden="true"
-          class="inline-flex h-5 items-center [&>svg]:h-5 [&>svg]:w-auto"
-          set:html={logoSvg}
-        />
-      )
-    }
-    {
-      !logoSvg &&
-        logoLight &&
-        (logoLight === logoDark ? (
-          <img alt={logoAlt} class="h-5 w-auto" src={logoLight} />
-        ) : (
-          <>
-            <img alt={logoAlt} class="h-5 w-auto dark:hidden" src={logoLight} />
-            <img
-              alt={logoAlt}
-              class="hidden h-5 w-auto dark:block"
-              src={logoDark}
-            />
-          </>
-        ))
-    }
-    {site.title}
-  </a>
+  <LogoSlot logo={logo} site={site} />
   {
     navigation.tabs.length > 0 && (
       <nav aria-label="Sections" class="hidden gap-1 md:flex">
@@ -144,7 +119,7 @@ const clickScript = `document.addEventListener("click",(e)=>{const t=e.target.cl
   }
   {
     searchEnabled && (
-      <Search
+      <SearchSlot
         askEnabled={askEnabled}
         locale={searchLocale}
         navigation={navigation}

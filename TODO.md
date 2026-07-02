@@ -5,7 +5,6 @@
 - [ ] `defineComponents({ islands })` group — currently silently dropped (only `mdx` + `layout` are read)
 - [ ] Honor hydration descriptors (`.client` / `.media`) on layout-slot overrides — a React override renders with no `client:*`
 - [ ] Resolve string-path component references (e.g. `Footer: "./components/footer.astro"`)
-- [ ] Expose the missing overridable layout slots: `Layout`, `Logo`, `MobileNav`, `Search`, `Footer`, `PageHeader`, `PageFooter` (only 5 of ~12 wired today)
 - [ ] `blume/runtime` data helpers: `getBlumeCollection`, `<BlumePage>`
 - [ ] React island hooks: `useBlume()`, `usePage()`, `useSearch()`, `useAskAI()`
 - [ ] Export per-component prop types (`import type { CalloutProps } from "blume/components"`)

@@ -25,6 +25,46 @@ export default defineComponents({
 Keys are the names you write in MDX (`<Callout>`, `<Pricing>`). Use the `.tsx`
 filename when you import React components.
 
+## Layout slots
+
+The `layout` map replaces a piece of Blume's chrome with your own component. Each
+override receives the same props as the built-in it replaces, so you can wrap the
+default or start from scratch.
+
+```ts components.ts
+import { defineComponents } from "blume";
+import Footer from "./components/Footer.astro";
+import Logo from "./components/Logo.astro";
+
+export default defineComponents({
+  layout: {
+    Logo, // brand mark + title in the header
+    Footer, // site-wide footer (no built-in — renders only when set)
+  },
+});
+```
+
+Wired slots:
+
+| Slot              | Replaces                                                 | Props                                                          |
+| ----------------- | -------------------------------------------------------- | -------------------------------------------------------------- |
+| `Layout`          | The entire page shell (`RootLayout`)                     | Everything the built-in layout receives, plus the `layout` map |
+| `Header`          | The top navigation bar                                   | `site`, `logo`, `navigation`, `route`, `searchEnabled`, …      |
+| `Logo`            | The brand link (mark + title) in the header              | `site`, `logo`                                                 |
+| `Search`          | The header search trigger + modal                        | `navigation`, `strings`, `locale`, `askEnabled`                |
+| `Sidebar`         | The primary navigation tree                              | `items`, `currentRoute`                                        |
+| `MobileNav`       | The nav inside the mobile drawer (defaults to `Sidebar`) | `items`, `currentRoute`                                        |
+| `Breadcrumbs`     | The breadcrumb trail                                     | `crumbs`                                                       |
+| `TableOfContents` | The on-this-page outline                                 | `headings`, `title`, `variant`                                 |
+| `Pagination`      | The prev/next footer links                               | `prev`, `next`, `strings`                                      |
+| `PageHeader`      | An injection point above the article (no built-in)       | `page`, `headings`, `route`                                    |
+| `PageFooter`      | An injection point below the article (no built-in)       | `page`, `headings`, `route`                                    |
+| `Footer`          | A site-wide footer after the content grid (no built-in)  | `site`, `navigation`, `ui`                                     |
+
+`PageHeader`, `PageFooter`, and `Footer` have no built-in component — they render
+nothing until you set them, which makes them handy injection points for a
+promo banner, a "last updated" note, or a marketing footer.
+
 ## Interactive islands
 
 For interactive UI (React, Vue, or Svelte), drop a component into an `islands/`

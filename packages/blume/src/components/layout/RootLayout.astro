@@ -12,6 +12,7 @@ import { buildStructuredData } from "../../seo/jsonld.ts";
 import Analytics from "./Analytics.astro";
 import Banner from "./Banner.astro";
 import Breadcrumbs from "./Breadcrumbs.astro";
+import Empty from "./Empty.astro";
 import Favicon from "./Favicon.astro";
 import Fonts from "./Fonts.astro";
 import { bannerInitScript, themeInitScript } from "./head-scripts.ts";
@@ -108,7 +109,11 @@ interface Props {
   /**
    * User layout-slot overrides from `components.ts` (`defineComponents`). Each
    * key replaces the matching built-in; unknown keys are ignored. Wired slots:
-   * `Header`, `Sidebar`, `Breadcrumbs`, `TableOfContents`, `Pagination`.
+   * `Header`, `Logo`, `Search`, `Sidebar`, `MobileNav`, `Breadcrumbs`,
+   * `TableOfContents`, `Pagination`, plus the content-injection slots
+   * `PageHeader`, `PageFooter`, and `Footer` (which have no built-in and render
+   * only when overridden). `Layout` (replacing this whole component) is wired in
+   * the generated page templates, not here.
    */
   layout?: Record<string, ComponentOverride>;
 }
@@ -156,11 +161,21 @@ const {
 
 // Layout-slot overrides: render the user's component when configured, else the
 // built-in. Each override receives the same props as the component it replaces.
+// `Logo` and `Search` are resolved inside the header (forwarded via `layout`).
 const HeaderSlot = resolveSlot(layout.Header, Header);
 const SidebarSlot = resolveSlot(layout.Sidebar, NavTree);
 const BreadcrumbsSlot = resolveSlot(layout.Breadcrumbs, Breadcrumbs);
 const TableOfContentsSlot = resolveSlot(layout.TableOfContents, TableOfContents);
 const PaginationSlot = resolveSlot(layout.Pagination, Pagination);
+// The mobile drawer reuses the sidebar unless a distinct `MobileNav` is given.
+const MobileNavSlot = layout.MobileNav
+  ? resolveSlot(layout.MobileNav, NavTree)
+  : null;
+// Content-injection slots with no built-in: the `Empty` fallback renders nothing
+// when unconfigured, so these are safe to render unconditionally.
+const FooterSlot = resolveSlot(layout.Footer, Empty);
+const PageHeaderSlot = resolveSlot(layout.PageHeader, Empty);
+const PageFooterSlot = resolveSlot(layout.PageFooter, Empty);
 
 const strings = ui ?? EN_UI;
 // Filter search to the active language only when the site is multi-locale.
@@ -282,6 +297,7 @@ const bannerScript = banner?.dismissible
     <Banner banner={banner} />
     <HeaderSlot
       askEnabled={askEnabled}
+      layout={layout}
       localeSwitch={localeSwitch}
       logo={logo}
       navigation={navigation}
@@ -300,7 +316,20 @@ const bannerScript = banner?.dismissible
         class="fixed top-16 start-0 z-[35] h-[calc(100dvh-4rem)] w-64 max-w-[80vw] -translate-x-[105%] overflow-y-auto border-border border-e bg-background px-5 pt-4 pb-6 transition-transform rtl:translate-x-[105%] [:where([data-blume-nav-open])_&]:translate-x-0! lg:sticky lg:z-auto lg:w-auto lg:max-w-none lg:translate-x-0! lg:border-e-0 lg:bg-transparent lg:px-4"
       >
         <nav>
-          <SidebarSlot currentRoute={page.route} items={sidebar} />
+          {
+            MobileNavSlot ? (
+              <>
+                <div class="lg:hidden">
+                  <MobileNavSlot currentRoute={page.route} items={sidebar} />
+                </div>
+                <div class="hidden lg:block">
+                  <SidebarSlot currentRoute={page.route} items={sidebar} />
+                </div>
+              </>
+            ) : (
+              <SidebarSlot currentRoute={page.route} items={sidebar} />
+            )
+          }
         </nav>
       </aside>
       <main class="min-w-0 px-6 pt-6 pb-10 lg:px-8 xl:px-10" id="blume-content">
@@ -310,9 +339,11 @@ const bannerScript = banner?.dismissible
           title={strings.toc.title}
           variant="mobile"
         />
+        <PageHeaderSlot headings={tocHeadings} page={page} route={page.route} />
         <article class="prose mx-auto max-w-[42rem]" dir={contentDir}>
           <slot />
         </article>
+        <PageFooterSlot headings={tocHeadings} page={page} route={page.route} />
         {
           formattedLastModified && (
             <p class="mx-auto mt-10 max-w-[42rem] text-muted-foreground text-sm">
@@ -344,6 +375,7 @@ const bannerScript = banner?.dismissible
         />
       </aside>
     </div>
+    <FooterSlot navigation={navigation} site={site} ui={strings} />
     <button
       aria-label="Close navigation"
       class="fixed inset-0 z-[30] hidden cursor-pointer border-0 bg-black/40 [:where([data-blume-nav-open])_&]:block lg:hidden"
