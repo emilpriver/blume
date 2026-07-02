@@ -1,4 +1,5 @@
 import { localizeRoute, resolveFallbackLocale } from "./i18n.ts";
+import { validateNavIcons } from "./nav-diagnostics.ts";
 import { buildNavigation } from "./navigation.ts";
 import type {
   FolderMeta,
@@ -117,6 +118,10 @@ export const buildContentGraph = (
       tabs: options.navigation.tabs,
     });
   }
+
+  // Icon typos (and, below, structural issues) are validated on the built
+  // navigation so every source — config, folder meta, frontmatter — is covered.
+  diagnostics.push(...validateNavIcons(navigation));
 
   return {
     diagnostics,

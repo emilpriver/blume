@@ -36,6 +36,9 @@ const DOCS_PATHS: Record<string, string> = {
   BLUME_FRONTMATTER_INVALID: "/docs/reference/frontmatter",
   BLUME_META_INVALID: "/docs/content/meta",
   BLUME_META_LOAD_FAILED: "/docs/content/meta",
+  BLUME_NAV_DUPLICATE_LABEL: "/docs/content/navigation",
+  BLUME_NAV_HIDDEN_IN_SIDEBAR: "/docs/content/navigation",
+  BLUME_NAV_MISSING_PAGE: "/docs/content/navigation",
   BLUME_NODE_VERSION: "/docs/quickstart",
   BLUME_SERVER_FEATURE_REQUIRED: "/docs/deployment",
   BLUME_SOURCE_FETCH_FAILED: "/docs/content/sources",
@@ -43,6 +46,7 @@ const DOCS_PATHS: Record<string, string> = {
   BLUME_SOURCE_OFFLINE: "/docs/content/sources",
   BLUME_SOURCE_SDK_MISSING: "/docs/content/sources",
   BLUME_SOURCE_UNAVAILABLE: "/docs/content/sources",
+  BLUME_UNKNOWN_ICON: "/docs/content/navigation",
 };
 
 /** The docs URL that explains a diagnostic code, if one is mapped. */

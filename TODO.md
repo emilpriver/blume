@@ -9,13 +9,10 @@
 - [ ] Missing-component diagnostic (unknown MDX tag → suggest `blume add`)
 - [ ] Hydration-mismatch diagnostic
 
-### CLI flags (plan 02)
-
 ### Navigation (plan 06)
 
 - [ ] Render `navigation.selectors` (validates + builds into the graph but no component consumes it)
 - [ ] Nav diagnostics: missing pages referenced in config, duplicate labels at a level, hidden pages referenced by pagination
-- [ ] Validate icon names against the icon sets
 
 ### Deployment (plan 19)
 
