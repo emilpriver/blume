@@ -6,6 +6,8 @@
     "dist",
     "diffs",
     "examples",
+    "e2e",
+    "playwright.config.ts",
     ".blume/src/pages",
     ".blume/src/generated",
     ".blume/cache"

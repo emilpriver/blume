@@ -6,9 +6,13 @@
     "dev": "blume dev",
     "build": "blume build",
     "preview": "blume preview",
-    "typecheck": "blume check"
+    "typecheck": "blume check",
+    "test:e2e": "playwright test"
   },
   "dependencies": {
     "blume": "workspace:*"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.49.0"
   }
 }
