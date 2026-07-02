@@ -67,7 +67,7 @@ export const sampleBrand = {
   nav: ["Docs", "API", "Changelog"],
   sidebar: [
     {
-      items: ["Introduction", "Quickstart", "Authentication"],
+      items: ["Introduction", "Quickstart", "Authentication", "Components"],
       label: "Get started",
     },
     { items: ["Messages", "Templates", "Webhooks"], label: "Sending" },
