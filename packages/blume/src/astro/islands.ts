@@ -105,9 +105,13 @@ export const discoverIslands = async (
       continue;
     }
     const name = base.replace(ISLAND_FILE, "");
-    if (!/^[A-Z]/u.test(name)) {
+    // The name is used verbatim as both an MDX tag and an unquoted object key
+    // in the generated island map, so it must be a plain PascalCase identifier
+    // — a `-`, `.`, or space (e.g. `Time-Picker.tsx`) would otherwise emit a
+    // syntax-error module and fail the whole build with no pointer to the file.
+    if (!/^[A-Z][A-Za-z0-9_]*$/u.test(name)) {
       warnings.push(
-        `Island "${file}" must have a PascalCase filename to be used in MDX (e.g. Counter.tsx → <Counter />); skipping it.`
+        `Island "${file}" must have a PascalCase identifier filename to be used in MDX (letters, digits, and underscores only, e.g. Counter.tsx → <Counter />); skipping it.`
       );
       continue;
     }

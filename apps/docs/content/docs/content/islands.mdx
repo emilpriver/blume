@@ -26,9 +26,10 @@ export default function Counter() {
 Here's a live counter: <Counter />
 ```
 
-The filename is the component name, so it **must be PascalCase**
-(`Counter.tsx` → `<Counter />`). Lowercase filenames and two islands that
-resolve to the same name are skipped with a build warning.
+The filename is the component name, so it **must be a PascalCase identifier** —
+letters, digits, and underscores only (`Counter.tsx` → `<Counter />`).
+Lowercase filenames, names with dashes/dots/spaces (like `Time-Picker.tsx`), and
+two islands that resolve to the same name are skipped with a build warning.
 
 :::note
 Islands are for **interactive** UI. For a static component you reuse across

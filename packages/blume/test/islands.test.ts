@@ -17,6 +17,9 @@ const FILES: Record<string, string> = {
   "islands/Counter.tsx": "export default function Counter() { return null; }",
   "islands/Eager.tsx":
     'export const client = "load";\nexport default function Eager() {}',
+  // Uppercase first letter but a non-identifier char — would emit a
+  // syntax-error object key (`Time-Picker: I0`) if not skipped.
+  "islands/Time-Picker.tsx": "export default function TimePicker() {}",
   "islands/Toggle.svelte": "<button>toggle</button>",
   "islands/Widget.vue": "<template><div /></template>",
   // Nested duplicate of <Counter> — should be ignored with a warning.
@@ -76,6 +79,15 @@ describe("discoverIslands", () => {
     const result = await discoverIslands(root);
     expect(byName(result).has("widget")).toBe(false);
     expect(result.warnings.some((w) => w.includes("PascalCase"))).toBe(true);
+  });
+
+  it("skips a PascalCase-but-non-identifier filename with a warning", async () => {
+    const result = await discoverIslands(root);
+    // `Time-Picker` starts uppercase but isn't a valid identifier/tag.
+    expect(byName(result).has("Time-Picker")).toBe(false);
+    expect(result.warnings.some((w) => w.includes("Time-Picker.tsx"))).toBe(
+      true
+    );
   });
 
   it("ignores a duplicate component name with a warning", async () => {
