@@ -34,8 +34,8 @@ Currently Scalar-embed only (plan 21). None of the native layer exists.
 
 ### Ask AI retrieval (plan 11)
 
-- [ ] Ground Ask AI in the docs: inject retrieved content (lexical/Orama/embeddings) into the endpoint — today it streams chat messages with a generic system prompt (ungrounded)
-- [ ] Pass page/context from the island to the endpoint
+- [x] Ground Ask AI in the docs: inject retrieved content (lexical/Orama/embeddings) into the endpoint — today it streams chat messages with a generic system prompt (ungrounded)
+- [x] Pass page/context from the island to the endpoint
 
 ### `blume ai` helper commands (plan 11)
 

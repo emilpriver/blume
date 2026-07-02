@@ -4,6 +4,9 @@ import { tmpdir } from "node:os";
 
 import { join } from "pathe";
 
+import { createAskContext } from "../src/ai/ask-context.ts";
+import type { AskData } from "../src/ai/ask-context.ts";
+import { buildAskData } from "../src/ai/ask-data.ts";
 import { askBackendRuntimeDep, resolveAskBackend } from "../src/ai/ask.ts";
 import { buildLlmsFiles } from "../src/ai/llms.ts";
 import { buildRawMarkdown } from "../src/ai/markdown.ts";
@@ -14,7 +17,7 @@ import {
 import type { BlumeProject } from "../src/core/project-graph.ts";
 import { blumeConfigSchema, pageMetaSchema } from "../src/core/schema.ts";
 import type { AskAiConfig } from "../src/core/schema.ts";
-import type { PageRecord } from "../src/core/types.ts";
+import type { PageRecord, RouteManifestEntry } from "../src/core/types.ts";
 
 /** Parse an `ai.ask` block through the full schema so defaults are applied. */
 const askConfig = (ask: Record<string, unknown>): AskAiConfig =>
@@ -151,6 +154,155 @@ describe("buildRawMarkdown", () => {
   });
 });
 
+/** A route manifest entry backed by one of the temp fixture files. */
+const askRoute = (over: Partial<RouteManifestEntry>): RouteManifestEntry =>
+  ({
+    contentType: "doc",
+    draft: false,
+    hidden: false,
+    id: "a.md",
+    indexable: true,
+    locale: "",
+    path: "/a",
+    sourcePath: join(root, "a.md"),
+    title: "Alpha",
+    ...over,
+  }) as RouteManifestEntry;
+
+const askDataProject = (): BlumeProject =>
+  ({
+    config: blumeConfigSchema.parse({
+      deployment: { site: "https://example.com/" },
+      title: "Docs",
+    }),
+    graph: {
+      pages: [
+        makePage("a.md", "/a", "Alpha", { description: "First" }),
+        makePage("b.md", "/b", "Beta"),
+      ],
+    },
+    manifest: {
+      routes: [
+        askRoute({ id: "a.md", path: "/a", title: "Alpha" }),
+        askRoute({ id: "b.md", path: "/b", title: "Beta" }),
+      ],
+    },
+  }) as unknown as BlumeProject;
+
+describe("buildAskData", () => {
+  it("indexes page bodies with locale and the deployment site", async () => {
+    const data = await buildAskData(askDataProject());
+    expect(data.site).toBe("https://example.com/");
+    const alpha = data.documents.find((doc) => doc.route === "/a");
+    expect(alpha?.title).toBe("Alpha");
+    expect(alpha?.content).toContain("Body A.");
+    expect(alpha).toHaveProperty("locale", "");
+  });
+});
+
+const askData: AskData = {
+  documents: [
+    {
+      content:
+        "Install Blume with your package manager, then run the dev server to preview the docs.",
+      description: "How to install Blume",
+      locale: "",
+      route: "/guides/install",
+      title: "Installation",
+    },
+    {
+      content:
+        "Configure themes, navigation, and search in blume.config.ts to customize the site.",
+      description: "Configuration reference",
+      locale: "",
+      route: "/guides/config",
+      title: "Configuration",
+    },
+  ],
+  site: "https://example.com",
+};
+
+describe("createAskContext", () => {
+  it("grounds the prompt in the retrieved page and asks the model to cite", async () => {
+    const ground = createAskContext(askData);
+    const system = await ground([
+      { content: "how do I install the dev server", role: "user" },
+    ]);
+    expect(system).toContain("<docs>");
+    expect(system).toContain("Installation (/guides/install)");
+    expect(system).toContain("run the dev server");
+    expect(system).toContain("Cite the page titles");
+  });
+
+  it("returns undefined when there is no user message to ground on", async () => {
+    const ground = createAskContext(askData);
+    expect(await ground([])).toBeUndefined();
+    expect(
+      await ground([{ content: "hello", role: "assistant" }])
+    ).toBeUndefined();
+  });
+
+  it("injects the current page as priority context", async () => {
+    const ground = createAskContext(askData);
+    const system = await ground([{ content: "themes", role: "user" }], {
+      path: "/guides/install/",
+    });
+    expect(system).toContain("the page the user is currently viewing");
+    expect(system).toContain("Installation (/guides/install)");
+  });
+
+  it("filters retrieval to the current page's locale", async () => {
+    const ground = createAskContext({
+      documents: [
+        {
+          content: "installation guide in english",
+          description: "",
+          locale: "en",
+          route: "/en/install",
+          title: "Install EN",
+        },
+        {
+          content: "installation guide in french",
+          description: "",
+          locale: "fr",
+          route: "/fr/install",
+          title: "Install FR",
+        },
+      ],
+      site: null,
+    });
+    const system = await ground([{ content: "installation", role: "user" }], {
+      path: "/fr/install",
+    });
+    expect(system).toContain("Install FR");
+    expect(system).not.toContain("Install EN");
+  });
+
+  it("truncates long excerpts and returns undefined for an empty corpus", async () => {
+    const long = "word ".repeat(1000);
+    const grounded = createAskContext({
+      documents: [
+        {
+          content: long,
+          description: "",
+          locale: "",
+          route: "/big",
+          title: "Big",
+        },
+      ],
+      site: null,
+    });
+    const system = await grounded([{ content: "word", role: "user" }]);
+    expect(system).toContain("…");
+    expect((system ?? "").length).toBeLessThan(long.length);
+
+    const empty = createAskContext({ documents: [], site: null });
+    expect(
+      await empty([{ content: "anything", role: "user" }])
+    ).toBeUndefined();
+  });
+});
+
 describe("resolveAskBackend", () => {
   it("defaults to the gateway backend when ask is unset", () => {
     expect(resolveAskBackend()).toStrictEqual({
@@ -246,19 +398,41 @@ describe("ai.ask schema", () => {
 });
 
 describe("askEndpointTemplate", () => {
-  it("emits the plain gateway endpoint with no provider SDK", () => {
-    const out = askEndpointTemplate(resolveAskBackend());
+  it("grounds the gateway endpoint and imports the retrieval helper", () => {
+    const out = askEndpointTemplate(resolveAskBackend(), true);
     expect(out).toContain('import { streamText } from "ai";');
     expect(out).not.toContain("@openrouter/ai-sdk-provider");
     expect(out).not.toContain("@ai-sdk/openai-compatible");
     expect(out).toContain('model: "openai/gpt-5.5"');
+    expect(out).toContain(
+      'import { createAskContext } from "blume/ai/ask-context.ts";'
+    );
+    expect(out).toContain('import askData from "../generated/ask-data.json";');
+    expect(out).toContain("const ground = createAskContext(askData);");
+    expect(out).toContain("const { messages, page } = await request.json();");
+    expect(out).toContain("await ground(messages, page)");
+  });
+
+  it("leaves the Inkeep endpoint ungrounded (it runs its own retrieval)", () => {
+    const out = askEndpointTemplate(
+      resolveAskBackend(askConfig({ provider: "inkeep" })),
+      false
+    );
+    expect(out).toContain(
+      'import { createOpenAICompatible } from "@ai-sdk/openai-compatible";'
+    );
+    expect(out).not.toContain("createAskContext");
+    expect(out).not.toContain("ask-data.json");
+    expect(out).toContain("const { messages } = await request.json();");
+    expect(out).toContain("Answer using the project's documentation.");
   });
 
   it("wires the OpenRouter provider and its env var", () => {
     const out = askEndpointTemplate(
       resolveAskBackend(
         askConfig({ model: "anthropic/x", provider: "openrouter" })
-      )
+      ),
+      true
     );
     expect(out).toContain(
       'import { createOpenRouter } from "@openrouter/ai-sdk-provider";'
@@ -269,7 +443,8 @@ describe("askEndpointTemplate", () => {
 
   it("wires the OpenAI-compatible provider with the preset base URL", () => {
     const out = askEndpointTemplate(
-      resolveAskBackend(askConfig({ provider: "llmgateway" }))
+      resolveAskBackend(askConfig({ provider: "llmgateway" })),
+      true
     );
     expect(out).toContain(
       'import { createOpenAICompatible } from "@ai-sdk/openai-compatible";'

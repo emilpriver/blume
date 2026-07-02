@@ -3,6 +3,7 @@ import { cp, mkdir, readFile, rm, writeFile } from "node:fs/promises";
 
 import { join, relative } from "pathe";
 
+import { buildAskData } from "../ai/ask-data.ts";
 import { resolveAskBackend } from "../ai/ask.ts";
 import { buildRawMarkdown } from "../ai/markdown.ts";
 import { discoverExamples } from "../astro/examples.ts";
@@ -35,6 +36,7 @@ import {
   userComponentsTemplate,
 } from "../astro/templates.ts";
 import { scanProject } from "../core/project-graph.ts";
+import type { BlumeProject } from "../core/project-graph.ts";
 import type { ProjectContext } from "../core/types.ts";
 import { buildRssFeeds, renderRssFeed } from "../deploy/rss.ts";
 import { buildReferenceFiles, hasReferences } from "../openapi/scalar.ts";
@@ -45,6 +47,35 @@ import { buildThemeCss } from "../theme/palette.ts";
 import { twoslashCss } from "../theme/twoslash.ts";
 
 const POSIX = (path: string): string => path.split("\\").join("/");
+
+/**
+ * The Ask AI endpoint plus, unless the backend runs its own retrieval (Inkeep),
+ * its grounding snapshot. Empty when Ask AI is disabled.
+ */
+const askFiles = async (
+  project: BlumeProject,
+  srcDir: string,
+  genDir: string
+): Promise<{ content: string; path: string }[]> => {
+  const { ask } = project.config.ai;
+  if (!ask?.enabled) {
+    return [];
+  }
+  const grounded = ask.provider !== "inkeep";
+  const files = [
+    {
+      content: askEndpointTemplate(resolveAskBackend(ask), grounded),
+      path: join(srcDir, "pages", "api", "ask.ts"),
+    },
+  ];
+  if (grounded) {
+    files.push({
+      content: `${JSON.stringify(await buildAskData(project))}\n`,
+      path: join(genDir, "ask-data.json"),
+    });
+  }
+  return files;
+};
 
 /**
  * Promote the generated runtime into the project as an owned Astro app. After
@@ -192,10 +223,7 @@ export const eject = async (root: string): Promise<string[]> => {
   ];
 
   if (askEnabled) {
-    files.push({
-      content: askEndpointTemplate(resolveAskBackend(config.ai.ask)),
-      path: join(srcDir, "pages", "api", "ask.ts"),
-    });
+    files.push(...(await askFiles(project, srcDir, genDir)));
   }
 
   if (config.seo.og.enabled) {

@@ -414,6 +414,7 @@ describe("generateRuntime", () => {
 
     // Feature-gated files.
     expect(has("src/pages/api/ask.ts")).toBe(true);
+    expect(has("src/generated/ask-data.json")).toBe(true);
     expect(has("src/pages/og/[...slug].png.ts")).toBe(true);
     expect(has("src/pages/changelog.astro")).toBe(true);
     expect(has("src/pages/404.astro")).toBe(true);

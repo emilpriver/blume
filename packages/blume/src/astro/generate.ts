@@ -14,6 +14,7 @@ import { pathToFileURL } from "node:url";
 import { basename, dirname, join, normalize, relative } from "pathe";
 import { glob } from "tinyglobby";
 
+import { buildAskData } from "../ai/ask-data.ts";
 import { resolveAskBackend } from "../ai/ask.ts";
 import { buildRawMarkdown } from "../ai/markdown.ts";
 import { buildMcpData } from "../ai/mcp/data.ts";
@@ -788,6 +789,33 @@ const writeMcpFiles = async (
 };
 
 /**
+ * Write the Ask AI endpoint and, unless the backend runs its own retrieval
+ * (Inkeep), the grounding snapshot the endpoint queries at request time. A no-op
+ * when Ask AI is disabled.
+ */
+const writeAskFiles = async (
+  project: BlumeProject,
+  srcDir: string,
+  write: (path: string, content: string) => Promise<boolean>
+): Promise<void> => {
+  const { ask } = project.config.ai;
+  if (!ask?.enabled) {
+    return;
+  }
+  const grounded = ask.provider !== "inkeep";
+  if (grounded) {
+    await write(
+      join(srcDir, "generated", "ask-data.json"),
+      `${JSON.stringify(await buildAskData(project))}\n`
+    );
+  }
+  await write(
+    join(srcDir, "pages", "api", "ask.ts"),
+    askEndpointTemplate(resolveAskBackend(ask), grounded)
+  );
+};
+
+/**
  * Write the default 404 page at Astro's reserved `src/pages/404.astro` path so
  * static builds emit `dist/404.html`. Skipped when the project already owns
  * `/404` (a custom `pages/404.astro` or a `404.md` content page), letting it be
@@ -993,12 +1021,7 @@ export const generateRuntime = async (
     )
   );
 
-  if (askEnabled) {
-    await write(
-      join(srcDir, "pages", "api", "ask.ts"),
-      askEndpointTemplate(resolveAskBackend(config.ai.ask))
-    );
-  }
+  await writeAskFiles(project, srcDir, write);
 
   await writeMcpFiles(project, mcp, write);
 

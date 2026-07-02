@@ -554,7 +554,7 @@ describe("stagedContentDir", () => {
 
 describe("askEndpointTemplate", () => {
   it("uses the AI gateway (core model id) by default", () => {
-    const out = askEndpointTemplate(resolveAskBackend());
+    const out = askEndpointTemplate(resolveAskBackend(), true);
     expect(out).toContain('import { streamText } from "ai"');
     expect(out).toContain('model: "openai/gpt-5.5"');
     expect(out).not.toContain("createOpenRouter");
@@ -569,7 +569,8 @@ describe("askEndpointTemplate", () => {
           model: "x/y",
           provider: "openrouter",
         })
-      )
+      ),
+      true
     );
     expect(out).toContain("createOpenRouter");
     expect(out).toContain('process.env["OR_KEY"]');
@@ -585,7 +586,8 @@ describe("askEndpointTemplate", () => {
           model: "m",
           provider: "openai-compatible",
         })
-      )
+      ),
+      true
     );
     expect(out).toContain("createOpenAICompatible");
     expect(out).toContain('baseURL: "https://api.example.com/v1"');

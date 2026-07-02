@@ -25,6 +25,19 @@ const nextId = (): number => {
   return idCounter;
 };
 
+// The endpoint and page path both honor the deployment `base` so grounding works
+// under a non-root base path (the server matches base-less document routes).
+const ASK_ENDPOINT = `${import.meta.env.BASE_URL}api/ask`.replace("//", "/");
+
+/** The current route with the deployment base stripped, for page-context lookup. */
+const currentPath = (): string => {
+  const base = import.meta.env.BASE_URL;
+  const path = window.location.pathname;
+  return base.length > 1 && path.startsWith(base)
+    ? `/${path.slice(base.length)}`
+    : path;
+};
+
 const BUTTON_CLASS =
   "inline-flex h-9 cursor-pointer items-center gap-2 rounded-blume border border-border bg-muted px-2.5 text-muted-foreground text-sm hover:border-accent disabled:opacity-50";
 
@@ -72,9 +85,10 @@ const AskAI = ({ strings }: { strings?: UIStrings["ask"] }) => {
     setBusy(true);
 
     try {
-      const response = await fetch("/api/ask", {
+      const response = await fetch(ASK_ENDPOINT, {
         body: JSON.stringify({
           messages: history.map((m) => ({ content: m.content, role: m.role })),
+          page: { path: currentPath() },
         }),
         headers: { "content-type": "application/json" },
         method: "POST",
