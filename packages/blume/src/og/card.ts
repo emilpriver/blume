@@ -56,8 +56,20 @@ const MUTED = "#737373";
 const FAINT = "#a3a3a3";
 const BORDER = "#e5e5e5";
 
-const truncate = (value: string, max: number): string =>
-  value.length > max ? `${value.slice(0, max - 1).trimEnd()}…` : value;
+/**
+ * Truncate to `max` code points with an ellipsis. Slices by code points, not
+ * UTF-16 units, so cutting mid-emoji doesn't leave a lone surrogate (a broken
+ * glyph) before the ellipsis.
+ */
+export const truncate = (value: string, max: number): string => {
+  const chars = [...value];
+  return chars.length > max
+    ? `${chars
+        .slice(0, max - 1)
+        .join("")
+        .trimEnd()}…`
+    : value;
+};
 
 // Brand mark sizing: target this height, but scale down so a wide wordmark logo
 // stays within the lockup.
