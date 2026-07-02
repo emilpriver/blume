@@ -1,6 +1,17 @@
 import type { BlumeProject } from "../core/project-graph.ts";
 import { escapeXml } from "./xml.ts";
 
+/** A `<lastmod>` element (W3C date) when the page has a valid modified date. */
+const lastmodTag = (value: string | undefined): string => {
+  if (!value) {
+    return "";
+  }
+  const date = new Date(value);
+  return Number.isNaN(date.getTime())
+    ? ""
+    : `<lastmod>${date.toISOString().slice(0, 10)}</lastmod>`;
+};
+
 /**
  * Build a sitemap.xml from the route manifest. Returns null when the sitemap is
  * disabled or no `site` is configured (absolute URLs are required for a valid
@@ -24,7 +35,7 @@ export const buildSitemap = (project: BlumeProject): string | null => {
     // rejected.
     .map(
       (page) =>
-        `  <url><loc>${escapeXml(encodeURI(`${base}${page.route}`))}</loc></url>`
+        `  <url><loc>${escapeXml(encodeURI(`${base}${page.route}`))}</loc>${lastmodTag(page.lastModified)}</url>`
     )
     .toSorted();
 

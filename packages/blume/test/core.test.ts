@@ -484,6 +484,22 @@ describe("sitemap", () => {
     );
     expect(xml).not.toContain("Tips & Tricks");
   });
+
+  it("adds a <lastmod> for a page with a modified date", () => {
+    const pages = [
+      makePage({
+        id: "a",
+        lastModified: "2024-05-01T10:00:00Z",
+        route: "/a",
+        title: "A",
+      }),
+      makePage({ id: "b", route: "/b", title: "B" }),
+    ];
+    const xml = buildSitemap(makeProject(pages)) ?? "";
+    expect(xml).toContain("<lastmod>2024-05-01</lastmod>");
+    // A page without a date gets a plain <url> with no lastmod.
+    expect(xml).toContain("<loc>https://example.com/b</loc></url>");
+  });
 });
 
 describe("robots.txt", () => {
