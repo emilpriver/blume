@@ -2,13 +2,9 @@
 
 ## P1 — Partially implemented (customization / override API, plan 05 / 16)
 
-- [ ] `defineComponents({ islands })` group — currently silently dropped (only `mdx` + `layout` are read)
-- [ ] Honor hydration descriptors (`.client` / `.media`) on layout-slot overrides — a React override renders with no `client:*`
-- [ ] Resolve string-path component references (e.g. `Footer: "./components/footer.astro"`)
 - [ ] `blume/runtime` data helpers: `getBlumeCollection`, `<BlumePage>`
 - [ ] React island hooks: `useBlume()`, `usePage()`, `useSearch()`, `useAskAI()`
 - [ ] Export per-component prop types (`import type { CalloutProps } from "blume/components"`)
-- [ ] Friendly diagnostic when an override targets a framework component with no hydration mode
 
 ---
 

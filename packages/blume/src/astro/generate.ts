@@ -19,6 +19,7 @@ import { resolveAskBackend } from "../ai/ask.ts";
 import { buildRawMarkdown } from "../ai/markdown.ts";
 import { buildMcpData } from "../ai/mcp/data.ts";
 import { buildMcpDiscovery, buildMcpServerCard } from "../ai/mcp/discovery.ts";
+import { analyzeComponentOverrides } from "../core/component-overrides.ts";
 import type {
   BlumeBanner,
   BlumeData,
@@ -44,6 +45,8 @@ import { tailwindEntryTemplate } from "../theme/entry.ts";
 import { buildFontsCss, configuredCssVars } from "../theme/fonts.ts";
 import { buildThemeCss } from "../theme/palette.ts";
 import { twoslashCss } from "../theme/twoslash.ts";
+import { planComponentSlots } from "./component-slots.ts";
+import type { ComponentSlotPlan } from "./component-slots.ts";
 import { discoverExamples } from "./examples.ts";
 import { discoverIslands } from "./islands.ts";
 import { customOgRoutes, discoverPages, routeIsTaken } from "./pages.ts";
@@ -73,7 +76,6 @@ import {
   searchClientTemplate,
   searchEndpointTemplate,
   stagedContentDir,
-  userComponentsTemplate,
 } from "./templates.ts";
 
 /** Absolute path to the Blume package `src` directory. */
@@ -864,6 +866,27 @@ const shouldGenerateChangelog = (project: BlumeProject): boolean => {
 };
 
 /**
+ * Statically analyze the user's `components.ts` (never executing it) and plan the
+ * generated `components.ts` module plus any hydration wrappers. Returns the plan
+ * and the analyzer's warnings; a project with no components file gets an empty
+ * plan and no warnings.
+ */
+const buildComponentSlots = async (
+  componentsFile: string | null
+): Promise<{ plan: ComponentSlotPlan; warnings: string[] }> => {
+  const analysis = componentsFile
+    ? analyzeComponentOverrides(
+        await readFile(componentsFile, "utf-8"),
+        componentsFile
+      )
+    : null;
+  return {
+    plan: planComponentSlots(componentsFile, analysis),
+    warnings: analysis ? analysis.warnings : [],
+  };
+};
+
+/**
  * Write (or update) the generated `.blume/` Astro runtime for a project.
  * Only files whose content changed are rewritten so Vite HMR stays fast.
  */
@@ -901,12 +924,20 @@ export const generateRuntime = async (
       discoverIslands(context.root),
       discoverExamples(context.root, config.examples),
     ]);
+  // Statically analyze `components.ts` overrides (never executed): drives the
+  // `islands` group, hydration on layout/mdx overrides, string-path resolution,
+  // and the "framework component with no client mode" diagnostic.
+  const { plan: slotPlan, warnings: overrideWarnings } =
+    await buildComponentSlots(context.componentsFile);
+
   // Each island/example framework enables its Astro renderer. React also
   // switches on for any project `.tsx`/`.jsx` and for Ask AI; Vue/Svelte are
-  // island/example-driven. `.astro` examples need no renderer.
+  // island/example-driven. `.astro` examples need no renderer. Component
+  // overrides referencing a framework component enable its renderer too.
   const frameworks = new Set<string>([
     ...islandDiscovery.islands.map((island) => island.framework),
     ...exampleDiscovery.examples.map((example) => example.framework),
+    ...slotPlan.frameworks,
   ]);
   const needsReact = detectedReact || askEnabled || frameworks.has("react");
   const needsVue = frameworks.has("vue");
@@ -967,10 +998,7 @@ export const generateRuntime = async (
         mathEnabled: config.markdown.math,
       })
     ),
-    write(
-      join(srcDir, "generated", "components.ts"),
-      userComponentsTemplate(context.componentsFile)
-    ),
+    write(join(srcDir, "generated", "components.ts"), slotPlan.module),
     write(
       join(srcDir, "generated", "islands.ts"),
       islandMapTemplate(islandDiscovery.islands)
@@ -1001,6 +1029,18 @@ export const generateRuntime = async (
       write(
         join(srcDir, "generated", "islands", `${island.name}.astro`),
         islandWrapperTemplate(island)
+      )
+    )
+  );
+
+  // Per-override hydration wrappers for `defineComponents` islands and `client:*`
+  // layout/mdx overrides. The generated `components.ts` (written above) imports
+  // these; orphans from removed overrides are pruned at the end of the pass.
+  await Promise.all(
+    slotPlan.wrappers.map((wrapper) =>
+      write(
+        join(srcDir, "generated", "component-slots", `${wrapper.name}.astro`),
+        wrapper.content
       )
     )
   );
@@ -1115,6 +1155,7 @@ export const generateRuntime = async (
     ...mcp.warnings,
     ...islandDiscovery.warnings,
     ...exampleDiscovery.warnings,
+    ...overrideWarnings,
   ];
 
   // Provider SDKs are optional peers; warn (rather than fail opaquely in Vite)

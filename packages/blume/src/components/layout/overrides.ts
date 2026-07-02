@@ -4,10 +4,12 @@ import type { ComponentOverride } from "../../core/define-components.ts";
  * Resolve a layout-slot override to the component Astro should render, falling
  * back to Blume's built-in when no usable override is configured.
  *
- * An override may be a bare component reference or an `IslandDescriptor`
- * (`{ component, client }`); only the component is used here. String-path
- * overrides can't be imported at render time, so they fall back to the built-in
- * for now (imported components are the recommended, type-safe form).
+ * By the time values reach here, the generated `components.ts` has already turned
+ * path strings and hydrated (`client:*`) overrides into imported components /
+ * wrappers, so the runtime map holds real components. This handles the remaining
+ * cases: a bare component reference, an `IslandDescriptor` (`{ component }`,
+ * unwrapped to its component), and — as a safety net for overrides that couldn't
+ * be resolved at build time — a leftover string, which falls back to the built-in.
  */
 export const resolveSlot = <T>(
   override: ComponentOverride | undefined,

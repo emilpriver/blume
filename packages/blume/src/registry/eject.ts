@@ -6,6 +6,7 @@ import { join, relative } from "pathe";
 import { buildAskData } from "../ai/ask-data.ts";
 import { resolveAskBackend } from "../ai/ask.ts";
 import { buildRawMarkdown } from "../ai/markdown.ts";
+import { planComponentSlots } from "../astro/component-slots.ts";
 import { discoverExamples } from "../astro/examples.ts";
 import {
   buildRuntimeData,
@@ -33,7 +34,6 @@ import {
   runtimeTsconfigTemplate,
   searchClientTemplate,
   searchEndpointTemplate,
-  userComponentsTemplate,
 } from "../astro/templates.ts";
 import { scanProject } from "../core/project-graph.ts";
 import type { BlumeProject } from "../core/project-graph.ts";
@@ -181,7 +181,10 @@ export const eject = async (root: string): Promise<string[]> => {
       path: join(srcDir, "pages", "[...slug].astro"),
     },
     {
-      content: userComponentsTemplate(componentsImport),
+      // Eject keeps the portable re-export form (relative import to the user's
+      // components file); hydration/island wrappers would need machine-specific
+      // absolute paths, so the ejected app owns and wires those itself.
+      content: planComponentSlots(componentsImport, null).module,
       path: join(genDir, "components.ts"),
     },
     // Island/example maps the catch-all imports; written even when empty so the

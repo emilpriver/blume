@@ -36,6 +36,35 @@ pages (a styled callout, a pricing table), use an [MDX
 override](/docs/configuration/customization) instead — it ships no JavaScript.
 :::
 
+## Registering islands in `components.ts`
+
+If you'd rather keep islands next to the rest of your components — or give them a
+different name than the file — register them with `defineComponents`. The
+`islands` group is exactly like the `islands/` folder: each entry is available in
+every MDX page and hydrates (defaulting to `client: "visible"`).
+
+```ts components.ts
+import { defineComponents } from "blume";
+import Counter from "./widgets/Counter.tsx";
+
+export default defineComponents({
+  islands: {
+    Counter, // <Counter /> in any MDX page, hydrated
+  },
+});
+```
+
+Reference the component by import or by a path string, and set a hydration mode
+per island with the descriptor form:
+
+```ts components.ts
+export default defineComponents({
+  islands: {
+    Chart: { component: "./widgets/Chart.tsx", client: "only" },
+  },
+});
+```
+
 ## Hydration
 
 By default an island uses `client:visible`: it hydrates when the reader scrolls

@@ -34,7 +34,6 @@ import {
   searchEndpointTemplate,
   stagedContentDir,
   staticJsonEndpointTemplate,
-  userComponentsTemplate,
 } from "../src/astro/templates.ts";
 import { blumeConfigSchema } from "../src/core/schema.ts";
 import type { ProjectContext } from "../src/core/types.ts";
@@ -84,23 +83,6 @@ const example = (over: Partial<ExampleSpec> = {}): ExampleSpec => ({
 });
 
 const exportOpts = { askEnabled: false, exportEpub: false, exportPdf: false };
-
-describe("userComponentsTemplate", () => {
-  it("exports empty override maps when no components file exists", () => {
-    const out = userComponentsTemplate(null);
-    expect(out).toContain("export const mdxComponents = {}");
-    expect(out).toContain("export const layoutOverrides = {}");
-  });
-
-  it("re-exports mdx and layout overrides from the user file", () => {
-    const out = userComponentsTemplate("../../components.ts");
-    expect(out).toContain('import overrides from "../../components.ts"');
-    expect(out).toContain("export const mdxComponents = overrides.mdx ?? {}");
-    expect(out).toContain(
-      "export const layoutOverrides = overrides.layout ?? {}"
-    );
-  });
-});
 
 describe("catchAllPageTemplate", () => {
   it("imports layout overrides and passes them to RootLayout", () => {

@@ -25,6 +25,40 @@ export default defineComponents({
 Keys are the names you write in MDX (`<Callout>`, `<Pricing>`). Use the `.tsx`
 filename when you import React components.
 
+### Reference form
+
+Every override — in `mdx`, `layout`, or `islands` — accepts three forms:
+
+```ts components.ts
+import { defineComponents } from "blume";
+import Callout from "./components/Callout.astro";
+
+export default defineComponents({
+  mdx: {
+    Callout, // 1. an imported component
+    Note: "./components/Note.astro", // 2. a path string (resolved from the project root)
+    Chart: { component: "./components/Chart.tsx", client: "load" }, // 3. a descriptor
+  },
+});
+```
+
+The **descriptor** form adds a hydration mode so an interactive
+React/Vue/Svelte component ships its JavaScript and comes alive on the client.
+Without a `client` mode a framework component renders as static HTML — Blume
+prints a build warning when it spots one, since that's usually a mistake.
+
+| `client`    | Hydrates                                                         |
+| ----------- | ---------------------------------------------------------------- |
+| `"load"`    | Immediately on page load                                         |
+| `"idle"`    | When the main thread is idle                                     |
+| `"visible"` | When scrolled into view                                          |
+| `"media"`   | When a `media` query matches (add `media: "(min-width: 40rem)"`) |
+| `"only"`    | Client only, never server-rendered                               |
+
+For interactive components you use across many pages, the [`islands`
+group](/docs/content/islands#registering-islands-in-componentsts) is a shorthand
+for the descriptor form with `client: "visible"`.
+
 ## Layout slots
 
 The `layout` map replaces a piece of Blume's chrome with your own component. Each
@@ -64,6 +98,10 @@ Wired slots:
 `PageHeader`, `PageFooter`, and `Footer` have no built-in component — they render
 nothing until you set them, which makes them handy injection points for a
 promo banner, a "last updated" note, or a marketing footer.
+
+Layout slots accept the same [three reference forms](#reference-form) as MDX
+overrides, so a slot can be a path string or a hydrated descriptor
+(`{ component, client }`) when you want an interactive header or footer.
 
 ## Interactive islands
 
