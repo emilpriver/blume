@@ -367,6 +367,17 @@ describe("directiveToCalloutPlugin", () => {
     );
     expect(result).toBeUndefined();
   });
+
+  it("handles an empty directive (`children: null`) without throwing", () => {
+    // Satteri parses an empty `:::note\n:::` to a node with `children: null`.
+    const node = { children: null, name: "note", type: "containerDirective" };
+    const result = captureReplacement((ctx) =>
+      directiveToCalloutPlugin().containerDirective(node, ctx)
+    );
+    expect(result).toStrictEqual(
+      jsxFlowElement("Callout", [jsxAttribute("type", "note")], [])
+    );
+  });
 });
 
 describe("packageInstallPlugin", () => {

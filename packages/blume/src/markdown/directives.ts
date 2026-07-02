@@ -3,7 +3,8 @@ import type { MdastNode, MdastVisitorContext } from "./mdast.ts";
 
 interface DirectiveNode extends MdastNode {
   attributes?: Record<string, string | null | undefined> | null;
-  children: MdastNode[];
+  // Satteri gives an empty container directive (`:::note\n:::`) `children: null`.
+  children?: MdastNode[] | null;
   name: string;
 }
 
@@ -57,7 +58,7 @@ export const directiveToCalloutPlugin = () => ({
       return;
     }
 
-    const children = [...node.children];
+    const children = [...(node.children ?? [])];
     let title = node.attributes?.title ?? undefined;
 
     // A leading `:::name[Label]` parses to a paragraph flagged `directiveLabel`.
