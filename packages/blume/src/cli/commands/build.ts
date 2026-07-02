@@ -17,6 +17,7 @@ import { buildRobots } from "../../deploy/robots.ts";
 import { buildSitemap } from "../../deploy/sitemap.ts";
 import { buildSearchIndex } from "../../search/build.ts";
 import { syncSearchProvider } from "../../search/sync/index.ts";
+import { refuseIfDevRunning } from "../dev-lock.ts";
 import { logger } from "../log.ts";
 import { prepareProject } from "../prepare.ts";
 
@@ -186,6 +187,7 @@ export const buildCommand = defineCommand({
   },
   async run({ args }) {
     const root = process.cwd();
+    refuseIfDevRunning(root, "building");
 
     if (args.output && args.output !== "static" && args.output !== "server") {
       logger.error(`Invalid --output "${args.output}" (use static | server).`);

@@ -4,6 +4,7 @@ import { defineCommand } from "citty";
 import { join, relative } from "pathe";
 
 import { eject } from "../../registry/eject.ts";
+import { refuseIfDevRunning } from "../dev-lock.ts";
 import { logger } from "../log.ts";
 
 const updatePackageScripts = async (root: string): Promise<void> => {
@@ -34,6 +35,7 @@ export const ejectCommand = defineCommand({
   },
   async run({ args }) {
     const root = process.cwd();
+    refuseIfDevRunning(root, "ejecting");
 
     if (!args.yes) {
       logger.warn(

@@ -6,6 +6,7 @@ import { defineCommand } from "citty";
 import { generateRuntime } from "../../astro/generate.ts";
 import { showBlumeErrorOverlay } from "../../astro/integration.ts";
 import { scanProject } from "../../core/project-graph.ts";
+import { acquireDevLock } from "../dev-lock.ts";
 import { logger } from "../log.ts";
 import { prepareProject } from "../prepare.ts";
 
@@ -57,6 +58,11 @@ export const devCommand = defineCommand({
         'Detected docs.json — running in Mintlify bridge mode (no migration). Run "blume migrate mintlify" to convert permanently.'
       );
     }
+
+    // Claim the shared `.blume` dir so a concurrent build/eject/sync refuses
+    // rather than regenerating or deleting it out from under this server.
+    const releaseLock = acquireDevLock(project.context.outDir);
+    process.on("exit", releaseLock);
 
     const server = await dev({
       logLevel: args.debug ? "debug" : "info",
@@ -118,6 +124,7 @@ export const devCommand = defineCommand({
       for (const dispose of disposers) {
         dispose();
       }
+      releaseLock();
       await server.stop();
       process.exit(0);
     };
