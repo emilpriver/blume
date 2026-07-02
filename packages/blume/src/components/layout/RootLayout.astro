@@ -1,6 +1,7 @@
 ---
 import { EN_UI } from "../../core/i18n-ui.ts";
 import type { UIStrings } from "../../core/i18n-ui.ts";
+import type { BlumeClientData } from "../../core/data.ts";
 import type {
   Heading,
   LocaleSwitchOption,
@@ -116,6 +117,11 @@ interface Props {
    * the generated page templates, not here.
    */
   layout?: Record<string, ComponentOverride>;
+  /**
+   * Snapshot serialized for React island hooks (`blume/hooks`). Rendered into a
+   * JSON `<script>` when present; omitted for zero-JS pages that need no islands.
+   */
+  clientData?: BlumeClientData | null;
 }
 
 const {
@@ -157,7 +163,13 @@ const {
   xDefault,
   localeSwitch,
   layout = {},
+  clientData,
 } = Astro.props;
+
+// Serialized once for island hooks; `<` escaped so content can't break the tag.
+const clientDataJson = clientData
+  ? JSON.stringify(clientData).replaceAll("<", "\\u003c")
+  : null;
 
 // Layout-slot overrides: render the user's component when configured, else the
 // built-in. Each override receives the same props as the component it replaces.
@@ -376,6 +388,16 @@ const bannerScript = banner?.dismissible
       </aside>
     </div>
     <FooterSlot navigation={navigation} site={site} ui={strings} />
+    {
+      clientDataJson && (
+        <script
+          id="blume-client-data"
+          is:inline
+          set:html={clientDataJson}
+          type="application/json"
+        />
+      )
+    }
     <button
       aria-label="Close navigation"
       class="fixed inset-0 z-[30] hidden cursor-pointer border-0 bg-black/40 [:where([data-blume-nav-open])_&]:block lg:hidden"

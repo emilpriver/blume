@@ -110,6 +110,18 @@ export interface BlumeDataConfig {
   title: string;
 }
 
+/**
+ * The compact snapshot the layout serializes into the page for React island
+ * hooks (`blume/hooks`). Islands hydrate independently, so this is read from a
+ * `<script type="application/json" id="blume-client-data">` tag rather than
+ * React context.
+ */
+export interface BlumeClientData {
+  config: BlumeDataConfig;
+  navigation: Navigation;
+  page: { route: string; title: string };
+}
+
 /** The `blume:data` module a Blume site's custom pages import. */
 export interface BlumeData {
   config: BlumeDataConfig;

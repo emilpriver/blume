@@ -43,6 +43,7 @@
       "default": "./src/core/schema.ts"
     },
     "./runtime": "./src/runtime/index.ts",
+    "./hooks": "./src/components/islands/hooks.ts",
     "./astro": "./src/astro/index.ts",
     "./og": "./src/og/index.ts",
     "./markdown": "./src/markdown/index.ts",

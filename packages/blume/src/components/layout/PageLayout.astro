@@ -17,6 +17,7 @@
 //   </PageLayout>
 import type {
   BlumeBanner,
+  BlumeClientData,
   BlumeDataConfig,
   BlumeFavicon,
   BlumeLogo,
@@ -69,6 +70,12 @@ interface Props {
   ui?: UIStrings;
   /** Language-switcher entries for the header. */
   localeSwitch?: LocaleSwitchOption[];
+  /**
+   * Snapshot for React island hooks (`blume/hooks`). Pass it when a custom page
+   * hosts islands that read `useBlume()`/`usePage()`:
+   * `clientData={{ config: data.config, navigation: data.navigation, page: { route: "/", title } }}`.
+   */
+  clientData?: BlumeClientData | null;
 }
 
 const {
@@ -93,7 +100,12 @@ const {
   dir = "ltr",
   ui,
   localeSwitch,
+  clientData,
 } = Astro.props;
+
+const clientDataJson = clientData
+  ? JSON.stringify(clientData).replaceAll("<", "\\u003c")
+  : null;
 
 const strings = ui ?? EN_UI;
 // Filter search to the active language only when the site is multi-locale.
@@ -178,5 +190,15 @@ const bannerScript = banner?.dismissible
     </Header>
     <main id="blume-content"><slot /></main>
     <slot name="footer" />
+    {
+      clientDataJson && (
+        <script
+          id="blume-client-data"
+          is:inline
+          set:html={clientDataJson}
+          type="application/json"
+        />
+      )
+    }
   </body>
 </html>

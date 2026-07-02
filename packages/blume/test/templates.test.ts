@@ -82,7 +82,12 @@ const example = (over: Partial<ExampleSpec> = {}): ExampleSpec => ({
   ...over,
 });
 
-const exportOpts = { askEnabled: false, exportEpub: false, exportPdf: false };
+const exportOpts = {
+  askEnabled: false,
+  exportEpub: false,
+  exportPdf: false,
+  needsReact: false,
+};
 
 describe("catchAllPageTemplate", () => {
   it("imports layout overrides and passes them to RootLayout", () => {
@@ -106,6 +111,17 @@ describe("catchAllPageTemplate", () => {
     expect(out).not.toContain("Warning");
   });
 
+  it("serializes the island-hooks snapshot only when React is enabled", () => {
+    const off = catchAllPageTemplate({ ...exportOpts, mathEnabled: false });
+    expect(off).not.toContain("clientData=");
+    const on = catchAllPageTemplate({
+      ...exportOpts,
+      mathEnabled: false,
+      needsReact: true,
+    });
+    expect(on).toContain("clientData={{ config: data.config");
+  });
+
   it("registers the Component and Diff content components", () => {
     const out = catchAllPageTemplate({ ...exportOpts, mathEnabled: false });
     expect(out).toContain(
@@ -124,6 +140,7 @@ describe("catchAllPageTemplate", () => {
       exportEpub: true,
       exportPdf: true,
       mathEnabled: true,
+      needsReact: false,
     });
     expect(out).toContain(
       'import Math from "blume/components/content/Math.astro"'
@@ -260,6 +277,7 @@ describe("changelogIndexTemplate", () => {
       askEnabled: true,
       exportEpub: false,
       exportPdf: false,
+      needsReact: false,
       staged: false,
     });
     expect(out).toContain(

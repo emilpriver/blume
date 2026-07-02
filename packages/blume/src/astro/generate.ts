@@ -996,6 +996,7 @@ export const generateRuntime = async (
         exportEpub,
         exportPdf,
         mathEnabled: config.markdown.math,
+        needsReact,
       })
     ),
     write(join(srcDir, "generated", "components.ts"), slotPlan.module),
@@ -1080,6 +1081,7 @@ export const generateRuntime = async (
         askEnabled,
         exportEpub,
         exportPdf,
+        needsReact,
         staged: hasStaged,
       })
     );

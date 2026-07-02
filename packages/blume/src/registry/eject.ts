@@ -177,6 +177,7 @@ export const eject = async (root: string): Promise<string[]> => {
         exportEpub,
         exportPdf,
         mathEnabled: config.markdown.math,
+        needsReact,
       }),
       path: join(srcDir, "pages", "[...slug].astro"),
     },
