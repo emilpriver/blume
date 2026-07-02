@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it } from "bun:test";
 
-import { reportDiagnostics } from "../src/cli/log.ts";
+import { flushStdout, reportDiagnostics } from "../src/cli/log.ts";
 import type { Diagnostic } from "../src/core/types.ts";
 
 const warning: Diagnostic = {
@@ -46,5 +46,12 @@ describe("reportDiagnostics", () => {
     const hadErrors = reportDiagnostics([error, warning]);
     expect(hadErrors).toBe(true);
     expect(output).toContain("1 error(s), 1 warning(s)");
+  });
+});
+
+describe("flushStdout", () => {
+  it("resolves once stdout has drained", async () => {
+    // Used before a non-zero exit so a piped `--json` payload isn't truncated.
+    await expect(flushStdout()).resolves.toBeUndefined();
   });
 });

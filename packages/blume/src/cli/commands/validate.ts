@@ -8,7 +8,12 @@ import { validateLinks } from "../../core/links.ts";
 import { scanProject } from "../../core/project-graph.ts";
 import type { Diagnostic } from "../../core/types.ts";
 import { reportInternalError } from "../internal-error.ts";
-import { logger, reportDiagnostics, reportDiagnosticsJson } from "../log.ts";
+import {
+  flushStdout,
+  logger,
+  reportDiagnostics,
+  reportDiagnosticsJson,
+} from "../log.ts";
 
 export const validateCommand = defineCommand({
   args: {
@@ -57,8 +62,12 @@ export const validateCommand = defineCommand({
     }
 
     if (args.json) {
+      // Drain stdout before exiting non-zero: `process.exit` would otherwise
+      // truncate the JSON payload mid-write when stdout is a pipe — exactly how
+      // `--json` is consumed in CI/editors.
       const hadErrors = reportDiagnosticsJson(diagnostics, root);
       if (hadErrors || (Boolean(args.strict) && diagnostics.length > 0)) {
+        await flushStdout();
         process.exit(1);
       }
       return;
