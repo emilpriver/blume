@@ -100,6 +100,10 @@ const SPLIT_DUR = 60;
 // panes are still visibly moving when the scene cuts away — no crawl-to-a-stop.
 const SCROLL_START = SPLIT_START + SPLIT_DUR + 12;
 const SCROLL_SPEED = 8;
+// The centre divider holds off until the content has slid clear of the middle
+// (near the end of the split), then draws top-down rather than fading through.
+const DIVIDER_START = SPLIT_START + SPLIT_DUR - 4;
+const DIVIDER_DUR = 24;
 
 const clamp = { extrapolateLeft: "clamp", extrapolateRight: "clamp" } as const;
 
@@ -190,7 +194,13 @@ export const DevPreview = () => {
 
   const sourceOpacity = interpolate(split, [0.5, 1], [0, 1], clamp);
   const sourceX = interpolate(split, [0.5, 1], [-24, 0], clamp);
-  const dividerOpacity = interpolate(split, [0.45, 0.95], [0, 1], clamp);
+  // Top-down draw (0 → 1), gated on frame so it lands after the split settles.
+  const dividerDraw = interpolate(
+    frame,
+    [DIVIDER_START, DIVIDER_START + DIVIDER_DUR],
+    [0, 1],
+    { ...clamp, easing: EASE }
+  );
 
   const viewportH = interpolate(split, [0, 0.85], [CONTENT_H, CARD_H], clamp);
   const termOut = interpolate(split, [0, 1], [0, TERMINAL_H + 40], clamp);
@@ -300,13 +310,13 @@ export const DevPreview = () => {
               <DocsToc />
             </div>
 
-            {/* Centre divider (fades in for the split) */}
+            {/* Centre divider — waits for the split to clear, then draws top-down */}
             <div
               style={{
                 background: DIVIDER,
-                height: VIEW_H,
+                height: VIEW_H * dividerDraw,
                 left: SPLIT_X,
-                opacity: dividerOpacity,
+                opacity: interpolate(dividerDraw, [0, 0.12], [0, 1], clamp),
                 position: "absolute",
                 top: 0,
                 width: 1.6,

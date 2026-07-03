@@ -11,6 +11,7 @@ const SANS =
 const MONO = "var(--font-geist-mono), ui-monospace, SFMono-Regular, monospace";
 
 const WHITE = "#ffffff";
+const WHITE_MUTED = "rgba(255,255,255,0.78)";
 const CHROME_BORDER = "rgba(90,100,120,0.14)";
 
 // github-light tokens — matches the money-shot source pane.
@@ -101,6 +102,7 @@ export const SeoAeoScene = () => {
     ...clamp,
     easing: EASE,
   });
+  const subOpacity = interpolate(frame, [80, 100], [0, 1], clamp);
 
   return (
     <AbsoluteFill
@@ -209,6 +211,21 @@ export const SeoAeoScene = () => {
         >
           SEO and AEO — optimized by default.
         </span>
+      </div>
+
+      {/* supporting line — matches the changelog scene */}
+      <div
+        style={{
+          color: WHITE_MUTED,
+          fontFamily: SANS,
+          fontSize: 19,
+          marginTop: 12,
+          opacity: subOpacity,
+          whiteSpace: "nowrap",
+        }}
+      >
+        Sitemaps, Open Graph, structured data, llms.txt, and Ask AI — generated
+        for you.
       </div>
     </AbsoluteFill>
   );

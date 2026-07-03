@@ -19,6 +19,7 @@ import { SoftBlurIn } from "@/components/remocn/soft-blur-in";
 import { Typewriter } from "@/components/remocn/typewriter";
 import { BlumeLogo } from "@/scenes/blume-logo";
 import { BLUME_MARK_SVG } from "@/scenes/blume-mark";
+import { ChangelogScene } from "@/scenes/changelog-scene";
 import { CONTENT_SOURCE_LOGOS } from "@/scenes/content-source-logos";
 import { DevPreview } from "@/scenes/dev-preview";
 import { SeoAeoScene } from "@/scenes/seo-aeo-scene";
@@ -108,9 +109,9 @@ const SceneTagline = () => (
 // site loads in, then it splits into source (left) / rendered content (right).
 const SceneMoneyShot = () => <DevPreview />;
 
-// ─── Scene 4 · The feature run (720–950) ────────────────────────────────────
+// ─── Scene 4 · The feature run (766–996) ────────────────────────────────────
 const SNAPS = [
-  "Zero config.",
+  "Zero config setup.",
   "No framework runtime.",
   "Search built in.",
   "Supports OpenAPI schema.",
@@ -141,7 +142,7 @@ const SceneFeatures = () => (
   </>
 );
 
-// ─── Scene 5 · Serve content from anywhere (950–1055) ───────────────────────
+// ─── Scene 5 · Serve content from anywhere (996–1101) ───────────────────────
 const SceneContentSources = () => (
   <>
     <EcosystemConstellation
@@ -161,7 +162,7 @@ const SceneContentSources = () => (
   </>
 );
 
-// ─── Scene 6 · The close (1055–1145) ────────────────────────────────────────
+// ─── Scene 6 · The close (1101–1191) ────────────────────────────────────────
 const SceneCta = () => (
   <>
     {/* The close — transparent so the background carries through, with the caret
@@ -188,7 +189,7 @@ const SceneCta = () => (
   </>
 );
 
-// ─── Scene 7 · Logo sign-off (1145–1235) ────────────────────────────────────
+// ─── Scene 7 · Logo sign-off (1191–1281) ────────────────────────────────────
 // Wordmark trimmed ~20% off the 152 default so it reads a touch tighter next
 // to the dot mark, which keeps its size.
 const SceneLogo = () => <BlumeLogo color={WHITE} wordmarkSize={122} />;
@@ -238,19 +239,22 @@ export const LaunchVideo = () => {
           <Sequence from={90} durationInFrames={420} layout="none">
             <SceneMoneyShot />
           </Sequence>
-          <Sequence from={510} durationInFrames={210} layout="none">
+          <Sequence from={510} durationInFrames={145} layout="none">
             <SeoAeoScene />
           </Sequence>
-          <Sequence from={720} durationInFrames={230} layout="none">
+          <Sequence from={655} durationInFrames={111} layout="none">
+            <ChangelogScene />
+          </Sequence>
+          <Sequence from={766} durationInFrames={230} layout="none">
             <SceneFeatures />
           </Sequence>
-          <Sequence from={950} durationInFrames={105} layout="none">
+          <Sequence from={996} durationInFrames={105} layout="none">
             <SceneContentSources />
           </Sequence>
-          <Sequence from={1055} durationInFrames={90} layout="none">
+          <Sequence from={1101} durationInFrames={90} layout="none">
             <SceneCta />
           </Sequence>
-          <Sequence from={1145} durationInFrames={90} layout="none">
+          <Sequence from={1191} durationInFrames={90} layout="none">
             <SceneLogo />
           </Sequence>
         </div>
