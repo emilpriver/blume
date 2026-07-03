@@ -7,11 +7,9 @@ interface Props {
   defaultOpen?: boolean;
   id?: string;
   icon?: string;
-  iconType?: string;
 }
 
-const { defaultOpen = false, description, icon, iconType, id, title } =
-  Astro.props;
+const { defaultOpen = false, description, icon, id, title } = Astro.props;
 const slugify = (value: string): string =>
   value
     .toLowerCase()
@@ -37,7 +35,6 @@ const accordionId = id ?? slugify(title);
         icon && (
           <Icon
             class="mt-0.5 shrink-0 text-muted-foreground"
-            iconType={iconType}
             name={icon}
             size={16}
           />

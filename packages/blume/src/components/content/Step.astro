@@ -4,11 +4,10 @@ import { hasIcon } from "../../theme/icons.ts";
 
 interface Props {
   icon?: string;
-  iconType?: string;
   title?: string;
 }
 
-const { icon, iconType, title } = Astro.props;
+const { icon, title } = Astro.props;
 const markerClass =
   "absolute top-0 -start-[2.75rem] flex size-6 items-center justify-center rounded-full bg-accent text-center font-semibold text-accent-foreground text-xs";
 const isImageIcon = (value: string): boolean =>
@@ -18,14 +17,14 @@ const canRenderIcon =
   icon !== undefined &&
   (/^\s*<svg[\s\S]*<\/svg>\s*$/u.test(icon) ||
     isImageIcon(icon) ||
-    hasIcon(icon, { iconType }));
+    hasIcon(icon));
 ---
 
 <div
   class="relative [counter-increment:blume-step]"
 >
   <span class:list={[markerClass, !canRenderIcon && "before:[content:counter(blume-step)]"]}>
-    {canRenderIcon && <Icon iconType={iconType} name={icon} size={14} />}
+    {canRenderIcon && <Icon name={icon} size={14} />}
   </span>
   {title && <p class="mb-1.5 font-semibold">{title}</p>}
   <div class="[&>:first-child]:mt-0! [&>:last-child]:mb-0!">

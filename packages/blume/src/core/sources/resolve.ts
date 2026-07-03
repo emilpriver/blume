@@ -7,7 +7,6 @@ import type { ProjectContext } from "../types.ts";
 import { filesystemSource } from "./filesystem.ts";
 import { githubReleasesSource } from "./github-releases.ts";
 import { mdxRemoteSource } from "./mdx-remote.ts";
-import { mintlifySource } from "./mintlify.ts";
 import { notionSource } from "./notion.ts";
 import { sanitySource } from "./sanity.ts";
 import type { ContentSource, SourceContext } from "./types.ts";
@@ -62,18 +61,6 @@ const buildSource = (
       prefix: def.prefix,
       projectRoot: context.root,
       root: def.root,
-    });
-  }
-  if (def.type === "mintlify") {
-    return mintlifySource({
-      configFile: def.configFile,
-      exclude: def.exclude,
-      include: def.include,
-      name,
-      prefix: def.prefix,
-      projectRoot: context.root,
-      root: def.root,
-      variables: def.variables,
     });
   }
   if (def.type === "custom") {

@@ -8,7 +8,6 @@ import {
 import type { Navigation, PageRecord } from "../src/core/types.ts";
 
 const nav = (over: Partial<Navigation> = {}): Navigation => ({
-  chromeVariants: [],
   selectors: [],
   sidebar: [],
   tabs: [],

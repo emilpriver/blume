@@ -399,24 +399,6 @@ describe("astroConfigTemplate", () => {
     expect(out).toContain('"/p/.blume/.astro/**"');
   });
 
-  it("passes resolved content.assets mounts to blumeIntegration", () => {
-    const out = astroConfigTemplate({
-      config: blumeConfigSchema.parse({ content: { assets: ["images"] } }),
-      contentRoutes: ["/"],
-      context: context(),
-      dataPath: DATA_PATH,
-      examplesPath: EXAMPLES_PATH,
-      needsReact: false,
-      openapiPath: OPENAPI_PATH,
-      pages: [],
-      searchClientPath: SEARCH_CLIENT_PATH,
-      themePath: THEME_PATH,
-    });
-    // The mount's dir is joined to the project root; url gets a leading slash.
-    expect(out).toContain('"dir":"/p/images"');
-    expect(out).toContain('"url":"/images"');
-  });
-
   it("wires the adapter, site, base, redirects, i18n and renderers", () => {
     const serverConfig = blumeConfigSchema.parse({
       deployment: {
@@ -608,9 +590,10 @@ describe("contentConfigTemplate", () => {
   });
 
   it("globs nothing when no filesystem source feeds the docs collection", () => {
-    // Bridge mode: every page is staged, so the project-rooted `docs` glob would
-    // only scan (and watch) `.blume/` for nothing. Empty pattern keeps it — and
-    // Astro's content watcher — silent, while the collection stays declared.
+    // All-staged project: every page is staged, so the project-rooted `docs`
+    // glob would only scan (and watch) `.blume/` for nothing. Empty pattern
+    // keeps it — and Astro's content watcher — silent, while the collection
+    // stays declared.
     const out = contentConfigTemplate({
       config,
       context: context({ contentRoot: "/p", outDir: "/p/.blume" }),

@@ -1,103 +1,11 @@
-import { afterAll, describe, expect, it } from "bun:test";
-import { existsSync } from "node:fs";
-import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
+import { describe, expect, it } from "bun:test";
 import type { IncomingMessage, ServerResponse } from "node:http";
-import { tmpdir } from "node:os";
-import { pathToFileURL } from "node:url";
-
-import { join } from "pathe";
 
 import {
   blumeIntegration,
   showBlumeErrorOverlay,
 } from "../src/astro/integration.ts";
-import type { AssetMount } from "../src/core/assets.ts";
-import { resolveAssetMounts } from "../src/core/assets.ts";
 import type { Diagnostic } from "../src/core/types.ts";
-
-const dirs: string[] = [];
-
-afterAll(async () => {
-  await Promise.all(
-    dirs.map((dir) => rm(dir, { force: true, recursive: true }))
-  );
-});
-
-const hooksOf = (assets: AssetMount[]) =>
-  blumeIntegration({ assets, contentRoutes: [], pages: [] }).hooks;
-
-const projectWithImage = async (): Promise<string> => {
-  const root = await mkdtemp(join(tmpdir(), "blume-int-"));
-  dirs.push(root);
-  await mkdir(join(root, "images"), { recursive: true });
-  await writeFile(join(root, "images", "a.png"), "bytes");
-  return root;
-};
-
-describe("blumeIntegration content.assets", () => {
-  it("copies asset mounts into the build output on astro:build:done", async () => {
-    const root = await projectWithImage();
-    const out = await mkdtemp(join(tmpdir(), "blume-int-out-"));
-    dirs.push(out);
-
-    const hooks = hooksOf(resolveAssetMounts(root, ["images"]));
-    await hooks["astro:build:done"]?.({
-      dir: pathToFileURL(`${out}/`),
-    } as never);
-
-    expect(existsSync(join(out, "images", "a.png"))).toBe(true);
-  });
-
-  it("registers a dev middleware that serves asset mounts", async () => {
-    const root = await projectWithImage();
-    const stack: { handle: unknown; route: string }[] = [];
-
-    const hooks = hooksOf(resolveAssetMounts(root, ["images"]));
-    hooks["astro:server:setup"]?.({
-      server: { middlewares: { stack } },
-    } as never);
-
-    // The asset middleware is unshifted after the markdown one, so it's first.
-    expect(stack).toHaveLength(2);
-    const handle = stack[0]?.handle as (
-      req: IncomingMessage,
-      res: ServerResponse,
-      next: () => void
-    ) => void;
-
-    let served = false;
-    let nexted = false;
-    const res = {
-      emit: () => false,
-      end: () => res,
-      on: () => res,
-      once: () => res,
-      setHeader: () => {
-        served = true;
-      },
-      write: () => true,
-    };
-    handle(
-      { method: "GET", url: "/images/a.png" } as IncomingMessage,
-      res as unknown as ServerResponse,
-      () => {
-        nexted = true;
-      }
-    );
-    expect(served).toBe(true);
-    expect(nexted).toBe(false);
-  });
-
-  it("registers no asset middleware when none are configured", () => {
-    const stack: { handle: unknown; route: string }[] = [];
-    const hooks = hooksOf([]);
-    hooks["astro:server:setup"]?.({
-      server: { middlewares: { stack } },
-    } as never);
-    // Only the markdown-negotiation middleware.
-    expect(stack).toHaveLength(1);
-  });
-});
 
 type MiddlewareStack = { handle: unknown; route: string }[];
 
@@ -113,7 +21,6 @@ const serverSetup = (
 ): MiddlewareStack => {
   const stack: MiddlewareStack = [];
   blumeIntegration({
-    assets: [],
     contentRoutes: [],
     pages: [],
     ...options,
@@ -129,7 +36,7 @@ type MiddlewareHandle = (
   next: () => void
 ) => void;
 
-/** The markdown-negotiation handle sits first when no asset mounts exist. */
+/** The markdown-negotiation handle is the only middleware in the stack. */
 const markdownHandle = (
   contentRoutes: string[],
   base?: string
@@ -140,7 +47,6 @@ describe("blumeIntegration astro:config:setup", () => {
   it("injects each user page route as a prerendered route", () => {
     const injected: unknown[] = [];
     blumeIntegration({
-      assets: [],
       contentRoutes: [],
       pages: [
         { entrypoint: "/abs/changelog.astro", pattern: "/changelog" },

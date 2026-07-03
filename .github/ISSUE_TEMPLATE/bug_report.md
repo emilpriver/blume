@@ -21,7 +21,7 @@ assignees: ""
 
 **Environment (please complete the following information):**
 
-- Command: [e.g. blume dev, blume build, blume migrate]
+- Command: [e.g. blume dev, blume build, blume eject]
 - Runtime: [e.g. Node 22, Bun 1.3]
 - OS: [e.g. macOS 15, Ubuntu 24.04]
 - Browser (if a rendering issue): [e.g. Chrome 130, Safari 18]

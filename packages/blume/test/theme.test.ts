@@ -56,23 +56,6 @@ describe("buildThemeCss", () => {
 });
 
 describe("buildThemeCss — backgrounds and dark mode", () => {
-  it("emits the radial-gradient background decoration", () => {
-    const css = buildThemeCss(themeOf({ backgroundDecoration: "gradient" }));
-    expect(css).toContain("--blume-background-decoration: radial-gradient");
-    expect(css).toContain("--blume-background-decoration-repeat: no-repeat");
-  });
-
-  it("emits the grid background decoration", () => {
-    const css = buildThemeCss(themeOf({ backgroundDecoration: "grid" }));
-    expect(css).toContain("--blume-background-decoration: linear-gradient");
-    expect(css).toContain("--blume-background-decoration-size: 2rem 2rem");
-  });
-
-  it("emits the windows background decoration", () => {
-    const css = buildThemeCss(themeOf({ backgroundDecoration: "windows" }));
-    expect(css).toContain("--blume-background-decoration-size: 7rem 4.5rem");
-  });
-
   it("wraps a background image in url() and resolves the action color", () => {
     const css = buildThemeCss(
       themeOf({
@@ -118,14 +101,11 @@ describe("buildThemeCss — backgrounds and dark mode", () => {
     expect(dark).toContain("--blume-accent-foreground: oklch(1 0 0);");
   });
 
-  it("re-declares action and background decoration for dark mode", () => {
-    const css = buildThemeCss(
-      themeOf({ action: "green", backgroundDecoration: "grid" })
-    );
+  it("re-declares action for dark mode", () => {
+    const css = buildThemeCss(themeOf({ action: "green" }));
     const dark = css.slice(css.indexOf(':root[data-theme="dark"]'));
     expect(dark).toContain("--blume-action: oklch(0.6 0.16 150);");
     expect(dark).toContain("--blume-action-foreground: oklch(1 0 0);");
-    expect(dark).toContain("--blume-background-decoration: linear-gradient");
   });
 });
 
@@ -267,71 +247,37 @@ describe("theme.fonts schema", () => {
   });
 });
 
-describe("resolveIcon default and explicit libraries", () => {
-  it("resolves a bare name against the default (Lucide) library", () => {
+describe("resolveIcon (Lucide-only)", () => {
+  it("resolves a bare name against Lucide", () => {
     const rocket = resolveIcon("rocket");
     expect(rocket?.viewBox).toBe("0 0 24 24");
     // Lucide bodies are stroke-based and self-styled.
     expect(rocket?.body).toContain('stroke="currentColor"');
   });
 
-  it("resolves an explicit `prefix:name` regardless of default", () => {
+  it("resolves an explicit `lucide:name` prefix", () => {
     expect(resolveIcon("lucide:star")?.viewBox).toBe("0 0 24 24");
-    expect(resolveIcon("fa6-brands:github")?.viewBox).toBe("0 0 496 512");
-    expect(resolveIcon("tabler:heart")?.viewBox).toBe("0 0 24 24");
   });
 
-  it("ignores an unknown iconType or library and uses the default", () => {
-    expect(resolveIcon("rocket", { iconType: "nope" })?.viewBox).toBe(
-      "0 0 24 24"
-    );
-    expect(resolveIcon("rocket", { library: "nope" })?.viewBox).toBe(
-      "0 0 24 24"
-    );
-  });
-});
-
-describe("resolveIcon Font Awesome coverage", () => {
-  it("resolves real Font Awesome names under the fontawesome library", () => {
-    const opts = { library: "fontawesome" };
-    for (const name of ["shield-halved", "layer-group", "gauge-high"]) {
-      const icon = resolveIcon(name, opts);
-      expect(icon?.viewBox.endsWith(" 512")).toBe(true);
-      expect(icon?.body).toContain('fill="currentColor"');
-    }
+  it("returns null for a non-Lucide prefix (FontAwesome/Tabler are gone)", () => {
+    expect(resolveIcon("fa6-brands:github")).toBeNull();
+    expect(resolveIcon("tabler:heart")).toBeNull();
   });
 
-  it("falls back to the brands set for a brand name", () => {
-    expect(resolveIcon("github", { library: "fontawesome" })?.viewBox).toBe(
-      "0 0 496 512"
-    );
-    expect(resolveIcon("github", { iconType: "brands" })?.viewBox).toBe(
-      "0 0 496 512"
-    );
+  it("returns null for an unknown Lucide name", () => {
+    expect(resolveIcon("definitely-not-an-icon-xyz")).toBeNull();
   });
 
-  it("falls Pro-only iconTypes back to solid rather than failing", () => {
-    for (const iconType of ["light", "thin", "duotone", "sharp-solid"]) {
-      expect(resolveIcon("gauge", { iconType })).not.toBeNull();
-    }
-  });
-
-  it("checks every bundled library in hasIcon", () => {
-    expect(hasIcon("gauge-high")).toBeTruthy();
+  it("checks Lucide in hasIcon", () => {
     expect(hasIcon("rocket")).toBeTruthy();
-    expect(hasIcon("fa6-brands:github")).toBeTruthy();
+    expect(hasIcon("lucide:star")).toBeTruthy();
     expect(hasIcon("definitely-not-an-icon-xyz")).toBeFalsy();
   });
 
   it("does not resolve prototype member names up the chain", () => {
-    // `constructor:x` in content (or library/iconType "constructor") used to
-    // pull the Object constructor out of the lookup maps and crash the build
-    // with a TypeError deep in resolution.
+    // `constructor:x` in content used to pull the Object constructor out of the
+    // lookup maps and crash the build with a TypeError deep in resolution.
     expect(resolveIcon("constructor:github")).toBeNull();
-    expect(resolveIcon("rocket", { library: "constructor" })?.viewBox).toBe(
-      "0 0 24 24"
-    );
-    expect(resolveIcon("rocket", { iconType: "constructor" })).not.toBeNull();
     expect(hasIcon("constructor:nope")).toBeFalsy();
   });
 });

@@ -34,33 +34,83 @@ describe("authors frontmatter", () => {
   });
 });
 
-describe("banner color refinement", () => {
-  it("accepts a banner color with a single side set", () => {
+describe("banner", () => {
+  it("keeps the supported content/link/dismissible fields", () => {
     const config = blumeConfigSchema.parse({
-      banner: { color: { light: "#fff" }, content: "Beta" },
+      banner: { content: "Beta", dismissible: true, id: "beta" },
     });
     expect(config.banner).toStrictEqual({
-      color: { light: "#fff" },
       content: "Beta",
-      dismissible: false,
+      dismissible: true,
+      id: "beta",
     });
   });
 
-  it("rejects a banner color with neither side set", () => {
+  it("rejects the removed color/type sub-fields", () => {
     expect(
       blumeConfigSchema.safeParse({
-        banner: { color: {}, content: "Beta" },
+        banner: { color: { light: "#fff" }, content: "Beta" },
       }).success
-    ).toBeFalsy();
+    ).toBe(false);
+    expect(
+      blumeConfigSchema.safeParse({
+        banner: { content: "Beta", type: "warning" },
+      }).success
+    ).toBe(false);
   });
 });
 
-describe("pruned Mintlify-compat fields", () => {
-  it("rejects config fields that were removed (navbar/footer/etc.)", () => {
-    for (const field of ["navbar", "footer", "contextual", "styling"]) {
+describe("pruned Mintlify-compat config fields", () => {
+  it("rejects config fields that were removed", () => {
+    for (const field of [
+      "navbar",
+      "footer",
+      "contextual",
+      "styling",
+      "favicon",
+      "icons",
+      "variables",
+    ]) {
       expect(
         blumeConfigSchema.safeParse({ [field]: {} }).success,
         `${field} should no longer be a valid config field`
+      ).toBe(false);
+    }
+  });
+
+  it("rejects removed nested config fields", () => {
+    const cases: Record<string, unknown> = {
+      navigation: { chromeVariants: [] },
+      search: { prompt: "Ask" },
+      seo: { metatags: {} },
+      theme: { backgroundDecoration: "grid" },
+    };
+    for (const [field, value] of Object.entries(cases)) {
+      expect(
+        blumeConfigSchema.safeParse({ [field]: value }).success,
+        `${field} nested compat field should be rejected`
+      ).toBe(false);
+    }
+  });
+});
+
+describe("pruned Mintlify-compat frontmatter keys", () => {
+  it("rejects frontmatter keys that were removed", () => {
+    for (const key of [
+      "sidebarTitle",
+      "tag",
+      "mode",
+      "public",
+      "rss",
+      "hideApiMarker",
+      "hideFooterPagination",
+      "groups",
+      "keywords",
+      "iconType",
+    ]) {
+      expect(
+        pageMetaSchema.safeParse({ [key]: "x" }).success,
+        `${key} should no longer be a valid frontmatter key`
       ).toBe(false);
     }
   });

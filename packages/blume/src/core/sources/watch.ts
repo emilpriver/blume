@@ -2,8 +2,9 @@ import type { WatchListener } from "node:fs";
 
 /**
  * Directory segments a recursive dev watcher must never react to. When a
- * source's content root is the project root — a migrated `.`-rooted project or a
- * Mintlify bridge — a naive recursive `fs.watch` also sees Blume's own `.blume/`
+ * source's content root is the project root — a `.`-rooted layout, or an
+ * all-staged project (openapi/notion/github-releases/…) with no filesystem
+ * source — a naive recursive `fs.watch` also sees Blume's own `.blume/`
  * output, which the dev server rewrites on every render (e.g.
  * `.blume/.astro/data-store.json`). Left unfiltered, each such write re-triggers
  * a rescan + runtime regeneration whose writes land back under `.blume/` and

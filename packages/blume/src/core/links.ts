@@ -2,7 +2,6 @@ import { existsSync } from "node:fs";
 
 import { basename, join } from "pathe";
 
-import type { AssetMount } from "./assets.ts";
 import type {
   ContentGraph,
   Diagnostic,
@@ -38,25 +37,15 @@ interface ExternalRef extends LinkSite {
 /** Lookups derived once from the content graph. */
 interface LinkContext {
   anchors: Map<string, Set<string>>;
-  /** `content.assets` mounts served alongside `public/` (checked in place). */
-  assetMounts: AssetMount[];
   publicDir: string | null;
   /** Normalized `redirect.from` paths — valid targets that resolve at runtime. */
   redirects: Set<string>;
   routes: Set<string>;
 }
 
-/** Whether a resolved asset path exists under `public/` or an asset mount. */
-const assetIsPresent = (resolved: string, ctx: LinkContext): boolean => {
-  if (ctx.publicDir && existsSync(join(ctx.publicDir, resolved))) {
-    return true;
-  }
-  return ctx.assetMounts.some(
-    (mount) =>
-      (resolved === mount.url || resolved.startsWith(`${mount.url}/`)) &&
-      existsSync(join(mount.dir, resolved.slice(mount.url.length)))
-  );
-};
+/** Whether a resolved asset path exists under `public/`. */
+const assetIsPresent = (resolved: string, ctx: LinkContext): boolean =>
+  ctx.publicDir !== null && existsSync(join(ctx.publicDir, resolved));
 
 /** Outcome of classifying one link target. */
 type LinkResult = Diagnostic | "asset-unchecked" | null;
@@ -165,8 +154,8 @@ const checkPathLink = (
     if (assetIsPresent(resolved, ctx)) {
       return null;
     }
-    // Nowhere to look: no `public/` and no asset mounts configured.
-    if (ctx.publicDir === null && ctx.assetMounts.length === 0) {
+    // Nowhere to look: no `public/` directory.
+    if (ctx.publicDir === null) {
       return "asset-unchecked";
     }
     return {
@@ -347,15 +336,12 @@ export const validateLinks = async (
   options: {
     publicDir: string | null;
     checkExternal?: boolean;
-    /** `content.assets` mounts served alongside `public/`. */
-    assetMounts?: AssetMount[];
     /** Configured redirects; their `from` paths count as valid link targets. */
     redirects?: { from: string }[];
   }
 ): Promise<Diagnostic[]> => {
   const ctx: LinkContext = {
     anchors: buildAnchorIndex(graph.pages),
-    assetMounts: options.assetMounts ?? [],
     publicDir: options.publicDir,
     redirects: new Set(
       (options.redirects ?? []).map((redirect) => toRoute(redirect.from))

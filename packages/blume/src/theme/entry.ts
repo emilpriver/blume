@@ -32,9 +32,6 @@ ${options.sources.map((source) => `@source "${source}";`).join("\n")}
 
 :root {
   --blume-background: oklch(1 0 0);
-  --blume-background-decoration: none;
-  --blume-background-decoration-repeat: no-repeat;
-  --blume-background-decoration-size: auto;
   --blume-background-image: none;
   --blume-background-image-repeat: no-repeat;
   --blume-background-image-size: cover;
@@ -90,9 +87,6 @@ ${options.sources.map((source) => `@source "${source}";`).join("\n")}
 
 :root[data-theme="dark"] {
   --blume-background: oklch(0.085 0 0);
-  --blume-background-decoration: none;
-  --blume-background-decoration-repeat: no-repeat;
-  --blume-background-decoration-size: auto;
   --blume-background-image: none;
   --blume-background-image-repeat: no-repeat;
   --blume-background-image-size: cover;
@@ -153,16 +147,11 @@ ${options.sources.map((source) => `@source "${source}";`).join("\n")}
     border-radius: 2px;
   }
   body {
-    background-attachment: fixed, fixed;
-    background-image:
-      var(--blume-background-image), var(--blume-background-decoration);
-    background-position: center top, top center;
-    background-repeat:
-      var(--blume-background-image-repeat),
-      var(--blume-background-decoration-repeat);
-    background-size:
-      var(--blume-background-image-size),
-      var(--blume-background-decoration-size);
+    background-attachment: fixed;
+    background-image: var(--blume-background-image);
+    background-position: center top;
+    background-repeat: var(--blume-background-image-repeat);
+    background-size: var(--blume-background-image-size);
   }
   @media (prefers-reduced-motion: reduce) {
     html {

@@ -1,31 +1,30 @@
-// Copies the docs site content (apps/docs/content/docs) into the package as
-// docs/ so it ships in the published tarball and resolves at
-// node_modules/blume/docs. Generated output is gitignored; this runs on
-// `prepare` (after install) and `prepack` (before publish) to keep the bundled
-// copy fresh. The docs site under apps/docs/content/docs remains the single
-// source of truth.
+// Copies bundled assets into the package so they ship in the published tarball
+// and resolve under node_modules/blume: the docs site content
+// (apps/docs/content/docs -> docs/) and the agent skills (repo-root skills/ ->
+// skills/). Both generated copies are gitignored; this runs on `prepare` (after
+// install) and `prepack` (before publish) to keep them fresh. The originals
+// (apps/docs/content/docs and the repo-root skills/) remain the source of truth.
 import { cpSync, existsSync, rmSync } from "node:fs";
 import path from "node:path";
 
 const here = import.meta.dirname;
-const src = path.join(
-  here,
-  "..",
-  "..",
-  "..",
-  "apps",
-  "docs",
-  "content",
-  "docs"
-);
-const dest = path.join(here, "..", "docs");
+const repoRoot = path.join(here, "..", "..", "..");
 
-if (existsSync(src)) {
-  rmSync(dest, { force: true, recursive: true });
-  cpSync(src, dest, { recursive: true });
-  console.log(`[bundle-docs] copied ${src} -> ${dest}`);
-} else {
-  // Not a fatal error: a consumer installing the published package already has
-  // docs/ in the tarball and has no source tree to copy from. Skip quietly.
-  console.warn(`[bundle-docs] source not found, skipping: ${src}`);
-}
+/** Mirror a source directory into the package, replacing any prior copy. */
+const bundle = (from, to) => {
+  if (existsSync(from)) {
+    rmSync(to, { force: true, recursive: true });
+    cpSync(from, to, { recursive: true });
+    console.log(`[bundle-docs] copied ${from} -> ${to}`);
+  } else {
+    // Not a fatal error: a consumer installing the published package already has
+    // the bundled copy in the tarball and has no source tree to copy from.
+    console.warn(`[bundle-docs] source not found, skipping: ${from}`);
+  }
+};
+
+bundle(
+  path.join(repoRoot, "apps", "docs", "content", "docs"),
+  path.join(here, "..", "docs")
+);
+bundle(path.join(repoRoot, "skills"), path.join(here, "..", "skills"));

@@ -56,12 +56,6 @@ export const devCommand = defineCommand({
       strict: args.strict,
     });
 
-    if (project.bridge) {
-      logger.info(
-        'Detected docs.json — running in Mintlify bridge mode (no migration). Run "blume migrate mintlify" to convert permanently.'
-      );
-    }
-
     // Claim the shared `.blume` dir so a concurrent build/eject/sync refuses
     // rather than regenerating or deleting it out from under this server. A
     // second dev server would fight over the same generated tree the same

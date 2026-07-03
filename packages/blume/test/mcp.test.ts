@@ -35,7 +35,6 @@ const DATA: McpData = {
   ],
   name: "Test Docs",
   navigation: {
-    chromeVariants: [],
     selectors: [],
     sidebar: [
       {

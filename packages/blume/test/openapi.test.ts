@@ -20,6 +20,8 @@ import {
   sampleLanguages,
 } from "../src/components/openapi/snippets.ts";
 import { blumeConfigSchema } from "../src/core/schema.ts";
+import { resolveSources } from "../src/core/sources/resolve.ts";
+import type { ProjectContext } from "../src/core/types.ts";
 import {
   extractOperations,
   operationKey,
@@ -164,6 +166,23 @@ describe("references", () => {
       },
     });
     expect(blumeReferences(config)).toHaveLength(1);
+  });
+
+  it("appends a staged openapi source when a Blume reference is configured", () => {
+    const config = blumeConfigSchema.parse({
+      openapi: { enabled: true, spec: "spec.json" },
+    });
+    const context = {
+      contentRoot: "/p/docs",
+      outDir: "/p/.blume",
+      root: "/p",
+    } as ProjectContext;
+
+    // The implicit filesystem source, plus the staged OpenAPI source.
+    const sources = resolveSources(config, context, { mode: "build" });
+    expect(sources).toHaveLength(2);
+    expect(sources[1]?.name).toBe("openapi");
+    expect(sources[1]?.staged).toBe(true);
   });
 });
 

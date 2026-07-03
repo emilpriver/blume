@@ -615,7 +615,6 @@ export const buildRuntimeData = (project: BlumeProject): string => {
           code,
           withReferenceTabs(
             graph.navigationByLocale[code] ?? {
-              chromeVariants: [],
               selectors: [],
               sidebar: [],
               tabs: [],
@@ -648,7 +647,6 @@ export const buildRuntimeData = (project: BlumeProject): string => {
             })),
           }
         : null,
-      icons: config.icons,
       imageZoom: config.markdown.imageZoom,
       logo: resolveLogo(project),
       mcp: config.mcp.enabled
@@ -974,9 +972,9 @@ export const generateRuntime = async (
   const staged = collectStaged(project);
   const hasStaged = staged.size > 0;
   // Only emit a project-scanning `docs` collection when a filesystem source
-  // actually feeds it. Bridge mode has just the staged Mintlify source, so the
-  // `docs` glob would otherwise scan (and watch) the whole project root for
-  // nothing — see contentConfigTemplate.
+  // actually feeds it. An all-staged project (openapi/notion/…) has only staged
+  // sources, so the `docs` glob would otherwise scan (and watch) the whole
+  // project root for nothing — see contentConfigTemplate.
   const hasFilesystemSource = project.sources.some((source) => !source.staged);
 
   const structural = await Promise.all([

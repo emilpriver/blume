@@ -125,7 +125,7 @@ A negative or breaking state, such as a deprecation.
 
 ## Icon
 
-Render an icon by name — the same `icon` props power cards, steps, tiles, tabs, and sidebar entries. Names come from three bundled libraries: [Lucide](https://lucide.dev) (the default), [Font Awesome](https://fontawesome.com/icons) (its free set), and [Tabler](https://tabler.io/icons). Names are lowercase and kebab-cased (`rocket`, `gauge-high`, `book-open`).
+Render an icon by name — the same `icon` prop powers cards, steps, tabs, and sidebar entries. Names come from [Lucide](https://lucide.dev/icons), lowercase and kebab-cased (`rocket`, `gauge`, `book-open`).
 
 <Icon icon="rocket" size={20} />
 
@@ -133,26 +133,9 @@ Render an icon by name — the same `icon` props power cards, steps, tiles, tabs
 <Icon icon="rocket" size={20} />
 ```
 
-A bare name resolves against your project's [`icons.library`](#default-library) (Lucide unless you change it). Two ways to reach another library for a single icon:
-
-- **`iconType`** selects a Font Awesome style — `solid` (default), `regular`, or `brands`: `<Icon icon="github" iconType="brands" />`. Font Awesome Pro styles (`light`, `thin`, `duotone`, `sharp-solid`) aren't in the bundled free data and fall back to solid.
-- **A `library:name` prefix** overrides the default per icon: `fa6-solid:gauge-high`, `fa6-brands:github`, `lucide:rocket`, `tabler:heart`.
-
-`size` sets the pixel size (default `16`) and `color` tints it (any CSS color; defaults to `currentColor`). Pass a raw `<svg>` string, an image URL, or a local image path in place of a name to render your own art, and add a `label` to expose it to assistive tech — without one, the icon is decorative.
+Blume is Lucide-only — a bare name resolves against Lucide, and you can prefix a name with `lucide:` (`lucide:rocket`) for symmetry with other icon inputs. `size` sets the pixel size (default `16`) and `color` tints it (any CSS color; defaults to `currentColor`). Pass a raw `<svg>` string, an image URL, or a local image path in place of a name to render your own art, and add a `label` to expose it to assistive tech — without one, the icon is decorative.
 
 Icons resolve at build time and inline as zero-JS SVG — nothing is fetched at runtime.
-
-### Default library
-
-Set which library bare icon names resolve against:
-
-```ts title="blume.config.ts"
-export default defineConfig({
-  icons: { library: "fontawesome" }, // "lucide" (default) | "fontawesome" | "tabler"
-});
-```
-
-A `library:name` prefix always wins over this, so you can mix libraries on any default. Migrating from Mintlify sets this to `fontawesome` for you (Mintlify's default), so your existing icon names keep working.
 
 ## File tree
 
@@ -456,40 +439,6 @@ Show or hide content by audience. `for="web"` renders only on the site; `for="ag
 <Visibility for="web">Shown on the site only.</Visibility>
 <Visibility for="agents">Shown only in the generated Markdown.</Visibility>
 ```
-
-## API fields
-
-Document a single request/response field — a CLI flag, an SDK argument, an endpoint parameter — with its name, type, and description. `ParamField`, `ResponseField`, and `RequestField` are Mintlify-compatible, so a migrated site's field markup renders unchanged. Each takes a `type`, plus `required`, `deprecated`, and `default`; the description is the element's body and may hold rich MDX, including a nested [Expandable](#expandable) for sub-properties.
-
-`ParamField` names the field through the attribute that marks its location — `path`, `query`, `header`, or `body` (or a plain `name`); the location shows as a small label.
-
-<ParamField path="userId" type="string" required>
-  The unique identifier of the user.
-</ParamField>
-
-<ParamField query="limit" type="integer" default="20">
-  Maximum number of results to return per page.
-</ParamField>
-
-<ResponseField name="createdAt" type="string">
-  ISO 8601 timestamp for when the record was created.
-</ResponseField>
-
-```mdx
-<ParamField path="userId" type="string" required>
-  The unique identifier of the user.
-</ParamField>
-
-<ParamField query="limit" type="integer" default="20">
-  Maximum number of results to return per page.
-</ParamField>
-
-<ResponseField name="createdAt" type="string">
-  ISO 8601 timestamp for when the record was created.
-</ResponseField>
-```
-
-For a full spec-driven API reference — one page per operation with generated schemas — use the [OpenAPI reference](/docs/advanced/api-reference) instead.
 
 ## Type tables
 

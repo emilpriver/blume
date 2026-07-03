@@ -173,24 +173,17 @@ export interface NavSelectorItem {
   tag?: string;
 }
 
-/** Top-level Mintlify-style partition selectors. */
+/** Top-level partition selectors (products, versions, languages). */
 export interface NavSelector {
   label: string;
   kind: "dropdown" | "language" | "product" | "version";
   items: NavSelectorItem[];
 }
 
-/** Chrome overrides used when the current route belongs to a nav partition. */
-export interface NavChromeVariant {
-  path: string;
-  banner?: ResolvedConfig["banner"];
-}
-
 /** The complete navigation model derived from the content graph. */
 export interface Navigation {
   tabs: NavTab[];
   selectors: NavSelector[];
-  chromeVariants: NavChromeVariant[];
   sidebar: NavNode[];
   /** Repo URL for the header link, or null when hidden (`navigation.repo`). */
   repoUrl?: string | null;

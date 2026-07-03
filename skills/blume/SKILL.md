@@ -1,6 +1,6 @@
 ---
 name: blume
-description: Build and maintain documentation sites with Blume, the markdown-first docs framework on Astro and Vite. Use when working in a project that depends on `blume`, when scaffolding or configuring a docs site, writing Markdown/MDX content, tuning navigation/search/theming/SEO/AI features, running the `blume` CLI (init, dev, build, migrate, eject), or editing `blume.config.ts` and `meta.ts` files.
+description: Build and maintain documentation sites with Blume, the markdown-first docs framework on Astro and Vite. Use when working in a project that depends on `blume`, when scaffolding or configuring a docs site, writing Markdown/MDX content, tuning navigation/search/theming/SEO/AI features, running the `blume` CLI (init, dev, build, eject), or editing `blume.config.ts` and `meta.ts` files.
 ---
 
 # Blume
@@ -54,7 +54,7 @@ Navigation, search, and page metadata are inferred from your files as you add th
 - **Navigation** — inferred from files, refined with `meta.ts` or config.
 - **SEO** — metadata, Open Graph images, RSS feeds, and JSON-LD.
 - **Customization** — component overrides, React islands, custom pages, theme tokens, and a source-component registry via `blume add`.
-- **Migration** — `blume migrate mintlify | starlight | fumadocs`.
+- **Migration** — the `blume-migrate` agent skill converts a Mintlify, Docusaurus, Fumadocs, Nextra, or Starlight site to Blume (`npx skills use haydenbleasel/blume@blume-migrate`).
 - **Eject** — `blume eject` produces a standalone Astro project that still uses the `blume` package.
 
 ## How it works

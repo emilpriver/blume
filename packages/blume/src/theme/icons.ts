@@ -1,16 +1,11 @@
 /**
- * Icon resolution backed by the open Iconify icon sets — Font Awesome (free),
- * Lucide, and Tabler — the three libraries Mintlify exposes. Resolution runs at
+ * Icon resolution backed by the open Iconify Lucide set. Resolution runs at
  * **build time, server-side**, and returns ready-to-inline SVG, so icons stay
- * zero-JS and fully self-contained (no runtime CDN fetch, unlike Mintlify).
+ * zero-JS and fully self-contained (no runtime CDN fetch).
  *
  * Because the Iconify set data is large, this module must only be imported from
  * server contexts (`.astro` frontmatter, the CLI). Client scripts use the tiny
  * hand-inlined set in `./chrome-icons.ts` instead.
- *
- * Coverage vs Mintlify: full parity for every Font Awesome *free* name, Lucide,
- * and Tabler. Font Awesome Pro styles (`light`/`thin`/`duotone`/`sharp-solid`)
- * aren't in the open data, so they fall back to `solid`.
  */
 import { createRequire } from "node:module";
 
@@ -25,61 +20,22 @@ const requireJson = createRequire(import.meta.url);
 const loadSet = (pkg: string): IconifyJSON => requireJson(pkg) as IconifyJSON;
 
 const SETS: Record<string, IconifyJSON> = {
-  "fa6-brands": loadSet("@iconify-json/fa6-brands/icons.json"),
-  "fa6-regular": loadSet("@iconify-json/fa6-regular/icons.json"),
-  "fa6-solid": loadSet("@iconify-json/fa6-solid/icons.json"),
   lucide: loadSet("@iconify-json/lucide/icons.json"),
-  tabler: loadSet("@iconify-json/tabler/icons.json"),
 };
 
-/** Blume's default library when a project sets no `icons.library`. */
+/** Blume's only icon library. */
 const DEFAULT_SET = "lucide";
 
-/** `icons.library` config value → Iconify set. */
-const LIBRARY_SETS: Record<string, string> = {
-  fa: "fa6-solid",
-  "font-awesome": "fa6-solid",
-  fontawesome: "fa6-solid",
-  lucide: "lucide",
-  tabler: "tabler",
-};
-
-/**
- * Mintlify Font Awesome `iconType` → Iconify set. The Pro-only styles
- * (`light`/`thin`/`duotone`/`sharp-solid`) aren't in the free data, so they map
- * to `solid` rather than render nothing.
- */
-const ICON_TYPE_SETS: Record<string, string> = {
-  brands: "fa6-brands",
-  duotone: "fa6-solid",
-  light: "fa6-solid",
-  regular: "fa6-regular",
-  "sharp-solid": "fa6-solid",
-  solid: "fa6-solid",
-  thin: "fa6-solid",
-};
-
-/** Explicit `prefix:name` prefixes (Iconify prefixes + common FA aliases). */
+/** Explicit `prefix:name` prefixes. Lucide is the only bundled set. */
 const PREFIX_SETS: Record<string, string> = {
-  ...LIBRARY_SETS,
-  fa: "fa6-solid",
-  "fa-brands": "fa6-brands",
-  "fa-regular": "fa6-regular",
-  "fa-solid": "fa6-solid",
-  "fa6-brands": "fa6-brands",
-  "fa6-regular": "fa6-regular",
-  "fa6-solid": "fa6-solid",
-  fab: "fa6-brands",
-  far: "fa6-regular",
-  fas: "fa6-solid",
-  ti: "tabler",
+  lucide: "lucide",
 };
 
 /**
- * Own-property map lookup. Icon names and library/iconType hints come from
- * content and config, so a value like `constructor:x` would otherwise resolve
- * an Object.prototype member (a function) and crash resolution deep in the
- * build with no pointer to the offending page.
+ * Own-property map lookup. Icon names come from content and config, so a value
+ * like `constructor:x` would otherwise resolve an Object.prototype member (a
+ * function) and crash resolution deep in the build with no pointer to the
+ * offending page.
  */
 const ownEntry = <T>(map: Record<string, T>, key: string): T | undefined =>
   Object.hasOwn(map, key) ? map[key] : undefined;
@@ -89,15 +45,8 @@ export interface ResolvedIcon {
   body: string;
   /** The resolved icon name. */
   name: string;
-  /** The icon's viewBox, which varies per library (24×24, 512-height, …). */
+  /** The icon's viewBox (Lucide is 24×24). */
   viewBox: string;
-}
-
-export interface ResolveIconOptions {
-  /** Font Awesome style selector (`solid`, `regular`, `brands`, …). */
-  iconType?: string;
-  /** Default library for a bare name (`fontawesome` | `lucide` | `tabler`). */
-  library?: string;
 }
 
 const normalize = (name: string): string =>
@@ -105,23 +54,6 @@ const normalize = (name: string): string =>
     .trim()
     .toLowerCase()
     .replaceAll(/[\s_]+/gu, "-");
-
-/** Which set a bare name resolves against, given library/iconType hints. */
-const setFor = (options: ResolveIconOptions): string => {
-  if (options.iconType) {
-    const set = ownEntry(ICON_TYPE_SETS, normalize(options.iconType));
-    if (set) {
-      return set;
-    }
-  }
-  if (options.library) {
-    const set = ownEntry(LIBRARY_SETS, normalize(options.library));
-    if (set) {
-      return set;
-    }
-  }
-  return DEFAULT_SET;
-};
 
 const fromSet = (setName: string, iconName: string): ResolvedIcon | null => {
   const set = ownEntry(SETS, setName);
@@ -133,46 +65,23 @@ const fromSet = (setName: string, iconName: string): ResolvedIcon | null => {
   return { body, name: iconName, viewBox: attributes.viewBox };
 };
 
-// Font Awesome splits brands into their own set, so a bare `github` under a
-// solid/regular default still resolves.
-const fromFaSet = (setName: string, name: string): ResolvedIcon | null =>
-  fromSet(setName, name) ?? fromSet("fa6-brands", name);
-
-const resolveInSet = (setName: string, name: string): ResolvedIcon | null =>
-  setName.startsWith("fa6-")
-    ? fromFaSet(setName, name)
-    : fromSet(setName, name);
-
 /**
- * Resolve an icon name to inline SVG. Honors an explicit `prefix:name`
- * (`lucide:rocket`, `fa6-brands:github`), then `iconType`, then the configured
- * `library`, falling back to Lucide.
+ * Resolve an icon name to inline SVG. Honors an explicit `lucide:name` prefix;
+ * a bare name resolves against Lucide.
  */
-export const resolveIcon = (
-  name: string,
-  options: ResolveIconOptions = {}
-): ResolvedIcon | null => {
+export const resolveIcon = (name: string): ResolvedIcon | null => {
   const normalized = normalize(name);
   const colon = normalized.indexOf(":");
   if (colon > 0) {
     const setName = ownEntry(PREFIX_SETS, normalized.slice(0, colon));
-    if (setName) {
-      return resolveInSet(setName, normalized.slice(colon + 1));
-    }
+    return setName ? fromSet(setName, normalized.slice(colon + 1)) : null;
   }
-  return resolveInSet(setFor(options), normalized);
+  return fromSet(DEFAULT_SET, normalized);
 };
 
-/**
- * Whether a name resolves to a known icon. Without a library hint this checks
- * every bundled set, so a valid Font Awesome/Tabler name isn't flagged as a typo
- * just because the project's default library is Lucide.
- */
-export const hasIcon = (
-  name: string,
-  options: ResolveIconOptions = {}
-): boolean => {
-  if (resolveIcon(name, options)) {
+/** Whether a name resolves to a known Lucide icon. */
+export const hasIcon = (name: string): boolean => {
+  if (resolveIcon(name)) {
     return true;
   }
   const normalized = normalize(name);

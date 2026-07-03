@@ -6,7 +6,6 @@ import type {
   SidebarItemConfig,
 } from "./schema.ts";
 import type {
-  NavChromeVariant,
   NavNode,
   Navigation,
   NavSelector,
@@ -346,7 +345,6 @@ const buildConfigSidebar = (
 export const buildNavigation = (
   pages: PageRecord[],
   options: {
-    chromeVariants?: NavChromeVariant[];
     folderMeta: Map<string, FolderMeta>;
     selectors?: NavSelector[];
     tabs?: NavTab[];
@@ -363,7 +361,6 @@ export const buildNavigation = (
     sharedFolderMeta?: Map<string, FolderMeta>;
   }
 ): Navigation => {
-  const chromeVariants = options.chromeVariants ?? [];
   const selectors = options.selectors ?? [];
   const tabs = options.tabs ?? [];
   const metaPrefix = options.metaPrefix ?? "";
@@ -377,7 +374,6 @@ export const buildNavigation = (
 
   if (options.sidebar) {
     return {
-      chromeVariants,
       selectors,
       sidebar: buildConfigSidebar(options.sidebar, byRoute),
       tabs,
@@ -385,7 +381,6 @@ export const buildNavigation = (
   }
 
   return {
-    chromeVariants,
     selectors,
     sidebar: buildFileSystemSidebar(
       pages,

@@ -60,7 +60,7 @@ export const buildContentGraph = (
     }
 
     // Each locale gets an independent tree from its own pages and folder meta,
-    // so navigation may diverge per language (Mintlify-style).
+    // so navigation may diverge per language.
     for (const { code } of i18n.locales) {
       // Localize internal tab paths so a header tab points to its in-locale
       // route (e.g. `/docs` -> `/fr/docs`); external paths pass through.
@@ -89,7 +89,6 @@ export const buildContentGraph = (
       }
 
       navigationByLocale[code] = buildNavigation(localePages, {
-        chromeVariants: options.navigation.chromeVariants,
         folderMeta: options.folderMeta,
         // Meta files live in locale directories only under the `dir` parser
         // (`fr/guides/meta.ts` -> key `fr/guides`). Under `dot`, translations
@@ -105,14 +104,12 @@ export const buildContentGraph = (
       });
     }
     navigation = navigationByLocale[i18n.defaultLocale] ?? {
-      chromeVariants: [],
       selectors: [],
       sidebar: [],
       tabs: [],
     };
   } else {
     navigation = buildNavigation(pages, {
-      chromeVariants: options.navigation.chromeVariants,
       folderMeta: options.folderMeta,
       selectors: options.navigation.selectors,
       sharedFolderMeta: options.sharedFolderMeta,

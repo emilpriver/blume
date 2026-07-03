@@ -1,13 +1,9 @@
 ---
-import data from "blume:data";
 import { resolveIcon } from "../theme/icons.ts";
 
 interface Props {
   name?: unknown;
   icon?: unknown;
-  iconType?: string;
-  /** Icon library for a bare name; defaults to the project's `icons.library`. */
-  library?: string;
   size?: number;
   class?: string;
   className?: string;
@@ -18,8 +14,6 @@ interface Props {
 const {
   color,
   icon,
-  iconType,
-  library,
   name,
   size = 16,
   class: astroClass,
@@ -41,12 +35,7 @@ const isImageIcon = (value: string): boolean =>
   /\.(?:avif|gif|jpe?g|png|svg|webp)$/iu.test(value);
 const imageSrc = iconName && !rawSvg && isImageIcon(iconName) ? iconName : null;
 const resolvedIcon =
-  iconName && !(imageSrc || rawSvg)
-    ? resolveIcon(iconName, {
-        iconType,
-        library: library ?? data.config.icons.library,
-      })
-    : null;
+  iconName && !(imageSrc || rawSvg) ? resolveIcon(iconName) : null;
 const resolvedClass = astroClass ?? className;
 const customStyle = `display:inline-flex;width:${size}px;height:${size}px;${
   color ? `color:${color}` : ""

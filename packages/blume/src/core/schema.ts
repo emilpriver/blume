@@ -99,25 +99,15 @@ const pageMetaBaseSchema = z
     deprecated: z.boolean().default(false),
     description: z.string().optional(),
     draft: z.boolean().default(false),
-    groups: z.union([z.string(), z.array(z.string())]).optional(),
     hidden: z.boolean().default(false),
-    hideApiMarker: z.boolean().default(false),
-    hideFooterPagination: z.boolean().optional(),
     icon: iconName.optional(),
-    iconType: z.string().optional(),
-    keywords: z.array(z.string()).optional(),
     /** Overrides the git-derived last-modified date when `lastModified` is on. */
     lastModified: dateSchema.optional(),
-    mode: z.string().optional(),
     noindex: z.boolean().default(false),
-    public: z.boolean().optional(),
-    rss: z.boolean().optional(),
     search: searchMetaSchema.default({}),
     seo: seoMetaSchema.default({}),
     sidebar: sidebarMetaSchema.default({}),
-    sidebarTitle: z.string().optional(),
     slug: z.string().optional(),
-    tag: z.string().optional(),
     title: z.string().optional(),
     type: z.string().default("doc"),
   })
@@ -172,33 +162,11 @@ const logoConfigSchema = z.union([
     .strict(),
 ]);
 
-const faviconConfigSchema = z.union([
-  z.string(),
-  z
-    .object({
-      dark: z.string().optional(),
-      light: z.string().optional(),
-    })
-    .strict(),
-]);
-
-const bannerColorSchema = z
-  .object({
-    dark: z.string().optional(),
-    light: z.string().optional(),
-  })
-  .strict()
-  .refine((value) => value.dark !== undefined || value.light !== undefined, {
-    message: "Banner color requires at least one of light or dark.",
-  });
-
 /** Site-wide announcement banner: a string, or text with an optional link. */
 const bannerConfigSchema = z.union([
   z.string(),
   z
     .object({
-      /** Background color override (Mintlify compatibility). */
-      color: bannerColorSchema.optional(),
       content: z.string(),
       /** Show a dismiss button; the choice is remembered per visitor. */
       dismissible: z.boolean().default(false),
@@ -208,8 +176,6 @@ const bannerConfigSchema = z.union([
         .object({ href: z.string(), text: z.string() })
         .strict()
         .optional(),
-      /** Tone (Mintlify compatibility). */
-      type: z.enum(["info", "warning", "critical"]).optional(),
     })
     .strict(),
 ]);
@@ -330,30 +296,6 @@ const githubReleasesSourceSchema = z
   .strict();
 
 /**
- * In-place Mintlify content (`docs.json` + MDX). Powers "bridge mode": Blume
- * reads an unconverted Mintlify project, transforming each page to Blume MDX at
- * scan time. Injected automatically by `loadConfig` when a `docs.json` is found
- * and no `blume.config.*` exists; can also be configured explicitly.
- */
-const mintlifySourceSchema = z
-  .object({
-    /** Absolute path of the `docs.json`/`mint.json`, watched for changes in dev. */
-    configFile: z.string().optional(),
-    /** Patterns excluded from page discovery (Mintlify defaults are merged in). */
-    exclude: z.array(z.string()).default([]),
-    /** Glob patterns for Mintlify content files. */
-    include: z.array(z.string()).default(["**/*.{md,mdx}"]),
-    /** Namespaces the source's routes under `/<prefix>/`. */
-    prefix: z.string().optional(),
-    /** Content root, absolute or relative to the project root (Mintlify: `.`). */
-    root: z.string().default("."),
-    type: z.literal("mintlify"),
-    /** `docs.json` variables, inlined into content (`{{name}}`) at scan time. */
-    variables: z.record(z.string(), z.string()).default({}),
-  })
-  .strict();
-
-/**
  * A user-provided `ContentSource` instance, passed straight through from
  * `blume.config.ts`. This is the extension point that lets adapters with custom
  * serializers (or any backend) ship without their SDKs touching core.
@@ -377,7 +319,6 @@ const contentSourceSchema = z.discriminatedUnion("type", [
   githubReleasesSourceSchema,
   sanitySourceSchema,
   notionSourceSchema,
-  mintlifySourceSchema,
   customSourceSchema,
 ]);
 
@@ -386,13 +327,6 @@ export type ContentSourceConfig = z.infer<typeof contentSourceSchema>;
 
 const contentConfigSchema = z
   .object({
-    /**
-     * Extra top-level directories (relative to the project root) served as
-     * static assets at the site root, alongside `public/`. Lets projects keep
-     * root-served asset folders in place — e.g. a Mintlify migration keeps
-     * `images/` where it is instead of relocating it under `public/`.
-     */
-    assets: z.array(z.string()).default([]),
     defaultType: z.string().default("doc"),
     exclude: z.array(z.string()).default(["**/_*", "**/.*"]),
     include: z.array(z.string()).default(["**/*.{md,mdx}"]),
@@ -483,10 +417,6 @@ const sidebarItemSchema: z.ZodType<SidebarItemConfig> = z.lazy(() =>
   ])
 );
 
-const variablesConfigSchema = z
-  .record(z.string().regex(/^[A-Za-z0-9-]+$/u), z.string())
-  .default({});
-
 /** A curated Google Font slug (see `theme/fonts.ts`). */
 const fontSlug = z.string().refine(isFontSlug, (value) => ({
   message: `Unknown font "${value}". Supported fonts: ${FONT_SLUGS.join(", ")}.`,
@@ -499,7 +429,6 @@ const themeConfigSchema = z
     action: z.string().optional(),
     background: z.string().optional(),
     backgroundDark: z.string().optional(),
-    backgroundDecoration: z.enum(["gradient", "grid", "windows"]).optional(),
     backgroundImage: z.string().optional(),
     backgroundImageDark: z.string().optional(),
     fonts: z
@@ -584,7 +513,6 @@ const searchConfigSchema = z
       .default({}),
     mixedbread: mixedbreadSearchSchema.optional(),
     oramaCloud: oramaCloudSearchSchema.optional(),
-    prompt: z.string().optional(),
     provider: z.enum(searchProviders).default("orama"),
     typesense: typesenseSearchSchema.optional(),
   })
@@ -644,16 +572,8 @@ const aiConfigSchema = z
   })
   .strict();
 
-const chromeVariantSchema = z
-  .object({
-    banner: bannerConfigSchema.optional(),
-    path: z.string(),
-  })
-  .strict();
-
 const navigationConfigSchema = z
   .object({
-    chromeVariants: z.array(chromeVariantSchema).default([]),
     /** Show a GitHub repo link in the header (requires `github` configured). */
     repo: z.boolean().default(true),
     selectors: z.array(navSelectorSchema).default([]),
@@ -824,7 +744,6 @@ const rssConfigSchema = z
 /** Discoverability features: OG images, feeds, sitemap, structured data. */
 const seoConfigSchema = z
   .object({
-    metatags: z.record(z.string(), z.string()).default({}),
     og: ogConfigSchema.default({}),
     /** Generate robots.txt (with a Sitemap reference when available). */
     robots: z.boolean().default(true),
@@ -1001,17 +920,6 @@ const tocConfigSchema = z
     };
   });
 
-/**
- * Which icon library bare `icon` names resolve against (mirrors Mintlify's
- * `icons.library`). Names can always opt into a specific set with an explicit
- * `prefix:name` (`lucide:rocket`, `fa6-brands:github`) regardless of this.
- */
-const iconsConfigSchema = z
-  .object({
-    library: z.enum(["lucide", "fontawesome", "tabler"]).default("lucide"),
-  })
-  .strict();
-
 export const blumeConfigSchema = z
   .object({
     ai: aiConfigSchema.default({}),
@@ -1036,11 +944,9 @@ export const blumeConfigSchema = z
      */
     examples: z.string().default("examples"),
     export: exportConfigSchema.default(false),
-    favicon: faviconConfigSchema.optional(),
     feedback: z.boolean().default(true),
     github: githubConfigSchema.optional(),
     i18n: i18nConfigSchema.optional(),
-    icons: iconsConfigSchema.default({}),
     lastModified: lastModifiedConfigSchema.default(false),
     logo: logoConfigSchema.optional(),
     markdown: markdownConfigSchema.default({}),
@@ -1053,7 +959,6 @@ export const blumeConfigSchema = z
     theme: themeConfigSchema.default({}),
     title: z.string().default("Documentation"),
     toc: tocConfigSchema,
-    variables: variablesConfigSchema,
   })
   .strict();
 

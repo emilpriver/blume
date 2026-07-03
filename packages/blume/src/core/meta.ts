@@ -39,7 +39,7 @@ export const discoverFolderMeta = async (
     absolute: true,
     cwd: contentRoot,
     // Never descend into dependencies or build output — relevant when the
-    // content root is the project root (e.g. a migrated Mintlify project).
+    // content root is the project root (e.g. a `.`-rooted or all-staged project).
     ignore: ["**/node_modules/**", "**/.blume/**", "**/dist/**"],
     onlyFiles: true,
   });

@@ -5,7 +5,6 @@ interface Props {
   title?: string;
   href?: string;
   icon?: string;
-  iconType?: string;
   img?: string;
   horizontal?: boolean | string;
   cta?: string;
@@ -14,7 +13,7 @@ interface Props {
   color?: string;
 }
 
-const { arrow, color, cta, horizontal, href, icon, iconType, img, title, type } =
+const { arrow, color, cta, horizontal, href, icon, img, title, type } =
   Astro.props;
 const Tag = href ? "a" : "div";
 const external = href?.startsWith("http");
@@ -75,7 +74,7 @@ const variantClass = {
   {
     iconName && (
       <div class:list={["mb-2.5", color ? "" : type ? iconClass[type] : "text-accent"]}>
-        <Icon color={color} iconType={iconType} name={iconName} size={20} />
+        <Icon color={color} name={iconName} size={20} />
       </div>
     )
   }

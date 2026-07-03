@@ -4,13 +4,12 @@ import Icon from "../Icon.astro";
 interface Props {
   class?: string;
   icon?: string;
-  iconType?: string;
   id?: string;
   style?: string;
   title: string;
 }
 
-const { class: className, icon, iconType, id, style, title } = Astro.props;
+const { class: className, icon, id, style, title } = Astro.props;
 const slugify = (value: string): string =>
   value
     .toLowerCase()
@@ -39,7 +38,7 @@ const tabId = id ?? slugify(title);
   {
     icon && (
       <template data-blume-tab-icon>
-        <Icon class="shrink-0" iconType={iconType} name={icon} size={14} />
+        <Icon class="shrink-0" name={icon} size={14} />
       </template>
     )
   }

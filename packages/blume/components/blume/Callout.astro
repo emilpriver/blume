@@ -14,11 +14,10 @@ interface Props {
   type?: CalloutType;
   title?: string;
   icon?: unknown;
-  iconType?: string;
   color?: string;
 }
 
-const { color, icon, iconType, type = "info", title } = Astro.props;
+const { color, icon, type = "info", title } = Astro.props;
 
 const iconByType: Record<CalloutType, string> = {
   check: "circle-check",
@@ -59,12 +58,7 @@ const iconClass: Record<CalloutType, string> = {
   style={color ? `border:1px solid ${color};color:${color}` : undefined}
 >
   <span class:list={["mt-0.5 shrink-0", color ? "" : iconClass[type]]}>
-    <Icon
-      color={color}
-      icon={icon ?? iconByType[type]}
-      iconType={iconType}
-      size={16}
-    />
+    <Icon color={color} icon={icon ?? iconByType[type]} size={16} />
   </span>
   <div class="min-w-0 flex-1 [&>:first-child]:mt-0! [&>:last-child]:mb-0!">
     {title && <p class="mb-1 font-semibold text-foreground">{title}</p>}

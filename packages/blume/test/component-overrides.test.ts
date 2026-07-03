@@ -140,7 +140,7 @@ describe("analyzeComponentOverrides", () => {
   it("warns when client: media has no media query", () => {
     const result = analyze(`
       export default {
-        mdx: { Panel: { component: "./Panel.tsx", client: "media" } },
+        mdx: { Custom: { component: "./Custom.tsx", client: "media" } },
       };
     `);
     expect(result.warnings.join(" ")).toContain('client: "media"');

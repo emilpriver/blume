@@ -10,7 +10,6 @@ interface Props {
   color?: string;
   disabled?: boolean | string;
   icon?: unknown;
-  iconType?: string;
   shape?: BadgeShape;
   size?: BadgeSize;
   stroke?: boolean | string;
@@ -23,7 +22,6 @@ const {
   color,
   disabled = false,
   icon,
-  iconType,
   shape = "rounded",
   size = "md",
   stroke = false,
@@ -119,6 +117,6 @@ const customStyle = customColor
   style={customStyle}
   title={tooltip}
 >
-  {icon && <Icon icon={icon} iconType={iconType} size={iconSize[size]} />}
+  {icon && <Icon icon={icon} size={iconSize[size]} />}
   <slot />
 </span>
