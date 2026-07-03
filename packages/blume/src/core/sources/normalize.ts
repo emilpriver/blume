@@ -270,9 +270,12 @@ export const normalizeEntry = (
     : { locales: [""], navPath: entry.ref };
 
   const navPath = withPrefix(ctx.source.prefix, rawNavPath);
+  // Frontmatter `slug` wins, then the adapter-supplied `entry.slug` (the typed
+  // SPI's "logical route input; defaults to ref if omitted"), then the ref.
   // The extension is re-appended so mapRoute's extname strip can't eat a
   // dotted slug segment (`v1.2`). A slug that trims to nothing falls back.
-  const slug = meta.slug ? trimSlashes(meta.slug) : "";
+  const slugInput = meta.slug ?? entry.slug;
+  const slug = slugInput ? trimSlashes(slugInput) : "";
   const routeInput = withPrefix(
     ctx.source.prefix,
     slug ? `${slug}${ext}` : rawNavPath

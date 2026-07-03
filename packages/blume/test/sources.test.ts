@@ -113,6 +113,17 @@ const routeOf = (data: Record<string, unknown>, prefix?: string) =>
     }
   ).pages[0];
 
+const entryRouteOf = (entry: Partial<SourceEntry>) =>
+  normalizeEntry(
+    {
+      body: { format: "md", text: "# X\n" },
+      data: {},
+      ref: "abc123.md",
+      ...entry,
+    },
+    { defaultType: "doc", source: { name: "s", staged: false } }
+  ).pages[0];
+
 describe("normalizeEntry", () => {
   const fsEntry: SourceEntry = {
     body: { format: "md", text: "# Setup\n" },
@@ -171,6 +182,16 @@ describe("normalizeEntry", () => {
     // Slashed prefixes normalize the same way.
     expect(page({}, "/changelog")?.route).toBe("/changelog/page");
     expect(page({}, "changelog/")?.route).toBe("/changelog/page");
+  });
+
+  it("honors an adapter-supplied entry.slug, with frontmatter slug winning", () => {
+    // The typed SPI documents slug as "logical route input; defaults to ref".
+    expect(entryRouteOf({ slug: "custom/path" })?.route).toBe("/custom/path");
+    expect(entryRouteOf({})?.route).toBe("/abc123");
+    expect(
+      entryRouteOf({ data: { slug: "from-frontmatter" }, slug: "from-adapter" })
+        ?.route
+    ).toBe("/from-frontmatter");
   });
 
   it("reports a diagnostic for invalid frontmatter", () => {
