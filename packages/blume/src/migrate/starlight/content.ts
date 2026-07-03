@@ -1,4 +1,4 @@
-import { renameTag, rewriteCallouts } from "../shared.ts";
+import { renameTag, rewriteCallouts, stripImports } from "../shared.ts";
 
 /**
  * Source-to-source rewrites that turn Starlight-only MDX into idiomatic Blume
@@ -14,11 +14,8 @@ const STARLIGHT_IMPORT =
  * Blume injects its components globally, so these imports would fail to resolve
  * once the Starlight packages are gone.
  */
-export const stripStarlightImports = (source: string): string => {
-  const stripped = source.replace(STARLIGHT_IMPORT, "");
-  // Collapse the blank gap a removed import block leaves behind.
-  return stripped === source ? source : stripped.replaceAll(/\n{3,}/gu, "\n\n");
-};
+export const stripStarlightImports = (source: string): string =>
+  stripImports(source, STARLIGHT_IMPORT);
 
 /** Starlight `<Aside type="X">` values mapped to Blume directive names. */
 const ASIDE_TYPE_DIRECTIVES: Record<string, string> = {

@@ -9,6 +9,7 @@ import {
   isInsideRoot,
   renameTag,
   rewriteCallouts,
+  stripImports,
 } from "../shared.ts";
 
 /**
@@ -29,11 +30,8 @@ const FUMADOCS_IMPORT =
  * injects its components globally, so these imports would fail to resolve once
  * the Fumadocs packages are gone.
  */
-export const stripFumadocsImports = (source: string): string => {
-  const stripped = source.replace(FUMADOCS_IMPORT, "");
-  // Collapse the blank gap a removed import block leaves behind.
-  return stripped === source ? source : stripped.replaceAll(/\n{3,}/gu, "\n\n");
-};
+export const stripFumadocsImports = (source: string): string =>
+  stripImports(source, FUMADOCS_IMPORT);
 
 // ---------------------------------------------------------------------------
 // Callouts

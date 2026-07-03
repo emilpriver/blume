@@ -26,6 +26,7 @@ import {
   scanArray,
   scanObject,
   splitKeyValue,
+  stripImports,
   stripJsComments,
   stripUnknownPageMeta,
   unescapeString,
@@ -293,6 +294,36 @@ describe("rewriteCallouts", () => {
     expect(rewriteCallouts(input, calloutOptions)).toBe(
       "::::note\na :::warning\n::: b\n::::"
     );
+  });
+});
+
+describe("stripImports", () => {
+  it("collapses only the removed import's gap, not blank runs in fences", () => {
+    const source = [
+      'import { Tab } from "fumadocs-ui/components/tabs";',
+      "",
+      "# Title",
+      "",
+      "```python",
+      "def a():",
+      "    pass",
+      "",
+      "",
+      "def b():",
+      "    pass",
+      "```",
+      "",
+    ].join("\n");
+    const out = stripImports(source, /^import\s[^\n]*fumadocs-ui[^\n]*\n?/gmu);
+    expect(out.startsWith("# Title")).toBe(true);
+    // The PEP8 double blank line inside the fence survives — the old
+    // whole-document \n{3,} collapse rewrote it.
+    expect(out).toContain("    pass\n\n\ndef b():");
+  });
+
+  it("returns the source untouched when nothing matches", () => {
+    const source = "# Title\n\n\n\nlots of space\n";
+    expect(stripImports(source, /^import zzz$/gmu)).toBe(source);
   });
 });
 

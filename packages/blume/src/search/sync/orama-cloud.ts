@@ -31,6 +31,8 @@ export const syncOramaCloud = async (
       content: record.content,
       description: record.description,
       id: record._id,
+      // Carried so an i18n site can filter hosted results per language.
+      locale: record.locale,
       tag: record.tag,
       title: record.title,
       url: record.url,

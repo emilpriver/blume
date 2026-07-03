@@ -5,8 +5,9 @@ import { basename, dirname, extname, join, relative } from "pathe";
 import { glob } from "tinyglobby";
 
 import matter from "../../core/frontmatter.ts";
+import { ensureGitignore } from "../../core/gitignore.ts";
 import type { BlumeConfig, FolderMeta } from "../../core/schema.ts";
-import { writeBlumeConfig } from "../shared.ts";
+import { rewriteFrameworkScripts, writeBlumeConfig } from "../shared.ts";
 import {
   rewriteNextraCallouts,
   stripNextraImports,
@@ -353,11 +354,25 @@ export const migrateNextraProject = async (
   );
   await writeBlumeConfig(root, buildConfig(plan.tabs));
 
+  // Tear down the Next scaffolding like the Fumadocs migrator does — without
+  // this, `npm run dev` still launches Next against the gutted content tree.
+  const scriptsRewritten = await rewriteFrameworkScripts(
+    root,
+    /\bnext\b/u,
+    /\bnextra\b/u
+  );
+  await ensureGitignore(root, [".blume/", "dist/"]);
+
   const warnings = [
     ...plan.warnings,
     ...pages.skipped.map((rel) => `Skipped ${rel} (target already exists)`),
     ...relocateWarnings,
   ];
+  if (scriptsRewritten) {
+    warnings.push(
+      "Repointed package.json scripts at Blume (dev/build/preview); remove the leftover Next/Nextra dependencies and next.config/theme.config by hand."
+    );
+  }
   if (pages.removedKeys.length > 0) {
     warnings.push(
       `Dropped unsupported page frontmatter keys: ${pages.removedKeys.join(", ")}.`

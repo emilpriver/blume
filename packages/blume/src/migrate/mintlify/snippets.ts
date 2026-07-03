@@ -3,6 +3,7 @@ import { readFile as readFileFromDisk } from "node:fs/promises";
 import { dirname, relative, resolve } from "pathe";
 
 import matter from "../../core/frontmatter.ts";
+import { isInsideRoot, stripImports } from "../shared.ts";
 
 const MARKDOWN_SNIPPET_IMPORT =
   /^import\s+(?<name>[$A-Z_a-z][$\w]*)\s+from\s+["'](?<source>[^"']+\.mdx?)["'];?\s*$/gmu;
@@ -36,11 +37,6 @@ interface SnippetTransformOptions {
   seen?: Set<string>;
   trail?: string[];
 }
-
-const isInsideRoot = (root: string, candidate: string): boolean => {
-  const rel = relative(root, candidate);
-  return rel === "" || (!rel.startsWith("..") && !rel.startsWith("/"));
-};
 
 const escapeRegExp = (value: string): string =>
   value.replaceAll(/[.*+?^${}()|[\]\\]/gu, "\\$&");
@@ -151,7 +147,9 @@ const interpolateProps = (
   source.replaceAll(PLACEHOLDER, (value, name: string) => props[name] ?? value);
 
 const stripImport = (source: string, importText: string): string =>
-  source.replace(importText, "").replaceAll(/\n{3,}/gu, "\n\n");
+  // Seam-targeted removal: a whole-document `\n{3,}` collapse would rewrite
+  // real double blank lines inside the page's code fences.
+  stripImports(source, new RegExp(escapeRegExp(importText), "gu"));
 
 const replacePlaceholder = (
   source: string,

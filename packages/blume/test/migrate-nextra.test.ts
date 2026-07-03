@@ -261,6 +261,31 @@ describe("migrateNextra end to end", () => {
     expect(existsSync(join(root, "pages", "guides", "_meta.json"))).toBe(false);
   });
 
+  it("repoints package.json scripts off Next and ignores Blume output", async () => {
+    const root = await project({
+      "package.json": JSON.stringify({
+        name: "docs",
+        scripts: { build: "next build", dev: "next dev", start: "next start" },
+      }),
+      "pages/index.mdx": "# Home\n",
+    });
+
+    const result = await migrateNextra(root);
+
+    // Without this, `npm run dev` still launched Next against the gutted
+    // content tree.
+    const pkg = JSON.parse(
+      await readFile(join(root, "package.json"), "utf-8")
+    ) as { scripts: Record<string, string> };
+    expect(pkg.scripts.dev).toBe("blume dev");
+    expect(pkg.scripts.build).toBe("blume build");
+    expect(pkg.scripts.start).toBe("blume preview");
+    expect(await readFile(join(root, ".gitignore"), "utf-8")).toContain(
+      ".blume/"
+    );
+    expect(result.warnings.some((w) => w.includes("Repointed"))).toBe(true);
+  });
+
   it("detects the Nextra 4 content/ directory", async () => {
     const root = await project({
       "content/_meta.json": JSON.stringify({ index: "Home" }),

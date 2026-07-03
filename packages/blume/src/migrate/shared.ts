@@ -125,6 +125,27 @@ export const ensurePackageJson = async (root: string): Promise<boolean> => {
   return true;
 };
 
+// A marker no markdown document contains, planted where an import was removed
+// so the blank-gap collapse can target the seams alone.
+const IMPORT_SEAM = "\u0000blume-import-seam\u0000";
+
+/**
+ * Remove every match of an import pattern, collapsing the blank gap each
+ * removal leaves behind — without touching blank runs elsewhere in the
+ * document (double blank lines inside code fences are real content that a
+ * whole-document `\n{3,}` collapse used to corrupt).
+ */
+export const stripImports = (source: string, pattern: RegExp): string => {
+  const marked = source.replaceAll(pattern, IMPORT_SEAM);
+  if (marked === source) {
+    return source;
+  }
+  return marked
+    .replaceAll(new RegExp(String.raw`\n*(?:${IMPORT_SEAM})+\n*`, "gu"), "\n\n")
+    .replace(/^\n+/u, "")
+    .replace(/\n+$/u, "\n");
+};
+
 // ---------------------------------------------------------------------------
 // Callout components -> Blume `:::` directives
 // ---------------------------------------------------------------------------

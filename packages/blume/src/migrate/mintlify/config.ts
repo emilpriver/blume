@@ -1,6 +1,6 @@
 import { readFile } from "node:fs/promises";
 
-import { dirname, relative, resolve } from "pathe";
+import { dirname, resolve } from "pathe";
 
 import { BlumeError } from "../../core/diagnostics.ts";
 import type {
@@ -10,6 +10,7 @@ import type {
   SidebarItemConfig,
 } from "../../core/schema.ts";
 import { GOOGLE_FONTS } from "../../theme/fonts.ts";
+import { isInsideRoot } from "../shared.ts";
 
 type JsonObject = Record<string, unknown>;
 type NavigationSelectors = ResolvedConfig["navigation"]["selectors"];
@@ -71,11 +72,6 @@ const withoutUndefined = <T extends JsonObject>(value: T): T =>
 
 const hasOwn = (object: JsonObject, key: string): boolean =>
   Object.hasOwn(object, key);
-
-const isInsideRoot = (root: string, candidate: string): boolean => {
-  const rel = relative(root, candidate);
-  return rel === "" || (!rel.startsWith("..") && !rel.startsWith("/"));
-};
 
 const readJsonFile = async (file: string): Promise<unknown> => {
   try {
