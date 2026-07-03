@@ -419,6 +419,23 @@ blume-diff {
   display: none;
 }
 
+/* Tabs and CodeGroup wrap their chrome in a not-prose subtree, which the rule
+   above opts out of — leaving code panels flush against the edge, inline, and
+   unscrollable. Unlike the API/Component panes that exclusion targets, a tab
+   panel is real prose content, so restore the standard code layout inside one. */
+.prose blume-tabs :where(pre:not(.twoslash, .twoslash pre) > code) {
+  display: block;
+  overflow-x: auto;
+  padding: 0 1.25rem;
+  scrollbar-width: none;
+}
+
+.prose
+  blume-tabs
+  :where(pre:not(.twoslash, .twoslash pre) > code)::-webkit-scrollbar {
+  display: none;
+}
+
 /* Word wrap (markdown.code.wrap): long lines wrap instead of scrolling. The
    attribute is set on <body> from config; default code keeps \`white-space: pre\`. */
 [data-blume-code-wrap] pre,

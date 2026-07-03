@@ -154,6 +154,14 @@ describe("tailwindEntryTemplate", () => {
     expect(entry).toContain("pre.blume-source > code");
   });
 
+  it("restores code layout inside Tabs/CodeGroup panels", () => {
+    // The general code rule opts out of not-prose subtrees; a companion rule
+    // re-applies it inside the (not-prose) Tabs chrome so code keeps its inset.
+    expect(entry).toContain(
+      ".prose blume-tabs :where(pre:not(.twoslash, .twoslash pre) > code)"
+    );
+  });
+
   // A stray backtick in a CSS comment silently terminates the template literal,
   // emitting raw `${...}` interpolation markers into the stylesheet (which then
   // fails to parse at build time). Guard against that regression.
