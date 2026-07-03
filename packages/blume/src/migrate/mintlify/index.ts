@@ -6,7 +6,7 @@ import { glob } from "tinyglobby";
 
 import { ensureGitignore } from "../../core/gitignore.ts";
 import type { BlumeConfig } from "../../core/schema.ts";
-import { ensurePackageJson } from "../shared.ts";
+import { adoptPackageJson, ensurePackageJson } from "../shared.ts";
 import { assetSegments } from "./assets.ts";
 import { loadMintlifyConfig, partitionMintlifyRedirects } from "./config.ts";
 import { mintlifyI18n } from "./i18n.ts";
@@ -220,6 +220,40 @@ const removeForeignConfig = async (
 };
 
 /**
+ * Turn a project's existing `package.json` into a runnable Blume one: repoint
+ * the `mintlify dev`/`build` scripts at the Blume CLI, drop the `mintlify`
+ * dependency, and add `blume`. Config-only Mintlify repos ship no manifest, so
+ * this only runs when {@link ensurePackageJson} didn't scaffold one.
+ */
+const adoptMintlifyPackageJson = async (
+  root: string,
+  warnings: string[]
+): Promise<void> => {
+  const adopted = await adoptPackageJson(root, {
+    cli: /\bmintlify\b/u,
+    dependencies: /^mintlify$/u,
+  });
+  if (!adopted) {
+    return;
+  }
+  const notes: string[] = [];
+  if (adopted.scriptsRepointed) {
+    notes.push("repointed dev/build scripts at the Blume CLI");
+  }
+  if (adopted.dependenciesRemoved.length > 0) {
+    notes.push(`removed ${adopted.dependenciesRemoved.join(", ")}`);
+  }
+  if (adopted.blumeAdded) {
+    notes.push("added blume");
+  }
+  if (notes.length > 0) {
+    warnings.push(
+      `Updated package.json (${notes.join("; ")}); run \`npm install\`, then \`npm run dev\`.`
+    );
+  }
+};
+
+/**
  * Scaffold the project files a config-only Mintlify repo lacks: a runnable
  * `package.json` (it ships no npm manifest) and a `.gitignore` for Blume's
  * generated `.blume/` runtime and `dist/` build output. Both are idempotent —
@@ -233,6 +267,8 @@ const scaffoldProjectFiles = async (
     warnings.push(
       "Created a package.json with blume as a dependency; run `npm install`, then `npm run dev`."
     );
+  } else {
+    await adoptMintlifyPackageJson(root, warnings);
   }
   const ignored = await ensureGitignore(root, [".blume/", "dist/"]);
   if (ignored.length > 0) {

@@ -371,7 +371,7 @@ describe("migrateMintlify end to end", () => {
     ).toBe(true);
   });
 
-  it("keeps an existing package.json instead of scaffolding one", async () => {
+  it("adopts an existing package.json instead of scaffolding a new one", async () => {
     const root = await project({
       "docs.json": JSON.stringify({
         name: "Docs",
@@ -383,14 +383,57 @@ describe("migrateMintlify end to end", () => {
 
     const result = await migrateMintlify(root);
 
+    // The manifest is kept (not overwritten) but blume is added so the migrated
+    // project runs; nothing was "created" from scratch.
     const pkg = JSON.parse(
       await readFile(join(root, "package.json"), "utf-8")
-    ) as { name: string; scripts?: unknown };
+    ) as { name: string; dependencies: Record<string, string> };
     expect(pkg.name).toBe("existing");
-    expect(pkg.scripts).toBeUndefined();
+    expect(pkg.dependencies.blume).toMatch(/^\^\d/u);
     expect(
       result.warnings.some((w) => w.includes("Created a package.json"))
     ).toBe(false);
+    expect(
+      result.warnings.some((w) => w.includes("Updated package.json"))
+    ).toBe(true);
+  });
+
+  it("swaps mintlify for blume in an existing package.json and repoints scripts", async () => {
+    const root = await project({
+      "docs.json": JSON.stringify({
+        name: "Docs",
+        navigation: { pages: [{ group: "Start", pages: ["index"] }] },
+      }),
+      "index.mdx": "---\ntitle: Home\n---\n\nHi.\n",
+      // The exact shape a `mintlify dev` project ships: a mintlify devDependency
+      // and a dev script that invokes the mintlify CLI.
+      "package.json": JSON.stringify({
+        author: "QuiverAI, Inc.",
+        devDependencies: { mintlify: "4.2.632" },
+        name: "@quiverai/docs",
+        private: true,
+        scripts: { dev: "mintlify dev" },
+      }),
+    });
+
+    await migrateMintlify(root);
+
+    const pkg = JSON.parse(
+      await readFile(join(root, "package.json"), "utf-8")
+    ) as {
+      author: string;
+      dependencies: Record<string, string>;
+      devDependencies?: Record<string, string>;
+      scripts: Record<string, string>;
+    };
+    // dev script repointed off the mintlify CLI...
+    expect(pkg.scripts.dev).toBe("blume dev");
+    // ...mintlify removed (and its now-empty devDependencies block pruned)...
+    expect(pkg.devDependencies).toBeUndefined();
+    // ...and blume added as a runtime dependency.
+    expect(pkg.dependencies.blume).toMatch(/^\^\d/u);
+    // Unrelated fields survive untouched.
+    expect(pkg.author).toBe("QuiverAI, Inc.");
   });
 
   it("serves asset dirs referenced only by content, not just the config", async () => {

@@ -6,6 +6,7 @@ import { basename, isAbsolute, join, relative } from "pathe";
 import { blumePackageJson, toPackageName } from "../core/package-json.ts";
 import type { BlumeConfig } from "../core/schema.ts";
 import { pageMetaSchema } from "../core/schema.ts";
+import { getBlumeVersion } from "../core/version.ts";
 
 /**
  * Whether `candidate` resolves to a path inside `root` (or is `root` itself).
@@ -45,33 +46,18 @@ const BLUME_SCRIPTS: Record<string, string> = {
 };
 
 /**
- * Rewrite a migrated project's npm scripts off the old framework's CLI. A
- * `dev`/`build`/`start` script whose command invokes `cli` (e.g. `/\bnext\b/`)
- * is repointed at the matching Blume command (`start` -> `blume preview`); a
- * script whose command matches `remove` (e.g. a `fumadocs-mdx` postinstall) is
- * dropped. Scripts that don't match either are left untouched, so custom tasks
- * survive. Returns true when `package.json` changed.
+ * Repoint an npm `scripts` map off the old framework's CLI. A `dev`/`build`/
+ * `start` script whose command invokes `cli` (e.g. `/\bnext\b/`) is repointed at
+ * the matching Blume command (`start` -> `blume preview`); a script whose command
+ * matches `remove` (e.g. a `fumadocs-mdx` postinstall) is dropped. Scripts that
+ * match neither are left untouched, so custom tasks survive. Pure — returns the
+ * next map and whether anything changed.
  */
-export const rewriteFrameworkScripts = async (
-  root: string,
+const repointScripts = (
+  scripts: Record<string, unknown>,
   cli: RegExp,
   remove?: RegExp
-): Promise<boolean> => {
-  const pkgPath = join(root, "package.json");
-  if (!existsSync(pkgPath)) {
-    return false;
-  }
-  let pkg: { scripts?: Record<string, unknown> };
-  try {
-    pkg = JSON.parse(await readFile(pkgPath, "utf-8"));
-  } catch {
-    return false;
-  }
-  const { scripts } = pkg;
-  if (!scripts || typeof scripts !== "object") {
-    return false;
-  }
-
+): { scripts: Record<string, unknown>; changed: boolean } => {
   const next: Record<string, unknown> = {};
   let changed = false;
   for (const [name, command] of Object.entries(scripts)) {
@@ -90,12 +76,146 @@ export const rewriteFrameworkScripts = async (
       next[name] = command;
     }
   }
+  return { changed, scripts: next };
+};
 
+/**
+ * Rewrite a migrated project's npm scripts off the old framework's CLI. Returns
+ * true when `package.json` changed. See {@link repointScripts} for the rules;
+ * {@link adoptPackageJson} builds on this to also swap dependencies.
+ */
+export const rewriteFrameworkScripts = async (
+  root: string,
+  cli: RegExp,
+  remove?: RegExp
+): Promise<boolean> => {
+  const pkgPath = join(root, "package.json");
+  if (!existsSync(pkgPath)) {
+    return false;
+  }
+  let pkg: { scripts?: Record<string, unknown> };
+  try {
+    pkg = JSON.parse(await readFile(pkgPath, "utf-8"));
+  } catch {
+    return false;
+  }
+  if (!pkg.scripts || typeof pkg.scripts !== "object") {
+    return false;
+  }
+  const { scripts, changed } = repointScripts(pkg.scripts, cli, remove);
   if (changed) {
-    pkg.scripts = next;
+    pkg.scripts = scripts;
     await writeFile(pkgPath, `${JSON.stringify(pkg, null, 2)}\n`, "utf-8");
   }
   return changed;
+};
+
+export interface PackageAdoption {
+  /** `dev`/`build`/`start` scripts were repointed at the Blume CLI. */
+  scriptsRepointed: boolean;
+  /** Old-framework packages dropped from dependencies/devDependencies. */
+  dependenciesRemoved: string[];
+  /** `blume` was added to dependencies (false if it was already present). */
+  blumeAdded: boolean;
+}
+
+const isDepMap = (value: unknown): value is Record<string, unknown> =>
+  Boolean(value) && typeof value === "object" && !Array.isArray(value);
+
+/**
+ * Drop every dependency whose name matches `match` from a dep map, returning the
+ * kept entries (or `undefined` when none remain, so the field is omitted from
+ * the manifest) and the names removed. Rebuilds the map rather than deleting
+ * keys in place.
+ */
+const stripDependencies = (
+  deps: unknown,
+  match: RegExp
+): { deps: Record<string, unknown> | undefined; removed: string[] } => {
+  if (!isDepMap(deps)) {
+    return { deps: deps as Record<string, unknown> | undefined, removed: [] };
+  }
+  const removed: string[] = [];
+  const kept: Record<string, unknown> = {};
+  for (const [name, spec] of Object.entries(deps)) {
+    if (match.test(name)) {
+      removed.push(name);
+    } else {
+      kept[name] = spec;
+    }
+  }
+  return { deps: Object.keys(kept).length > 0 ? kept : undefined, removed };
+};
+
+/**
+ * Adopt a project's *existing* `package.json` into a Blume project: repoint its
+ * dev/build/start scripts at the Blume CLI ({@link repointScripts}), drop every
+ * dependency whose name matches `dependencies` from both `dependencies` and
+ * `devDependencies`, and add `blume` (pinned to the installed version). This is
+ * the counterpart to {@link ensurePackageJson}, which scaffolds a manifest when
+ * a project has none — together they make a migrated repo run with a plain
+ * `npm install && npm run dev`, no hand-edits. Returns what changed, or `null`
+ * when there is no parseable `package.json` to adopt.
+ */
+export const adoptPackageJson = async (
+  root: string,
+  options: { cli: RegExp; dependencies: RegExp; removeScript?: RegExp }
+): Promise<PackageAdoption | null> => {
+  const pkgPath = join(root, "package.json");
+  if (!existsSync(pkgPath)) {
+    return null;
+  }
+  let pkg: {
+    scripts?: Record<string, unknown>;
+    dependencies?: Record<string, unknown>;
+    devDependencies?: Record<string, unknown>;
+  };
+  try {
+    pkg = JSON.parse(await readFile(pkgPath, "utf-8"));
+  } catch {
+    return null;
+  }
+
+  let changed = false;
+
+  let scriptsRepointed = false;
+  if (isDepMap(pkg.scripts)) {
+    const { scripts, changed: repointed } = repointScripts(
+      pkg.scripts,
+      options.cli,
+      options.removeScript
+    );
+    if (repointed) {
+      pkg.scripts = scripts;
+      scriptsRepointed = true;
+      changed = true;
+    }
+  }
+
+  const runtime = stripDependencies(pkg.dependencies, options.dependencies);
+  const dev = stripDependencies(pkg.devDependencies, options.dependencies);
+  pkg.dependencies = runtime.deps;
+  pkg.devDependencies = dev.deps;
+  const dependenciesRemoved = [...runtime.removed, ...dev.removed];
+  if (dependenciesRemoved.length > 0) {
+    changed = true;
+  }
+
+  let blumeAdded = false;
+  const dependencies: Record<string, unknown> = isDepMap(pkg.dependencies)
+    ? pkg.dependencies
+    : {};
+  pkg.dependencies = dependencies;
+  if (!("blume" in dependencies)) {
+    dependencies.blume = `^${getBlumeVersion()}`;
+    blumeAdded = true;
+    changed = true;
+  }
+
+  if (changed) {
+    await writeFile(pkgPath, `${JSON.stringify(pkg, null, 2)}\n`, "utf-8");
+  }
+  return { blumeAdded, dependenciesRemoved, scriptsRepointed };
 };
 
 /** Of the candidate project-relative paths, the ones that still exist — the old
