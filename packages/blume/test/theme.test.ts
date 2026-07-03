@@ -258,3 +258,19 @@ describe("resolveIcon library-prefix stripping", () => {
     expect(hasIcon("fa:github")).toBeTruthy();
   });
 });
+
+describe("resolveIcon FontAwesome coverage", () => {
+  it("resolves common FontAwesome names via the alias map", () => {
+    expect(resolveIcon("shield-halved")?.name).toBe("shield-half");
+    expect(resolveIcon("layer-group")?.name).toBe("layers");
+    expect(resolveIcon("arrows-rotate")?.name).toBe("refresh-cw");
+    expect(resolveIcon("wand-magic-sparkles")?.name).toBe("wand-sparkles");
+    expect(resolveIcon("user-shield")?.name).toBe("shield-user");
+    expect(resolveIcon("gauge-high")?.name).toBe("gauge");
+  });
+
+  it("resolves a FontAwesome alias through a library prefix and icon type", () => {
+    expect(resolveIcon("fa-layer-group")?.name).toBe("layers");
+    expect(resolveIcon("layer-group", "fa-solid")?.name).toBe("layers");
+  });
+});
