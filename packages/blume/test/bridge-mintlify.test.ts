@@ -7,7 +7,10 @@ import { dirname, join } from "pathe";
 import { detectMintlifyBridge } from "../src/core/bridge.ts";
 import { loadConfig } from "../src/core/config.ts";
 import { scanProject } from "../src/core/project-graph.ts";
-import { mintlifySource } from "../src/core/sources/mintlify.ts";
+import {
+  mintlifySource,
+  mintlifyWatchListener,
+} from "../src/core/sources/mintlify.ts";
 
 const dirs: string[] = [];
 
@@ -257,6 +260,26 @@ describe("mintlifySource", () => {
       variables: {},
     });
     expect(() => missing.validate?.()).toThrow(/Content root not found/u);
+  });
+
+  it("ignores watch events under Blume's own output and other non-content trees", () => {
+    let calls = 0;
+    const listener = mintlifyWatchListener(() => {
+      calls += 1;
+    });
+
+    // Blume's dev server rewrites these on every request — must not regenerate.
+    listener("change", ".blume/.astro/data-store.json");
+    listener("change", "packages/x/node_modules/dep/index.js");
+    listener("change", ".git/HEAD");
+    // Windows-style separators are handled too.
+    listener("change", ".blume\\.astro\\settings.json");
+    expect(calls).toBe(0);
+
+    // Real content edits (and an unnameable path) do trigger a regeneration.
+    listener("change", "guides/intro.mdx");
+    listener("change", null);
+    expect(calls).toBe(2);
   });
 
   it("watches the content root and config file, returning a disposer", async () => {

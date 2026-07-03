@@ -1,6 +1,6 @@
 import { existsSync, readFileSync } from "node:fs";
 
-import { dirname, join } from "pathe";
+import { dirname, isAbsolute, join, relative } from "pathe";
 
 import { askBackendRuntimeDep } from "../ai/ask.ts";
 import type { AskBackend } from "../ai/ask.ts";
@@ -400,9 +400,23 @@ export const contentConfigTemplate = (options: {
   // collection never walks into ignored trees. This matters when `content.root`
   // is the project root (Mintlify bridge mode, or a migrated `.`-rooted project):
   // without it the collection would scan `node_modules`, `snippets`, etc.
+  //
+  // Blume's own output dir sits under the content root in that case, and Astro's
+  // content-layer watcher walks the whole `base` — so it would otherwise watch
+  // (and its glob loader re-sync) `.blume/` on every dev-server write, churning
+  // the console and double-loading the staged bodies under `.blume/content`.
+  // `content.exclude` only carries the source's declared excludes, so add the
+  // runtime dir explicitly when it resolves inside the content root.
+  const outDirRel = relative(context.contentRoot, context.outDir);
+  const outDirIgnore =
+    outDirRel && !outDirRel.startsWith("..") && !isAbsolute(outDirRel)
+      ? [`!${outDirRel}/**`]
+      : [];
   const docsPattern = [
     ...config.content.include,
     ...(config.content.exclude ?? []).map((pattern) => `!${pattern}`),
+    "!**/node_modules/**",
+    ...outDirIgnore,
   ];
 
   // Non-filesystem sources render through a parallel `staged` collection backed

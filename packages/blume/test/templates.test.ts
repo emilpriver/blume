@@ -580,6 +580,26 @@ describe("contentConfigTemplate", () => {
     });
     expect(out).toContain('"/custom/base"');
   });
+
+  it("always excludes node_modules from the docs glob", () => {
+    const out = contentConfigTemplate({ config, context: context() });
+    expect(out).toContain('"!**/node_modules/**"');
+  });
+
+  it("excludes the runtime dir when it sits inside the content root", () => {
+    // Bridge mode: content root is the project root, so `.blume/` is nested.
+    const out = contentConfigTemplate({
+      config,
+      context: context({ contentRoot: "/p", outDir: "/p/.blume" }),
+    });
+    expect(out).toContain('"!.blume/**"');
+  });
+
+  it("omits the runtime-dir exclude when it is a sibling of the content root", () => {
+    // Default: content root is `/p/docs`, runtime is `/p/.blume` (outside it).
+    const out = contentConfigTemplate({ config, context: context() });
+    expect(out).not.toContain(".blume/**");
+  });
 });
 
 describe("stagedContentDir", () => {

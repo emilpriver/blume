@@ -1,4 +1,5 @@
 import { existsSync, watch as fsWatch } from "node:fs";
+import type { WatchListener } from "node:fs";
 import { readFile } from "node:fs/promises";
 
 import { isAbsolute, join, relative, resolve } from "pathe";
@@ -41,6 +42,41 @@ const MINTLIFY_SOURCE_IGNORES = [
   "public/**",
   "snippets/**",
 ];
+
+/**
+ * Directory names the recursive dev watcher must ignore. In bridge mode the
+ * content root is the project root, so a naive recursive `fs.watch` also sees
+ * Blume's own `.blume/` output — which the dev server rewrites on every request
+ * (`.blume/.astro/data-store.json`). Left unfiltered, each such write re-triggers
+ * a full rescan + runtime regeneration, whose writes land back under `.blume/`
+ * and fire the watcher again: a self-sustaining storm that stalls page renders
+ * and floods the console. `fs.watch` has no ignore option, so we filter by the
+ * changed path in the callback. Derived from {@link MINTLIFY_SOURCE_IGNORES}
+ * (dir prefixes) plus VCS metadata.
+ */
+const WATCH_IGNORE_DIRS = new Set([
+  ...MINTLIFY_SOURCE_IGNORES.map((pattern) => pattern.replace(/\/\*\*$/u, "")),
+  ".git",
+]);
+
+/**
+ * Build the recursive-watch listener: fire `onChange` for content changes but
+ * ignore events whose path crosses a {@link WATCH_IGNORE_DIRS} segment (Blume's
+ * own `.blume/` output, `node_modules`, VCS metadata, …). A missing `filename`
+ * — rare; the platform couldn't name the changed path — falls through to
+ * regenerate rather than silently dropping a real edit. Exported for testing.
+ */
+export const mintlifyWatchListener =
+  (onChange: () => void): WatchListener<string> =>
+  (_event, filename) => {
+    if (
+      typeof filename === "string" &&
+      filename.split(/[/\\]/u).some((segment) => WATCH_IGNORE_DIRS.has(segment))
+    ) {
+      return;
+    }
+    onChange();
+  };
 
 /**
  * The Mintlify bridge content source. Reads an unconverted Mintlify project in
@@ -126,7 +162,14 @@ export const mintlifySource = (
   const watch = (onChange: () => void): (() => void) => {
     const disposers: (() => void)[] = [];
     if (existsSync(contentRoot)) {
-      const watcher = fsWatch(contentRoot, { recursive: true }, onChange);
+      // Recursively watch the content root, but skip Blume's own output and
+      // other non-content trees so the dev server's `.blume/` writes don't feed
+      // a regeneration loop (`fs.watch` has no ignore option, so filter here).
+      const watcher = fsWatch(
+        contentRoot,
+        { recursive: true },
+        mintlifyWatchListener(onChange)
+      );
       disposers.push(() => watcher.close());
     }
     // Watch docs.json directly: it lives at the content root but a non-recursive
