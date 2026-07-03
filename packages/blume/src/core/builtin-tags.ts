@@ -8,6 +8,7 @@ export const BUILTIN_MDX_TAGS = new Set<string>([
   "Accordion",
   "AccordionItem",
   "ApiOverview",
+  "ApiTagOperations",
   "AutoTypeTable",
   "Badge",
   "Callout",

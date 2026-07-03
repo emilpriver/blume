@@ -1,0 +1,42 @@
+---
+import specs from "blume:openapi";
+import MethodBadge from "./MethodBadge.astro";
+
+// The operation-link list for one tag section of an API overview page. The
+// section heading itself is emitted by `overviewMdx` as a markdown `##` — so it
+// flows into the table of contents — and this component renders only the list
+// of operations beneath it.
+interface Props {
+  source: string;
+  /** Tag slug (`ApiOperationRef.tagSlug`) selecting this section's operations. */
+  tag: string;
+}
+
+const { source, tag } = Astro.props;
+const operations = Object.values(specs[source]?.operations ?? {}).filter(
+  (operation) => operation.tagSlug === tag
+);
+---
+
+{
+  operations.length > 0 && (
+    <ul class="not-prose my-4 flex list-none flex-col gap-2 p-0">
+      {operations.map((operation) => (
+        <li>
+          <a
+            class="flex items-center gap-3 rounded-blume border border-border p-3 text-inherit no-underline! transition-colors hover:border-accent hover:bg-muted hover:no-underline!"
+            href={operation.route}
+          >
+            <MethodBadge method={operation.method} />
+            <span class="font-medium text-foreground text-sm">
+              {operation.summary || operation.path}
+            </span>
+            <code class="ml-auto hidden text-muted-foreground text-xs sm:inline">
+              {operation.path}
+            </code>
+          </a>
+        </li>
+      ))}
+    </ul>
+  )
+}

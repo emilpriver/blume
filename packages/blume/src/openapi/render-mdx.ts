@@ -73,13 +73,47 @@ export const operationMdx = (
   };
 };
 
-export const overviewMdx = (spec: ApiSpecData): RenderedPage => ({
-  body: withDescription(
-    spec.description,
-    `<ApiOverview source="${spec.slug}" />`
-  ),
-  data: {
-    sidebar: { label: "Overview" },
-    title: spec.title || spec.label,
-  },
-});
+export const overviewMdx = (spec: ApiSpecData): RenderedPage => {
+  // Tag sections: declared tags in spec order, then any tag an operation
+  // references that isn't declared under `tags`. The section headings are
+  // emitted as real markdown `##` (not markup inside a component) so the
+  // markdown pipeline gives them ids, permalink anchors, and table-of-contents
+  // entries; only the operation-link list defers to a component.
+  const operations = Object.values(spec.operations);
+  const sections = [...spec.tags];
+  const known = new Set(spec.tags.map((tag) => tag.slug));
+  for (const operation of operations) {
+    if (!known.has(operation.tagSlug)) {
+      known.add(operation.tagSlug);
+      sections.push({
+        description: "",
+        name: operation.tag,
+        slug: operation.tagSlug,
+      });
+    }
+  }
+  const tagSections = sections
+    .filter((tag) =>
+      operations.some((operation) => operation.tagSlug === tag.slug)
+    )
+    .map((tag) =>
+      [
+        `## ${mdxSafe(tag.name)}`,
+        ...(tag.description.trim() ? [mdxSafe(tag.description.trim())] : []),
+        `<ApiTagOperations source="${spec.slug}" tag="${tag.slug}" />`,
+      ].join("\n\n")
+    );
+  return {
+    body: [
+      withDescription(
+        spec.description,
+        `<ApiOverview source="${spec.slug}" />`
+      ),
+      ...tagSections,
+    ].join("\n\n"),
+    data: {
+      sidebar: { label: "Overview" },
+      title: spec.title || spec.label,
+    },
+  };
+};

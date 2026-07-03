@@ -992,6 +992,7 @@ import Visibility from "blume/components/content/Visibility.astro";
 import YouTube from "blume/components/content/YouTube.astro";
 import Icon from "blume/components/Icon.astro";
 import ApiOverview from "blume/components/openapi/ApiOverview.astro";
+import ApiTagOperations from "blume/components/openapi/ApiTagOperations.astro";
 import Operation from "blume/components/openapi/Operation.astro";
 ${mathImport}import { mdxComponents as userMdx, layoutOverrides } from "../generated/components.ts";
 import { islandComponents } from "../generated/islands.ts";
@@ -1010,6 +1011,7 @@ const components = {
   Accordion,
   AccordionItem,
   ApiOverview,
+  ApiTagOperations,
   AutoTypeTable,
   Badge,
   Callout,

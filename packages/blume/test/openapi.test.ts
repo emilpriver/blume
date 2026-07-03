@@ -401,6 +401,26 @@ describe("render-mdx", () => {
       true
     );
   });
+
+  it("emits tag sections as markdown headings above the operation lists", () => {
+    const { operations, tags } = extractOperations(SPEC_3_1, "/api");
+    const page = overviewMdx(
+      specData({
+        operations: Object.fromEntries(
+          operations.map((operation) => [operation.key, operation])
+        ),
+        tags,
+      })
+    );
+    // A markdown `##` heading (not component markup) so it flows into the TOC.
+    expect(page.body).toContain("## pet");
+    expect(page.body).toContain('<ApiTagOperations source="api" tag="pet" />');
+    // A declared tag no operation uses gets no section.
+    const empty = overviewMdx(
+      specData({ tags: [{ description: "", name: "unused", slug: "unused" }] })
+    );
+    expect(empty.body).not.toContain("## unused");
+  });
 });
 
 describe("source.openApiSource", () => {
