@@ -154,12 +154,13 @@ describe("tailwindEntryTemplate", () => {
     expect(entry).toContain("pre.blume-source > code");
   });
 
-  it("restores code layout inside Tabs/CodeGroup panels", () => {
-    // The general code rule opts out of not-prose subtrees; a companion rule
-    // re-applies it inside the (not-prose) Tabs chrome so code keeps its inset.
+  it("keeps code inset in content components but not the API request panel", () => {
+    // The code layout rule opts out only the API panel (which owns its layout),
+    // not every not-prose subtree — so Tabs, Steps, Callout, etc. keep the inset.
     expect(entry).toContain(
-      ".prose blume-tabs :where(pre:not(.twoslash, .twoslash pre) > code)"
+      ".prose :where(pre:not(.twoslash, .twoslash pre, blume-panel-tabs *) > code)"
     );
+    expect(entry).not.toContain(".not-prose *) > code)");
   });
 
   // A stray backtick in a CSS comment silently terminates the template literal,

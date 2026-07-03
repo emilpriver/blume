@@ -400,11 +400,13 @@ blume-diff {
 /* Long lines scroll inside the code element, not the pre: the pre stays static
    so its absolute header bar (::before) and copy button don't drift with the
    scroll. The pre's horizontal padding lives here so content still scrolls
-   edge-to-edge past it. Twoslash blocks (and the popup pres nested inside them)
-   opt out — popups must escape any scroll container (see theme/twoslash.ts) —
-   as do not-prose contexts (API request panels, Component source panes), which
-   own their code layout and keep their copy control outside the pre. */
-.prose :where(pre:not(.twoslash, .twoslash pre, .not-prose *) > code) {
+   edge-to-edge past it. Two contexts opt out: twoslash blocks (popups must
+   escape any scroll container — see theme/twoslash.ts), and the API request
+   panel, which owns its code layout and keeps the copy control in the panel
+   header. Every other component that hosts a code block — Tabs, CodeGroup,
+   Steps, Callout, Card, Accordion — is real prose content and keeps the inset,
+   even though its chrome wrapper is not-prose. */
+.prose :where(pre:not(.twoslash, .twoslash pre, blume-panel-tabs *) > code) {
   display: block;
   overflow-x: auto;
   padding: 0 1.25rem;
@@ -415,24 +417,9 @@ blume-diff {
 }
 
 .prose
-  :where(pre:not(.twoslash, .twoslash pre, .not-prose *) > code)::-webkit-scrollbar {
-  display: none;
-}
-
-/* Tabs and CodeGroup wrap their chrome in a not-prose subtree, which the rule
-   above opts out of — leaving code panels flush against the edge, inline, and
-   unscrollable. Unlike the API/Component panes that exclusion targets, a tab
-   panel is real prose content, so restore the standard code layout inside one. */
-.prose blume-tabs :where(pre:not(.twoslash, .twoslash pre) > code) {
-  display: block;
-  overflow-x: auto;
-  padding: 0 1.25rem;
-  scrollbar-width: none;
-}
-
-.prose
-  blume-tabs
-  :where(pre:not(.twoslash, .twoslash pre) > code)::-webkit-scrollbar {
+  :where(
+    pre:not(.twoslash, .twoslash pre, blume-panel-tabs *) > code
+  )::-webkit-scrollbar {
   display: none;
 }
 
