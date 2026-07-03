@@ -10,6 +10,7 @@ import { BlumeError } from "../diagnostics.ts";
 import matter from "../frontmatter.ts";
 import type { Diagnostic } from "../types.ts";
 import type { ContentSource, SourceEntry, SourceLoadResult } from "./types.ts";
+import { BLUME_WATCH_IGNORE_DIRS, ignoringWatchListener } from "./watch.ts";
 
 /** Options for the Mintlify bridge content source. */
 export interface MintlifySourceOptions {
@@ -44,39 +45,24 @@ const MINTLIFY_SOURCE_IGNORES = [
 ];
 
 /**
- * Directory names the recursive dev watcher must ignore. In bridge mode the
- * content root is the project root, so a naive recursive `fs.watch` also sees
- * Blume's own `.blume/` output — which the dev server rewrites on every request
- * (`.blume/.astro/data-store.json`). Left unfiltered, each such write re-triggers
- * a full rescan + runtime regeneration, whose writes land back under `.blume/`
- * and fire the watcher again: a self-sustaining storm that stalls page renders
- * and floods the console. `fs.watch` has no ignore option, so we filter by the
- * changed path in the callback. Derived from {@link MINTLIFY_SOURCE_IGNORES}
- * (dir prefixes) plus VCS metadata.
+ * Directory names the recursive dev watcher must ignore, on top of the shared
+ * {@link BLUME_WATCH_IGNORE_DIRS} (Blume's own `.blume/` output, VCS,
+ * dependencies). Derived from {@link MINTLIFY_SOURCE_IGNORES} so bridge mode's
+ * watcher stays in sync with what its scan skips (snippets, build output, …).
  */
-const WATCH_IGNORE_DIRS = new Set([
+const WATCH_IGNORE_DIRS = [
+  ...BLUME_WATCH_IGNORE_DIRS,
   ...MINTLIFY_SOURCE_IGNORES.map((pattern) => pattern.replace(/\/\*\*$/u, "")),
-  ".git",
-]);
+];
 
 /**
- * Build the recursive-watch listener: fire `onChange` for content changes but
- * ignore events whose path crosses a {@link WATCH_IGNORE_DIRS} segment (Blume's
- * own `.blume/` output, `node_modules`, VCS metadata, …). A missing `filename`
- * — rare; the platform couldn't name the changed path — falls through to
- * regenerate rather than silently dropping a real edit. Exported for testing.
+ * Build the recursive-watch listener for the bridge source: ignore events under
+ * {@link WATCH_IGNORE_DIRS} so the dev server's `.blume/` writes don't feed a
+ * regeneration loop. Exported for testing.
  */
-export const mintlifyWatchListener =
-  (onChange: () => void): WatchListener<string> =>
-  (_event, filename) => {
-    if (
-      typeof filename === "string" &&
-      filename.split(/[/\\]/u).some((segment) => WATCH_IGNORE_DIRS.has(segment))
-    ) {
-      return;
-    }
-    onChange();
-  };
+export const mintlifyWatchListener = (
+  onChange: () => void
+): WatchListener<string> => ignoringWatchListener(onChange, WATCH_IGNORE_DIRS);
 
 /**
  * The Mintlify bridge content source. Reads an unconverted Mintlify project in

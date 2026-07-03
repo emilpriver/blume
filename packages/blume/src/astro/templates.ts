@@ -374,6 +374,15 @@ export default defineConfig({
       fs: {
         allow: ${JSON.stringify(fsAllow)},
       },
+      // Keep the file watcher out of Astro's own cache dir. In a migrated
+      // (root-rooted) project the docs collection is rooted at the project dir,
+      // so its glob-loader watcher would otherwise fire on every write Astro
+      // makes under .blume/.astro (data-store.json, content module manifests,
+      // self-hosted fonts) -- pure noise the loader logs as "No entry type
+      // found". Vite appends this to its default ignores.
+      watch: {
+        ignored: ${JSON.stringify([join(context.outDir, ".astro", "**")])},
+      },
     },
   },
 });

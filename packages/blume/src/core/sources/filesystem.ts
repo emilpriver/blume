@@ -7,6 +7,11 @@ import { glob } from "tinyglobby";
 import { BlumeError } from "../diagnostics.ts";
 import matter from "../frontmatter.ts";
 import type { ContentSource, SourceEntry, SourceLoadResult } from "./types.ts";
+import {
+  BLUME_WATCH_IGNORE_DIRS,
+  excludeDirSegments,
+  ignoringWatchListener,
+} from "./watch.ts";
 
 /** Options for the built-in filesystem source. */
 export interface FilesystemSourceOptions {
@@ -75,13 +80,26 @@ export const filesystemSource = (
     }
   };
 
+  // When `content.root` is the project root (a migrated `.`-rooted project),
+  // the recursive dev watcher would otherwise see Blume's own `.blume/` output
+  // and loop; skip it, VCS/dependency trees, and every excluded dir so the
+  // watcher stays in sync with what `load()` globs. See {@link ignoringWatchListener}.
+  const watchIgnoreDirs = new Set([
+    ...BLUME_WATCH_IGNORE_DIRS,
+    ...excludeDirSegments(options.exclude),
+  ]);
+
   const watch = (onChange: () => void): (() => void) => {
     if (!existsSync(contentRoot)) {
       return () => {
         // Nothing to dispose when the root doesn't exist yet.
       };
     }
-    const watcher = fsWatch(contentRoot, { recursive: true }, onChange);
+    const watcher = fsWatch(
+      contentRoot,
+      { recursive: true },
+      ignoringWatchListener(onChange, watchIgnoreDirs)
+    );
     return () => watcher.close();
   };
 

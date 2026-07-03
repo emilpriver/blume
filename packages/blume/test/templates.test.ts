@@ -393,6 +393,10 @@ describe("astroConfigTemplate", () => {
     expect(out).toMatch(/ssr: \{ resolve: \{ external: \[/u);
     expect(out).not.toContain("adapter:");
     expect(out).toContain(`"blume:examples": ${JSON.stringify(EXAMPLES_PATH)}`);
+    // The dev watcher ignores Astro's cache dir so a migrated (`.`-rooted)
+    // project's docs glob-loader doesn't log noise on every `.blume/.astro`
+    // write. See the `server.watch.ignored` comment in astroConfigTemplate.
+    expect(out).toContain('"/p/.blume/.astro/**"');
   });
 
   it("passes resolved content.assets mounts to blumeIntegration", () => {
