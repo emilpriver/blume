@@ -269,7 +269,7 @@ export const migrateMintlifyProject = async (
   }
   if (unsupported.size > 0) {
     warnings.push(
-      `Components without a Blume equivalent need manual review (use the OpenAPI reference instead): ${[...unsupported].join(", ")}.`
+      `Components without a Blume equivalent need manual review: ${[...unsupported].join(", ")}.`
     );
   }
   warnings.push(

@@ -88,8 +88,14 @@ export const rewriteSnippetImports = (
   return { components, source: next };
 };
 
-/** Component tags Blume has no equivalent for — reported for manual review. */
-const UNSUPPORTED_COMPONENTS = ["ParamField", "ResponseField"];
+/**
+ * Component tags Blume has no equivalent for — reported for manual review.
+ * `<ParamField>`/`<ResponseField>`/`<RequestField>` are no longer here: Blume
+ * ships compat components for them, so migrated docs render as-is. Mintlify's
+ * `<Update>` changelog entry has no component form in Blume (changelog is
+ * frontmatter-driven via `type: changelog`), so it stays flagged.
+ */
+const UNSUPPORTED_COMPONENTS = ["Update"];
 
 /** Names of Mintlify components in `source` that need manual attention. */
 export const unsupportedMintlifyComponents = (source: string): string[] =>

@@ -1,0 +1,39 @@
+---
+// Mintlify-compat <ParamField>. Mintlify encodes the parameter's location in the
+// attribute name (`<ParamField path="id" />`, `query`, `header`, `body`); the
+// attribute's value is the field name. Falls back to a plain `name` prop.
+import ApiField from "./ApiField.astro";
+
+const {
+  body,
+  default: defaultValue,
+  deprecated,
+  header,
+  name,
+  path,
+  query,
+  required,
+  type,
+} = Astro.props;
+
+const locations = [
+  { key: "path", value: path },
+  { key: "query", value: query },
+  { key: "header", value: header },
+  { key: "body", value: body },
+] as const;
+const located = locations.find((entry) => typeof entry.value === "string");
+const fieldName = located ? located.value : name;
+const location = located?.key;
+---
+
+<ApiField
+  default={defaultValue}
+  deprecated={deprecated}
+  location={location}
+  name={fieldName}
+  required={required}
+  type={type}
+>
+  <slot />
+</ApiField>

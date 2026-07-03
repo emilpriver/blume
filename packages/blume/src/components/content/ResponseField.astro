@@ -1,0 +1,23 @@
+---
+// Mintlify-compat <ResponseField>: a named field (`name`, `type`, `required`,
+// `default`, `deprecated`) with its description in the slot.
+import ApiField from "./ApiField.astro";
+
+const {
+  default: defaultValue,
+  deprecated,
+  name,
+  required,
+  type,
+} = Astro.props;
+---
+
+<ApiField
+  default={defaultValue}
+  deprecated={deprecated}
+  name={name}
+  required={required}
+  type={type}
+>
+  <slot />
+</ApiField>

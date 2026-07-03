@@ -165,10 +165,22 @@ describe("content rewrites", () => {
     ).toBe("Welcome to Acme.");
   });
 
-  it("reports components without a Blume equivalent", () => {
-    expect(unsupportedMintlifyComponents('<ParamField name="x" />')).toEqual([
-      "ParamField",
-    ]);
+  it("no longer flags the field components Blume now ships compat for", () => {
+    expect(unsupportedMintlifyComponents('<ParamField name="x" />')).toEqual(
+      []
+    );
+    expect(unsupportedMintlifyComponents('<ResponseField name="y" />')).toEqual(
+      []
+    );
+    expect(unsupportedMintlifyComponents('<RequestField name="z" />')).toEqual(
+      []
+    );
+  });
+
+  it("still reports components without a Blume equivalent", () => {
+    expect(
+      unsupportedMintlifyComponents('<Update label="1.0.0">Notes</Update>')
+    ).toEqual(["Update"]);
   });
 
   it("drops dead markdown snippet imports and relativizes component imports", () => {
@@ -928,10 +940,26 @@ describe("migrateMintlify config and asset variants", () => {
         navigation: { pages: ["index"] },
       }),
       "index.mdx":
-        '---\ntitle: Home\n---\n\n<ParamField name="id" type="string" />\n',
+        '---\ntitle: Home\n---\n\n<Update label="1.0.0">Shipped.</Update>\n',
     });
 
     const result = await migrateMintlify(root);
-    expect(result.warnings.some((w) => w.includes("ParamField"))).toBe(true);
+    expect(result.warnings.some((w) => w.includes("Update"))).toBe(true);
+  });
+
+  it("leaves the now-supported field components in place without warning", async () => {
+    const root = await project({
+      "docs.json": JSON.stringify({
+        name: "API",
+        navigation: { pages: ["index"] },
+      }),
+      "index.mdx":
+        '---\ntitle: Home\n---\n\n<ParamField path="id" type="string">The id.</ParamField>\n',
+    });
+
+    const result = await migrateMintlify(root);
+    const body = await readFile(join(root, "index.mdx"), "utf-8");
+    expect(body).toContain("<ParamField");
+    expect(result.warnings.some((w) => w.includes("ParamField"))).toBe(false);
   });
 });

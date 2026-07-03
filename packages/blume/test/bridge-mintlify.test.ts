@@ -40,8 +40,8 @@ const DOCS_JSON = JSON.stringify({
 });
 
 // A page that exercises every transform branch: surviving frontmatter, a
-// callout, a native component, a global variable, a `user` reference, and an
-// unsupported component.
+// callout, a native component, a global variable, a `user` reference, a
+// now-supported compat field, and an unsupported component.
 const PAGE_WITH_FRONTMATTER = `---
 title: Intro
 sidebarTitle: Getting started
@@ -52,6 +52,8 @@ sidebarTitle: Getting started
 <Card title="Hello">Hi {user.name}</Card>
 
 <ParamField path="id" type="string">The id.</ParamField>
+
+<Update label="1.0.0">Shipped.</Update>
 `;
 
 // A page with no frontmatter (the empty-data branch) and a typed callout.
@@ -202,10 +204,14 @@ describe("mintlifySource", () => {
     const intro = entries.find((entry) => entry.ref === "guides/intro.mdx");
     expect(intro?.body.text).toContain(":::tip");
 
-    // ParamField has no Blume equivalent — warn, leave as-is.
-    expect(diagnostics.map((d) => d.code)).toContain(
-      "BLUME_MINTLIFY_UNSUPPORTED"
+    // ParamField ships a Blume compat component — kept as-is, not flagged.
+    expect(index?.body.text).toContain("<ParamField");
+    // Update has no Blume equivalent — warn, leave as-is.
+    const unsupported = diagnostics.find(
+      (d) => d.code === "BLUME_MINTLIFY_UNSUPPORTED"
     );
+    expect(unsupported?.message).toContain("Update");
+    expect(unsupported?.message).not.toContain("ParamField");
   });
 
   it("emits no unsupported diagnostic for clean content", async () => {

@@ -438,6 +438,40 @@ Show or hide content by audience. `for="web"` renders only on the site; `for="ag
 <Visibility for="agents">Shown only in the generated Markdown.</Visibility>
 ```
 
+## API fields
+
+Document a single request/response field — a CLI flag, an SDK argument, an endpoint parameter — with its name, type, and description. `ParamField`, `ResponseField`, and `RequestField` are Mintlify-compatible, so a migrated site's field markup renders unchanged. Each takes a `type`, plus `required`, `deprecated`, and `default`; the description is the element's body and may hold rich MDX, including a nested [Expandable](#expandable) for sub-properties.
+
+`ParamField` names the field through the attribute that marks its location — `path`, `query`, `header`, or `body` (or a plain `name`); the location shows as a small label.
+
+<ParamField path="userId" type="string" required>
+  The unique identifier of the user.
+</ParamField>
+
+<ParamField query="limit" type="integer" default="20">
+  Maximum number of results to return per page.
+</ParamField>
+
+<ResponseField name="createdAt" type="string">
+  ISO 8601 timestamp for when the record was created.
+</ResponseField>
+
+```mdx
+<ParamField path="userId" type="string" required>
+  The unique identifier of the user.
+</ParamField>
+
+<ParamField query="limit" type="integer" default="20">
+  Maximum number of results to return per page.
+</ParamField>
+
+<ResponseField name="createdAt" type="string">
+  ISO 8601 timestamp for when the record was created.
+</ResponseField>
+```
+
+For a full spec-driven API reference — one page per operation with generated schemas — use the [OpenAPI reference](/docs/advanced/api-reference) instead.
+
 ## Type tables
 
 Tables for documenting an object's properties — its props, types, and defaults. Write the rows by hand with `TypeTable`, or generate them straight from a TypeScript interface or type alias with `AutoTypeTable`.

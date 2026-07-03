@@ -102,7 +102,7 @@ export const mintlifySource = (
         ? [
             {
               code: "BLUME_MINTLIFY_UNSUPPORTED",
-              message: `Mintlify components without a Blume equivalent were left as-is: ${[...unsupported].toSorted().join(", ")}. Use the OpenAPI reference for API parameters.`,
+              message: `Mintlify components without a Blume equivalent were left as-is: ${[...unsupported].toSorted().join(", ")}. Replace them by hand or provide a matching component.`,
               severity: "warning",
             },
           ]
