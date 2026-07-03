@@ -76,6 +76,15 @@ describe(extractLinks, () => {
     expect(extractLinks(body).map((l) => l.target)).toStrictEqual(["/yes"]);
   });
 
+  it("skips link syntax inside inline code spans", () => {
+    // Prose that *shows* Markdown link syntax must not register a link —
+    // `/nope` would otherwise fail `blume validate` as a broken link.
+    const body = "Use `[label](/nope)` syntax, then see [real](/yes).";
+    expect(extractLinks(body)).toStrictEqual([
+      { column: 46, line: 1, target: "/yes" },
+    ]);
+  });
+
   it("reports the target column even when the label repeats it", () => {
     // The target starts after `[/a/b](`, at column 8 — not inside the label.
     expect(extractLinks("[/a/b](/a/b)")).toStrictEqual([

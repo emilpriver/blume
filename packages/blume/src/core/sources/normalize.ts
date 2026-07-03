@@ -118,10 +118,11 @@ export const extractHeadings = (body: string): Heading[] => {
 };
 
 const MD_LINK = /\[[^\]]*\]\((?<target>[^)\s]+)(?:\s+"[^"]*")?\)/gu;
+const INLINE_CODE = /`[^`]*`/gu;
 
 /**
  * Extract link targets from a markdown body for later validation, recording the
- * 1-based line/column of each target. Skips fenced code blocks.
+ * 1-based line/column of each target. Skips fenced code blocks and inline code.
  */
 export const extractLinks = (body: string): PageLink[] => {
   const links: PageLink[] = [];
@@ -137,7 +138,12 @@ export const extractLinks = (body: string): PageLink[] => {
     if (inFence) {
       continue;
     }
-    for (const match of line.matchAll(MD_LINK)) {
+    // Blank out inline code spans (`[label](/x)` shown as syntax, not a link)
+    // with same-length padding so recorded columns stay accurate.
+    const masked = line.replaceAll(INLINE_CODE, (span) =>
+      " ".repeat(span.length)
+    );
+    for (const match of masked.matchAll(MD_LINK)) {
       const target = match.groups?.target;
       if (target === undefined || match.index === undefined) {
         continue;
@@ -158,7 +164,6 @@ export const extractLinks = (body: string): PageLink[] => {
   return links;
 };
 
-const INLINE_CODE = /`[^`]*`/gu;
 // Double-quoted strings hold JSX attribute values and JSON in `{...}` props; a
 // `<Tag>` written inside prose there (e.g. an "Astro <Font> integration" note)
 // isn't a real usage. Single quotes are left alone so prose apostrophes don't
