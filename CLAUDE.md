@@ -23,5 +23,5 @@ The CLI (`src/cli`) loads `blume.config.ts`, scans content into a graph (`src/co
 - Arrow function expressions, sorted object keys, `u`-flag regex with named groups (Ultracite rules). `.ts` import extensions are used everywhere.
 - `.astro` files use PascalCase and are excluded from oxlint; the core theme is React-free (vanilla custom elements). React auto-enables only when the project has `.tsx`/`.jsx` or Ask AI is on.
 - Generated `.blume/` is excluded from lint/format.
-- Agent skills live in repo-root `skills/` (e.g. `skills/blume-migrate` teaches an agent to migrate a docs repo to Blume). `scripts/bundle-docs.mjs` copies them into `packages/blume/skills` (gitignored) so they ship in the package.
+- Agent skills live in repo-root `skills/` (e.g. `skills/blume` teaches an agent to build a Blume docs site). `scripts/bundle-docs.mjs` copies them into `packages/blume/skills` (gitignored) so they ship in the package.
 - Commit per milestone; keep the docs (`apps/docs/`) building.

@@ -22,10 +22,6 @@ i18n: {
 
 Each locale has a `code` (used in URLs), a `label` (shown in the language switcher), and an optional `dir` for right-to-left scripts (`"ltr"` by default).
 
-:::tip
-Migrating from another docs tool? The [`blume-migrate` skill](/docs/advanced/migrate) maps a source's locale config onto this `i18n` block — for a Mintlify repo, `navigation.languages[]` becomes `locales`, the `default: true` language becomes `defaultLocale`, and translated folders already match Blume's layout.
-:::
-
 ## Organize translated content
 
 The default locale lives at your content root. Every other locale is a top-level folder named by its `code`, mirroring the default structure:

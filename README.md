@@ -42,7 +42,6 @@ Blume works with any package manager and never requires you to set up Astro or T
 - **SEO** — metadata, Open Graph images (rendered at build with Takumi), sitemap, `robots.txt`, RSS feeds, and JSON-LD, built in.
 - **API reference** — render an OpenAPI or AsyncAPI spec as an interactive reference (schemas, auth, request playground) via Scalar.
 - **Customization** — component overrides, React islands, custom pages, Tailwind v4 theme tokens and `theme.css`, and a source-component registry (`blume add`).
-- **Migration** — convert a Mintlify, Docusaurus, Fumadocs, Nextra, or Starlight site with the `blume-migrate` agent skill (`npx skills use haydenbleasel/blume@blume-migrate`, then run `/blume-migrate`).
 - **Eject** — `blume eject` produces a standalone Astro project that still uses the `blume` package.
 
 ## CLI

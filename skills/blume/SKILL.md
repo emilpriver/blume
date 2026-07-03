@@ -54,7 +54,6 @@ Navigation, search, and page metadata are inferred from your files as you add th
 - **Navigation** — inferred from files, refined with `meta.ts` or config.
 - **SEO** — metadata, Open Graph images, RSS feeds, and JSON-LD.
 - **Customization** — component overrides, React islands, custom pages, theme tokens, and a source-component registry via `blume add`.
-- **Migration** — the `blume-migrate` agent skill converts a Mintlify, Docusaurus, Fumadocs, Nextra, or Starlight site to Blume (`npx skills use haydenbleasel/blume@blume-migrate`).
 - **Eject** — `blume eject` produces a standalone Astro project that still uses the `blume` package.
 
 ## How it works
@@ -63,7 +62,7 @@ The Blume CLI discovers your content, builds a content graph, and generates a hi
 
 ## Full documentation
 
-This is a high-level overview. For complete, authoritative docs — configuration reference, every CLI command and flag, component APIs, content authoring, navigation, search, SEO, AI features, theming, migration, and deployment — read the bundled docs in the installed package:
+This is a high-level overview. For complete, authoritative docs — configuration reference, every CLI command and flag, component APIs, content authoring, navigation, search, SEO, AI features, theming, and deployment — read the bundled docs in the installed package:
 
 ```
 node_modules/blume/docs

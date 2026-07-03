@@ -1,6 +1,6 @@
 ---
 title: Skills
-description: The agent skills Blume ships — playbooks that teach a coding agent to build, migrate, and maintain a Blume docs site.
+description: The agent skills Blume ships — playbooks that teach a coding agent to build and maintain a Blume docs site.
 ---
 
 Blume ships [agent skills](https://docs.claude.com/en/docs/claude-code/skills) — playbooks that teach a coding agent (Claude Code, Codex, Cursor) how to do a Blume-shaped job without you explaining it. They live on GitHub in the repo's `skills/` folder and are bundled in the package at `node_modules/blume/skills/` once Blume is installed, so any agent can be pointed at a `SKILL.md` directly.
@@ -11,14 +11,6 @@ The core skill. It teaches the agent what Blume is and how to scaffold, write, a
 
 ```bash
 npx skills add haydenbleasel/blume
-```
-
-## Migrate
-
-`blume-migrate` converts an existing docs site — Mintlify, Docusaurus, Fumadocs, Nextra, Starlight, or anything else — into an idiomatic Blume project: config translated to `blume.config.ts`, navigation moved into the file tree, callouts rewritten to directives, icons mapped to Lucide. It's an important enough job to have [its own page](/docs/advanced/migrate).
-
-```bash
-npx skills use haydenbleasel/blume@blume-migrate
 ```
 
 ## Self-updating docs
