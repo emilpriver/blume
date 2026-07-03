@@ -101,10 +101,23 @@ describe("buildThemeCss — backgrounds and dark mode", () => {
     expect(css).toContain('--blume-background-image: url("/dark.png");');
   });
 
-  it("omits the dark-theme block when no dark token is set", () => {
-    expect(buildThemeCss(themeOf({ accent: "blue" }))).not.toContain(
-      'data-theme="dark"'
+  it("shares the accent into dark mode when accentDark is unset", () => {
+    // The base stylesheet's dark block outranks :root config tokens on
+    // specificity, so the shared accent must be re-declared for dark.
+    const css = buildThemeCss(themeOf({ accent: "teal" }));
+    const dark = css.slice(css.indexOf(':root[data-theme="dark"]'));
+    expect(dark).toContain("--blume-accent: oklch(0.6 0.12 195);");
+    expect(dark).toContain("--blume-accent-foreground: oklch(1 0 0);");
+  });
+
+  it("re-declares action and background decoration for dark mode", () => {
+    const css = buildThemeCss(
+      themeOf({ action: "green", backgroundDecoration: "grid" })
     );
+    const dark = css.slice(css.indexOf(':root[data-theme="dark"]'));
+    expect(dark).toContain("--blume-action: oklch(0.6 0.16 150);");
+    expect(dark).toContain("--blume-action-foreground: oklch(1 0 0);");
+    expect(dark).toContain("--blume-background-decoration: linear-gradient");
   });
 });
 
