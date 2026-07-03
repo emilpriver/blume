@@ -48,7 +48,6 @@ const makeGraph = (pages: PageRecord[]): ContentGraph =>
       chromeVariants: [],
       selectors: [],
       sidebar: [],
-      sidebarVariants: [],
       tabs: [],
     },
     navigationByLocale: {},

@@ -17,8 +17,6 @@ type NavigationSelectorItem = NavigationSelectors[number]["items"][number];
 type NavigationChromeVariants = NonNullable<
   BlumeConfig["navigation"]
 >["chromeVariants"];
-type NavigationSidebarVariants =
-  ResolvedConfig["navigation"]["sidebarVariants"];
 
 const MINTLIFY_DEFAULT_IGNORES = [
   "**/_*",
@@ -307,18 +305,6 @@ const mintlifyBackgroundDecoration = (
   return undefined;
 };
 
-const sidebarItemPaths = (items: SidebarItemConfig[]): string[] =>
-  items.flatMap((item) => {
-    if (typeof item === "string") {
-      return [tabPathFromRef(item)];
-    }
-    if (item.href) {
-      return [item.href];
-    }
-    const paths = item.root ? [tabPathFromRef(item.root)] : [];
-    return item.items ? [...paths, ...sidebarItemPaths(item.items)] : paths;
-  });
-
 const collapsedFromExpanded = (value: unknown): boolean | undefined => {
   if (value === false) {
     return true;
@@ -438,79 +424,6 @@ const isExternalRoute = (path: string): boolean =>
   path.startsWith("https://") ||
   path.startsWith("mailto:") ||
   path.startsWith("tel:");
-
-const hasOwnNavigationContent = (item: JsonObject): boolean =>
-  Boolean(asString(item.root)) || childItemsFor(item).length > 0;
-
-const mintlifySidebarVariants = async (
-  spec: JsonObject
-): Promise<NavigationSidebarVariants> => {
-  const navigation = asObject(spec.navigation) ?? {};
-  const global = asObject(navigation.global) ?? {};
-  interface SidebarVariantCandidate {
-    item: unknown;
-    path: string;
-  }
-  const candidates: SidebarVariantCandidate[] = [];
-
-  const addCandidate = (item: unknown): void => {
-    const path = navItemPath(item);
-    if (!path || isExternalRoute(path)) {
-      return;
-    }
-
-    candidates.push({ item, path });
-  };
-
-  for (const item of [
-    ...asArray(navigation.tabs),
-    ...asArray(navigation.anchors),
-    ...asArray(global.anchors),
-  ]) {
-    const object = asObject(item);
-    if (!object) {
-      addCandidate(item);
-      continue;
-    }
-
-    for (const menuItem of asArray(object.menu)) {
-      addCandidate(menuItem);
-    }
-
-    if (hasOwnNavigationContent(object)) {
-      addCandidate(item);
-    }
-  }
-
-  for (const item of [
-    ...asArray(navigation.dropdowns),
-    ...asArray(navigation.products),
-    ...asArray(navigation.versions),
-    ...asArray(navigation.languages),
-  ]) {
-    addCandidate(item);
-  }
-
-  const resolved = await Promise.all(
-    candidates.map(async (candidate) => {
-      const items = await toSidebarItems([candidate.item], {});
-      if (items.length === 0) {
-        return [];
-      }
-      return [candidate.path, ...sidebarItemPaths(items)]
-        .filter((path) => !isExternalRoute(path))
-        .map((path) => ({ items, path }));
-    })
-  );
-  const seen = new Set<string>();
-  return resolved.flat().flatMap((variant) => {
-    if (!variant || seen.has(variant.path)) {
-      return [];
-    }
-    seen.add(variant.path);
-    return [variant];
-  });
-};
 
 const mintlifyTabs = (
   spec: JsonObject
@@ -981,7 +894,6 @@ export const loadMintlifyConfig = async (
       chromeVariants: mintlifyChromeVariants(spec),
       selectors: mintlifySelectors(spec),
       sidebar: await toSidebarItems(mintlifyNavigationItems(navigation), {}),
-      sidebarVariants: await mintlifySidebarVariants(spec),
       tabs: mintlifyTabs(spec),
     },
     openapi: mintlifyOpenapi(spec),

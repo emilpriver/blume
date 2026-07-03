@@ -483,13 +483,6 @@ const sidebarItemSchema: z.ZodType<SidebarItemConfig> = z.lazy(() =>
   ])
 );
 
-const sidebarVariantSchema = z
-  .object({
-    items: z.array(sidebarItemSchema).default([]),
-    path: z.string(),
-  })
-  .strict();
-
 const variablesConfigSchema = z
   .record(z.string().regex(/^[A-Za-z0-9-]+$/u), z.string())
   .default({});
@@ -666,7 +659,6 @@ const navigationConfigSchema = z
     selectors: z.array(navSelectorSchema).default([]),
     /** Explicit sidebar override; when omitted the sidebar is generated. */
     sidebar: z.array(sidebarItemSchema).optional(),
-    sidebarVariants: z.array(sidebarVariantSchema).default([]),
     tabs: z.array(navTabSchema).optional(),
   })
   .strict();

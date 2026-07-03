@@ -42,10 +42,7 @@ const collectIcons = (
       push(item.icon, `selector "${item.label}"`);
     }
   }
-  const sidebars = [
-    navigation.sidebar,
-    ...navigation.sidebarVariants.map((variant) => variant.sidebar),
-  ];
+  const sidebars = [navigation.sidebar];
   for (const sidebar of sidebars) {
     for (const node of flattenNodes(sidebar)) {
       push(node.icon, `"${node.label}"`);
@@ -140,10 +137,6 @@ const duplicateLabelDiagnostics = (navigation: Navigation): Diagnostic[] => {
   };
   const sidebars: { nodes: NavNode[]; where: string }[] = [
     { nodes: navigation.sidebar, where: "at the top level" },
-    ...navigation.sidebarVariants.map((variant) => ({
-      nodes: variant.sidebar,
-      where: `in the "${variant.path}" section`,
-    })),
   ];
   for (const { nodes, where } of sidebars) {
     checkLevel(nodes, where);
@@ -162,10 +155,7 @@ const hiddenInSidebarDiagnostics = (
   if (hidden.size === 0) {
     return [];
   }
-  const sidebars = [
-    navigation.sidebar,
-    ...navigation.sidebarVariants.map((variant) => variant.sidebar),
-  ];
+  const sidebars = [navigation.sidebar];
   const diagnostics: Diagnostic[] = [];
   const seen = new Set<string>();
   for (const sidebar of sidebars) {

@@ -45,7 +45,6 @@ const DATA: McpData = {
         route: "/guides/install",
       },
     ],
-    sidebarVariants: [],
     tabs: [{ label: "Guides", path: "/guides/install" }],
   },
   pages: {

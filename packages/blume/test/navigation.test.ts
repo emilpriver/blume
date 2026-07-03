@@ -207,17 +207,4 @@ describe("buildNavigation — explicit config sidebar", () => {
     expect(unmatched.route).toBe("/missing");
     expect(unmatched.pageId).toBe("");
   });
-
-  it("builds per-path sidebar variants from config", () => {
-    const nav = buildNavigation(pages, {
-      folderMeta: empty,
-      sidebar: ["index"],
-      sidebarVariants: [{ items: ["/bar"], path: "/section" }],
-    });
-    expect(nav.sidebarVariants).toHaveLength(1);
-    expect(nav.sidebarVariants[0]?.path).toBe("/section");
-    expect(labels(nav.sidebarVariants[0]?.sidebar ?? [])).toStrictEqual([
-      "Bar",
-    ]);
-  });
 });

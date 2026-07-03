@@ -8,7 +8,6 @@ import type {
 import type {
   NavChromeVariant,
   NavNode,
-  NavSidebarVariant,
   Navigation,
   NavSelector,
   NavTab,
@@ -348,7 +347,6 @@ export const buildNavigation = (
     selectors?: NavSelector[];
     tabs?: NavTab[];
     sidebar?: SidebarItemConfig[];
-    sidebarVariants?: { path: string; items: SidebarItemConfig[] }[];
     /** Locale dir prefix for folder-meta lookup (`""` for the default locale). */
     metaPrefix?: string;
     /**
@@ -372,19 +370,12 @@ export const buildNavigation = (
       page,
     ])
   );
-  const sidebarVariants: NavSidebarVariant[] = (
-    options.sidebarVariants ?? []
-  ).map((variant) => ({
-    path: variant.path,
-    sidebar: buildConfigSidebar(variant.items, byRoute),
-  }));
 
   if (options.sidebar) {
     return {
       chromeVariants,
       selectors,
       sidebar: buildConfigSidebar(options.sidebar, byRoute),
-      sidebarVariants,
       tabs,
     };
   }
@@ -398,7 +389,6 @@ export const buildNavigation = (
       sharedFolderMeta,
       metaPrefix
     ),
-    sidebarVariants,
     tabs,
   };
 };

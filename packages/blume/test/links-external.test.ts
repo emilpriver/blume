@@ -20,7 +20,6 @@ const graphWith = (links: PageLink[]): ContentGraph =>
       chromeVariants: [],
       selectors: [],
       sidebar: [],
-      sidebarVariants: [],
       tabs: [],
     },
     navigationByLocale: {},

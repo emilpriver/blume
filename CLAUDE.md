@@ -1,6 +1,6 @@
 # Blume — agent notes
 
-Blume is an open-source, markdown-first docs framework on Astro/Vite, shipped as a single package (`packages/blume`). Outstanding work is tracked in `TODO.md`.
+Blume is an open-source, markdown-first docs framework on Astro/Vite, shipped as a single package (`packages/blume`).
 
 ## Commands
 

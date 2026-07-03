@@ -11,7 +11,6 @@ const nav = (over: Partial<Navigation> = {}): Navigation => ({
   chromeVariants: [],
   selectors: [],
   sidebar: [],
-  sidebarVariants: [],
   tabs: [],
   ...over,
 });
@@ -87,30 +86,6 @@ describe("validateNavIcons", () => {
     const messages = result.map((d) => d.message).join(" ");
     expect(messages).toContain("bad-tab-item-icon");
     expect(messages).toContain("bad-selector-icon");
-  });
-
-  it("collects icons from sidebar variants", () => {
-    const result = validateNavIcons(
-      nav({
-        sidebarVariants: [
-          {
-            path: "/guides",
-            sidebar: [
-              {
-                icon: "bogus-variant-icon",
-                kind: "page",
-                label: "A",
-                pageId: "a",
-                route: "/a",
-              },
-            ],
-          },
-        ],
-      })
-    );
-    expect(result.map((d) => d.message).join(" ")).toContain(
-      "bogus-variant-icon"
-    );
   });
 
   it("recurses into groups and dedupes repeated unknown icons", () => {
@@ -212,48 +187,12 @@ describe("validateNavStructure", () => {
     expect(result.map((d) => d.code)).toContain("BLUME_NAV_DUPLICATE_LABEL");
   });
 
-  it("warns on duplicate labels within a sidebar variant section", () => {
-    const result = validateNavStructure(
-      nav({
-        sidebarVariants: [
-          {
-            path: "/guides",
-            sidebar: [
-              { kind: "page", label: "Intro", pageId: "a", route: "/a" },
-              { kind: "page", label: "Intro", pageId: "b", route: "/b" },
-            ],
-          },
-        ],
-      }),
-      []
-    );
-    const dup = result.find((d) => d.code === "BLUME_NAV_DUPLICATE_LABEL");
-    expect(dup?.message).toContain('in the "/guides" section');
-  });
-
   it("warns when a hidden page appears in the sidebar", () => {
     const result = validateNavStructure(
       nav({
         sidebar: [{ kind: "page", label: "Secret", pageId: "s", route: "/s" }],
       }),
       [page("s", true), page("v", false)]
-    );
-    expect(result.map((d) => d.code)).toContain("BLUME_NAV_HIDDEN_IN_SIDEBAR");
-  });
-
-  it("warns when a hidden page appears in a sidebar variant", () => {
-    const result = validateNavStructure(
-      nav({
-        sidebarVariants: [
-          {
-            path: "/guides",
-            sidebar: [
-              { kind: "page", label: "Secret", pageId: "s", route: "/s" },
-            ],
-          },
-        ],
-      }),
-      [page("s", true)]
     );
     expect(result.map((d) => d.code)).toContain("BLUME_NAV_HIDDEN_IN_SIDEBAR");
   });

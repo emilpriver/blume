@@ -96,7 +96,6 @@ export const buildContentGraph = (
         selectors: options.navigation.selectors,
         sharedFolderMeta: options.sharedFolderMeta,
         sidebar: options.navigation.sidebar,
-        sidebarVariants: options.navigation.sidebarVariants,
         tabs,
       });
     }
@@ -104,7 +103,6 @@ export const buildContentGraph = (
       chromeVariants: [],
       selectors: [],
       sidebar: [],
-      sidebarVariants: [],
       tabs: [],
     };
   } else {
@@ -114,7 +112,6 @@ export const buildContentGraph = (
       selectors: options.navigation.selectors,
       sharedFolderMeta: options.sharedFolderMeta,
       sidebar: options.navigation.sidebar,
-      sidebarVariants: options.navigation.sidebarVariants,
       tabs: options.navigation.tabs,
     });
   }

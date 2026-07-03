@@ -180,12 +180,6 @@ export interface NavSelector {
   items: NavSelectorItem[];
 }
 
-/** Sidebar tree used when the current route belongs to a nav partition. */
-export interface NavSidebarVariant {
-  path: string;
-  sidebar: NavNode[];
-}
-
 /** Chrome overrides used when the current route belongs to a nav partition. */
 export interface NavChromeVariant {
   path: string;
@@ -198,7 +192,6 @@ export interface Navigation {
   selectors: NavSelector[];
   chromeVariants: NavChromeVariant[];
   sidebar: NavNode[];
-  sidebarVariants: NavSidebarVariant[];
   /** Repo URL for the header link, or null when hidden (`navigation.repo`). */
   repoUrl?: string | null;
 }

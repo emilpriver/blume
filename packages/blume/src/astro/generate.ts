@@ -618,7 +618,6 @@ export const buildRuntimeData = (project: BlumeProject): string => {
               chromeVariants: [],
               selectors: [],
               sidebar: [],
-              sidebarVariants: [],
               tabs: [],
             }
           ),

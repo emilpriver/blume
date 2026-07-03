@@ -425,8 +425,9 @@ describe("loadMintlifyConfig navigation shapes", () => {
     expect(sidebarJson).toContain("Advanced");
     expect(sidebarJson).toContain("Reference");
 
-    expect(Array.isArray(nav?.sidebarVariants)).toBe(true);
-    expect((nav?.sidebarVariants?.length ?? 0) > 0).toBe(true);
+    // sidebarVariants was dropped: the migrator no longer emits per-partition
+    // sidebar variants (tab-scoping via `sidebarForRoute` is the render model).
+    expect(JSON.stringify(nav)).not.toContain("sidebarVariants");
   });
 });
 
