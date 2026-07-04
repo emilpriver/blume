@@ -180,11 +180,20 @@ export interface NavSelector {
   items: NavSelectorItem[];
 }
 
+/** A pinned link rendered above the sidebar sections (external or internal). */
+export interface FeaturedLink {
+  label: string;
+  href: string;
+  icon?: string;
+}
+
 /** The complete navigation model derived from the content graph. */
 export interface Navigation {
   tabs: NavTab[];
   selectors: NavSelector[];
   sidebar: NavNode[];
+  /** Pinned links shown above the sidebar sections, unscoped by tab. */
+  featured: FeaturedLink[];
   /** Repo URL for the header link, or null when hidden (`navigation.repo`). */
   repoUrl?: string | null;
 }

@@ -45,7 +45,7 @@ const makeGraph = (pages: PageRecord[]): ContentGraph =>
   ({
     diagnostics: [],
     navigation: {
-      chromeVariants: [],
+      featured: [],
       selectors: [],
       sidebar: [],
       tabs: [],

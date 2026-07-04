@@ -6,6 +6,7 @@ import type {
   SidebarItemConfig,
 } from "./schema.ts";
 import type {
+  FeaturedLink,
   NavNode,
   Navigation,
   NavSelector,
@@ -346,6 +347,7 @@ export const buildNavigation = (
   pages: PageRecord[],
   options: {
     folderMeta: Map<string, FolderMeta>;
+    featured?: FeaturedLink[];
     selectors?: NavSelector[];
     tabs?: NavTab[];
     sidebar?: SidebarItemConfig[];
@@ -361,6 +363,7 @@ export const buildNavigation = (
     sharedFolderMeta?: Map<string, FolderMeta>;
   }
 ): Navigation => {
+  const featured = options.featured ?? [];
   const selectors = options.selectors ?? [];
   const tabs = options.tabs ?? [];
   const metaPrefix = options.metaPrefix ?? "";
@@ -374,6 +377,7 @@ export const buildNavigation = (
 
   if (options.sidebar) {
     return {
+      featured,
       selectors,
       sidebar: buildConfigSidebar(options.sidebar, byRoute),
       tabs,
@@ -381,6 +385,7 @@ export const buildNavigation = (
   }
 
   return {
+    featured,
     selectors,
     sidebar: buildFileSystemSidebar(
       pages,

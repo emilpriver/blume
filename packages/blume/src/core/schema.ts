@@ -590,8 +590,23 @@ const aiConfigSchema = z
   })
   .strict();
 
+/**
+ * A pinned link rendered above the sidebar sections — a blog, changelog, or
+ * contact page that should always be reachable, regardless of the active tab.
+ * `href` may be an external URL or an internal route.
+ */
+const featuredLinkSchema = z
+  .object({
+    href: z.string(),
+    icon: iconName.optional(),
+    label: z.string(),
+  })
+  .strict();
+
 const navigationConfigSchema = z
   .object({
+    /** Pinned links shown above the generated sidebar sections. */
+    featured: z.array(featuredLinkSchema).default([]),
     /** Show a GitHub repo link in the header (requires `github` configured). */
     repo: z.boolean().default(true),
     selectors: z.array(navSelectorSchema).default([]),

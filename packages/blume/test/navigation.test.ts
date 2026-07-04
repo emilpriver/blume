@@ -191,6 +191,26 @@ describe("buildNavigation — explicit config sidebar", () => {
     expect(nav.sidebar).toStrictEqual([]);
   });
 
+  it("passes featured links through on both build paths", () => {
+    const featured = [
+      { href: "https://blog.example.com", icon: "newspaper", label: "Blog" },
+      { href: "/contact", label: "Contact" },
+    ];
+    // Config-sidebar path.
+    expect(
+      buildNavigation(pages, { featured, folderMeta: empty, sidebar: [] })
+        .featured
+    ).toStrictEqual(featured);
+    // Generated (filesystem) path.
+    expect(
+      buildNavigation(pages, { featured, folderMeta: empty }).featured
+    ).toStrictEqual(featured);
+    // Defaults to empty when omitted.
+    expect(
+      buildNavigation(pages, { folderMeta: empty }).featured
+    ).toStrictEqual([]);
+  });
+
   it("resolves a group's root ref to a real page route", () => {
     const sidebar: SidebarItemConfig[] = [
       { items: ["/bar"], label: "Group", root: "/foo" },

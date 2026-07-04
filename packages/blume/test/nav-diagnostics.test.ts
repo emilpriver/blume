@@ -8,6 +8,7 @@ import {
 import type { Navigation, PageRecord } from "../src/core/types.ts";
 
 const nav = (over: Partial<Navigation> = {}): Navigation => ({
+  featured: [],
   selectors: [],
   sidebar: [],
   tabs: [],
@@ -85,6 +86,17 @@ describe("validateNavIcons", () => {
     const messages = result.map((d) => d.message).join(" ");
     expect(messages).toContain("bad-tab-item-icon");
     expect(messages).toContain("bad-selector-icon");
+  });
+
+  it("collects icons from featured links", () => {
+    const result = validateNavIcons(
+      nav({
+        featured: [{ href: "/blog", icon: "bad-featured-icon", label: "Blog" }],
+      })
+    );
+    expect(result).toHaveLength(1);
+    expect(result[0]?.message).toContain("bad-featured-icon");
+    expect(result[0]?.message).toContain('featured link "Blog"');
   });
 
   it("recurses into groups and dedupes repeated unknown icons", () => {
@@ -169,6 +181,20 @@ describe("validateNavTargets", () => {
       new Set()
     );
     expect(result).toEqual([]);
+  });
+
+  it("warns on an internal featured link with no page but ignores external ones", () => {
+    const result = validateNavTargets(
+      nav({
+        featured: [
+          { href: "https://x.dev/blog", label: "Blog" },
+          { href: "/missing", label: "Missing" },
+        ],
+      }),
+      new Set(["/docs"])
+    );
+    expect(result).toHaveLength(1);
+    expect(result[0]?.message).toContain("/missing");
   });
 });
 

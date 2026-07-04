@@ -620,6 +620,7 @@ export const buildRuntimeData = (project: BlumeProject): string => {
           code,
           withReferenceTabs(
             graph.navigationByLocale[code] ?? {
+              featured: [],
               selectors: [],
               sidebar: [],
               tabs: [],

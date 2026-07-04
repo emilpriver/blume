@@ -89,6 +89,7 @@ export const buildContentGraph = (
       }
 
       navigationByLocale[code] = buildNavigation(localePages, {
+        featured: options.navigation.featured,
         folderMeta: options.folderMeta,
         // Meta files live in locale directories only under the `dir` parser
         // (`fr/guides/meta.ts` -> key `fr/guides`). Under `dot`, translations
@@ -104,12 +105,14 @@ export const buildContentGraph = (
       });
     }
     navigation = navigationByLocale[i18n.defaultLocale] ?? {
+      featured: [],
       selectors: [],
       sidebar: [],
       tabs: [],
     };
   } else {
     navigation = buildNavigation(pages, {
+      featured: options.navigation.featured,
       folderMeta: options.folderMeta,
       selectors: options.navigation.selectors,
       sharedFolderMeta: options.sharedFolderMeta,

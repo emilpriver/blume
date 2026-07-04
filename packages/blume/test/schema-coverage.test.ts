@@ -60,6 +60,46 @@ describe("banner", () => {
   });
 });
 
+describe("navigation.featured", () => {
+  it("defaults to an empty list", () => {
+    expect(blumeConfigSchema.parse({}).navigation.featured).toStrictEqual([]);
+  });
+
+  it("parses pinned links with an optional icon", () => {
+    const config = blumeConfigSchema.parse({
+      navigation: {
+        featured: [
+          {
+            href: "https://blog.example.com",
+            icon: "newspaper",
+            label: "Blog",
+          },
+          { href: "/contact", label: "Contact" },
+        ],
+      },
+    });
+    expect(config.navigation.featured).toStrictEqual([
+      { href: "https://blog.example.com", icon: "newspaper", label: "Blog" },
+      { href: "/contact", label: "Contact" },
+    ]);
+  });
+
+  it("rejects a featured link missing href or label, or with extra keys", () => {
+    expect(
+      blumeConfigSchema.safeParse({
+        navigation: { featured: [{ label: "No href" }] },
+      }).success
+    ).toBe(false);
+    expect(
+      blumeConfigSchema.safeParse({
+        navigation: {
+          featured: [{ href: "/x", label: "X", target: "_blank" }],
+        },
+      }).success
+    ).toBe(false);
+  });
+});
+
 describe("pruned Mintlify-compat config fields", () => {
   it("rejects config fields that were removed", () => {
     for (const field of [

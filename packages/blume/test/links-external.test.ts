@@ -17,6 +17,7 @@ const graphWith = (links: PageLink[]): ContentGraph =>
   ({
     diagnostics: [],
     navigation: {
+      featured: [],
       selectors: [],
       sidebar: [],
       tabs: [],

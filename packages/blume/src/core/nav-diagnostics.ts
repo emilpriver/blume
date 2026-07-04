@@ -42,6 +42,9 @@ const collectIcons = (
       push(item.icon, `selector "${item.label}"`);
     }
   }
+  for (const link of navigation.featured) {
+    push(link.icon, `featured link "${link.label}"`);
+  }
   const sidebars = [navigation.sidebar];
   for (const sidebar of sidebars) {
     for (const node of flattenNodes(sidebar)) {
@@ -90,6 +93,10 @@ export const validateNavTargets = (
     ...navigation.selectors.flatMap((selector) =>
       selector.items.map((item) => ({ label: item.label, path: item.path }))
     ),
+    ...navigation.featured.map((link) => ({
+      label: link.label,
+      path: link.href,
+    })),
   ];
   const diagnostics: Diagnostic[] = [];
   const seen = new Set<string>();
