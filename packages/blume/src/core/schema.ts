@@ -620,7 +620,7 @@ const aiConfigSchema = z
         }
       })
       .optional(),
-    llmsTxt: z.boolean().default(false),
+    llmsTxt: z.boolean().default(true),
   })
   .strict();
 

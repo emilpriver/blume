@@ -3,19 +3,19 @@ title: AI
 description: Machine-readable docs with llms.txt and an optional in-page Ask AI assistant.
 ---
 
-Blume has several opt-in AI features: machine-readable docs for external tools (`llms.txt`), an in-page **Ask AI** assistant, and a hosted **MCP server** for coding agents. Everything is off by default, and static docs stay fully static until you turn a feature on.
+Blume has a few AI features: machine-readable docs for external tools (`llms.txt`, on by default), an in-page **Ask AI** assistant, and a hosted **MCP server** for coding agents. Ask AI and MCP are opt-in, and static docs stay fully static until you turn a feature on.
 
 ## llms.txt
 
-Emit machine-readable versions of your docs that coding agents and chat assistants can consume:
+Blume emits machine-readable versions of your docs that coding agents and chat assistants can consume. This is on by default; set `llmsTxt: false` to turn it off:
 
 ```ts blume.config.ts lineNumbers
 ai: {
-  llmsTxt: true,
+  llmsTxt: false,
 }
 ```
 
-With this on, `blume build` writes two files to the root of your site:
+While enabled, `blume build` writes two files to the root of your site:
 
 - **`/llms.txt`** — a compact index: your site title and description, then a linked list of every page with its summary.
 - **`/llms-full.txt`** — the entire corpus: each page's full Markdown body, with its source URL, in one file.

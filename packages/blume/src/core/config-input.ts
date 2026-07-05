@@ -512,7 +512,7 @@ export interface AskConfig {
 export interface AiConfig {
   /** The Ask AI chat assistant. */
   ask?: AskConfig;
-  /** Emit `llms.txt` (an index of the docs for LLMs). Defaults to `false`. */
+  /** Emit `llms.txt` (an index of the docs for LLMs). Defaults to `true`. */
   llmsTxt?: boolean;
 }
 
