@@ -12,6 +12,10 @@ import type { BlumeProject } from "../../core/project-graph.ts";
 import type { ResolvedConfig } from "../../core/schema.ts";
 import { serverFeatures } from "../../core/server-features.ts";
 import {
+  deployStaticDir,
+  surfaceAdapterOutput,
+} from "../../deploy/adapter-output.ts";
+import {
   buildNetlifyRedirects,
   buildRedirectManifest,
   buildVercelConfig,
@@ -365,6 +369,27 @@ export const buildCommand = defineCommand({
       return;
     }
 
-    await publishBuildArtifacts(project, distDir, args);
+    // A server adapter (Vercel/Netlify) writes its deploy bundle relative to the
+    // Astro root — which Blume points at the hidden `.blume` runtime — so the
+    // bundle lands where the deploy platform never looks. Surface it up to the
+    // project root before publishing artifacts into the served static dir.
+    const surfaced = await surfaceAdapterOutput(
+      project.config,
+      project.context
+    );
+    if (surfaced.moved) {
+      logger.success(
+        `Surfaced ${project.config.deployment.adapter} output to ${surfaced.to}`
+      );
+      // The surfaced bundle is a build artifact — keep it out of version control
+      // (Vercel's own CLI ignores `.vercel/` for the same reason).
+      await ensureGitignore(root, [surfaced.ignore]);
+    }
+
+    await publishBuildArtifacts(
+      project,
+      deployStaticDir(project.config, project.context),
+      args
+    );
   },
 });
