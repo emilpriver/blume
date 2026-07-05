@@ -145,7 +145,9 @@ export const githubReleasesSource = (
     return collected.slice(0, max);
   };
 
-  const load = async (): Promise<SourceLoadResult> => {
+  const load = async (
+    refresh = ctx.refresh ?? true
+  ): Promise<SourceLoadResult> => {
     try {
       const result = await loadWithCache(
         options.name,
@@ -154,7 +156,7 @@ export const githubReleasesSource = (
           const releases = await fetchReleases();
           return releases.map(releaseToEntry);
         },
-        ctx.refresh ?? true
+        refresh
       );
       snapshot = new Map(result.entries.map((entry) => [entry.ref, entry]));
       return result;
@@ -194,7 +196,11 @@ export const githubReleasesSource = (
     read,
     staged: true,
     watch: options.pollInterval
-      ? pollingWatch(load, options.pollInterval)
+      ? pollingWatch(
+          () => load(true),
+          options.pollInterval,
+          () => load()
+        )
       : undefined,
   };
 };

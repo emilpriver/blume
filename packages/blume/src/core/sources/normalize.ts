@@ -81,7 +81,9 @@ const mapRoute = (
 };
 
 const CODE_FENCE = /^```/u;
-const ATX_HEADING = /^(?<hashes>#{1,6})\s+(?<text>.+?)\s*#*$/u;
+// A closing hash sequence must be preceded by whitespace (CommonMark), so a
+// heading like `## What is C#` keeps its trailing `#`.
+const ATX_HEADING = /^(?<hashes>#{1,6})\s+(?<text>.+?)(?:\s+#+)?\s*$/u;
 
 /**
  * Extract ATX headings from a markdown body, skipping fenced code blocks. Each

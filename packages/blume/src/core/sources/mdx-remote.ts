@@ -45,10 +45,14 @@ const globToRegExp = (pattern: string): RegExp => {
     const char = pattern[i] ?? "";
     if (char === "*") {
       if (pattern[i + 1] === "*") {
-        source += ".*";
         i += 2;
+        // `**/` spans zero or more whole segments — `docs/**/guide.md` must
+        // match `docs/guide.md` and `docs/a/guide.md` but not `docs/subguide.md`.
         if (pattern[i] === "/") {
           i += 1;
+          source += "(?:.*/)?";
+        } else {
+          source += ".*";
         }
         continue;
       }
@@ -205,7 +209,9 @@ export const mdxRemoteSource = (
     };
   };
 
-  const load = async (): Promise<SourceLoadResult> => {
+  const load = async (
+    refresh = ctx.refresh ?? true
+  ): Promise<SourceLoadResult> => {
     const skipped: Diagnostic[] = [];
     const result = await loadWithCache(
       options.name,
@@ -245,7 +251,7 @@ export const mdxRemoteSource = (
         }
         return entries;
       },
-      ctx.refresh ?? true
+      refresh
     );
     snapshot = new Map(result.entries.map((entry) => [entry.ref, entry]));
     return {
@@ -271,7 +277,11 @@ export const mdxRemoteSource = (
     read,
     staged: true,
     watch: options.pollInterval
-      ? pollingWatch(load, options.pollInterval)
+      ? pollingWatch(
+          () => load(true),
+          options.pollInterval,
+          () => load()
+        )
       : undefined,
   };
 };

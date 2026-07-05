@@ -1,5 +1,8 @@
 import { describe, expect, it } from "bun:test";
+import { setTimeout as sleep } from "node:timers/promises";
 
+import { pollingWatch } from "../src/core/sources/cache.ts";
+import type { SourceLoadResult } from "../src/core/sources/types.ts";
 import {
   baselineScanIgnore,
   BLUME_IGNORE_DIRS,
@@ -72,6 +75,44 @@ describe("ignoringWatchListener", () => {
     expect(BLUME_WATCH_IGNORE_DIRS).toContain(".blume");
     expect(BLUME_WATCH_IGNORE_DIRS).toContain("node_modules");
     expect(BLUME_WATCH_IGNORE_DIRS).toContain(".git");
+  });
+});
+
+const loadResult = (text: string): Promise<SourceLoadResult> =>
+  Promise.resolve({
+    diagnostics: [],
+    entries: [{ body: { format: "md", text }, data: {}, ref: "a.md" }],
+  });
+
+describe("pollingWatch", () => {
+  it("fires when a fresh poll diverges from the seeded baseline", async () => {
+    let changes = 0;
+    // The seed is what dev actually served (A); the remote already moved to B
+    // before the first tick — that first change must not be swallowed.
+    const stop = pollingWatch(
+      () => loadResult("B"),
+      0.01,
+      () => loadResult("A")
+    )(() => {
+      changes += 1;
+    });
+    await sleep(60);
+    stop();
+    expect(changes).toBe(1);
+  });
+
+  it("stays quiet while polls keep returning the served content", async () => {
+    let changes = 0;
+    const stop = pollingWatch(
+      () => loadResult("A"),
+      0.01,
+      () => loadResult("A")
+    )(() => {
+      changes += 1;
+    });
+    await sleep(60);
+    stop();
+    expect(changes).toBe(0);
   });
 });
 

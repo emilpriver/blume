@@ -205,6 +205,63 @@ describe("mdxRemoteSource", () => {
     expect(await source.read?.("missing.md")).toBe("");
   });
 
+  it("treats **/ as whole segments, not a substring wildcard", async () => {
+    const fetchImpl = ((input: string | URL) =>
+      Promise.resolve(
+        String(input).endsWith(".md") ? okText("# Doc\n") : notOk(404)
+      )) as unknown as typeof fetch;
+    const source = mdxRemoteSource(
+      {
+        fetchImpl,
+        // `**/guide.md` must match `guide.md` and `sub/guide.md`, but not
+        // `subguide.md` — `**` may not bleed into a segment. A trailing bare
+        // `**` (`misc/**`) still spans anything beneath.
+        files: ["guide.md", "sub/guide.md", "subguide.md", "misc/deep.md"],
+        include: ["**/guide.md", "misc/**"],
+        name: "remote",
+        url: "https://example.com/docs/",
+      },
+      ctxFor(await tempDir())
+    );
+    const { entries } = await source.load();
+    expect(entries.map((e) => e.ref).toSorted()).toEqual([
+      "guide.md",
+      "misc/deep.md",
+      "sub/guide.md",
+    ]);
+  });
+
+  it("watch polls fresh past the dev cache and fires on changed remote files", async () => {
+    let calls = 0;
+    const fetchImpl = ((input: string | URL) => {
+      if (String(input).endsWith("a.md")) {
+        calls += 1;
+        return Promise.resolve(okText(`# Doc v${calls}\n`));
+      }
+      return Promise.resolve(notOk(404));
+    }) as unknown as typeof fetch;
+    const source = mdxRemoteSource(
+      {
+        fetchImpl,
+        files: ["a.md"],
+        include: ["**/*.md"],
+        name: "remote",
+        pollInterval: 0.01,
+        url: "https://example.com/docs/",
+      },
+      { ...ctxFor(await tempDir()), refresh: false }
+    );
+    await source.load();
+
+    let changes = 0;
+    const stop = source.watch?.(() => {
+      changes += 1;
+    });
+    await sleep(80);
+    stop?.();
+    expect(changes).toBeGreaterThanOrEqual(1);
+  });
+
   it("enumerates a github subtree, skipping trees and non-matching blobs", async () => {
     const tree = {
       tree: [
@@ -316,6 +373,37 @@ describe("materializeAssets: failure path", () => {
     );
     expect(diagnostics[0]?.code).toBe("BLUME_ASSET_FETCH_FAILED");
     expect(markdown).toContain("https://cdn.example.com/a.png");
+  });
+});
+
+describe("materializeAssets: fenced code", () => {
+  it("never downloads or rewrites an image url inside a code fence", async () => {
+    const fetched: string[] = [];
+    const fetchImpl = ((input: string | URL) => {
+      fetched.push(String(input));
+      return Promise.resolve({
+        arrayBuffer: () => Promise.resolve(new ArrayBuffer(4)),
+        ok: true,
+      });
+    }) as unknown as typeof fetch;
+    const dir = await tempDir();
+    const body = [
+      "![real](https://cdn.example.com/a.png)",
+      "",
+      "```md",
+      "![sample](https://cdn.example.com/b.png)",
+      "```",
+      "",
+    ].join("\n");
+    const { markdown } = await materializeAssets(body, {
+      assetsBaseUrl: "/assets",
+      assetsDir: join(dir, "assets"),
+      fetchImpl,
+    });
+    // Only the prose image is materialized; the code sample stays verbatim.
+    expect(fetched).toStrictEqual(["https://cdn.example.com/a.png"]);
+    expect(markdown).toContain("![real](/assets/");
+    expect(markdown).toContain("![sample](https://cdn.example.com/b.png)");
   });
 });
 

@@ -1,6 +1,7 @@
 import { afterAll, describe, expect, it, mock } from "bun:test";
 import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
+import { setTimeout as sleep } from "node:timers/promises";
 
 import { join } from "pathe";
 
@@ -138,6 +139,38 @@ describe("sanitySource", () => {
     expect(entry?.body.text).toContain("## Hello");
     expect(entry?.raw).toContain("title: Getting Started");
     expect(entry?.lastModified).toBe("2024-05-01T00:00:00Z");
+  });
+
+  it("watch polls fresh past the dev cache and fires on a changed document", async () => {
+    let calls = 0;
+    const client: SanityClientLike = {
+      fetch: () => {
+        calls += 1;
+        return Promise.resolve([
+          { ...doc, title: `Getting Started v${calls}` },
+        ] as never);
+      },
+    };
+    const source = sanitySource(
+      {
+        client,
+        dataset: "production",
+        name: "guides",
+        pollInterval: 0.01,
+        projectId: "p1",
+        query: "*[_type == 'guide']",
+      },
+      { ...ctxFor(await tempDir()), refresh: false }
+    );
+    await source.load();
+
+    let changes = 0;
+    const stop = source.watch?.(() => {
+      changes += 1;
+    });
+    await sleep(80);
+    stop?.();
+    expect(changes).toBeGreaterThanOrEqual(1);
   });
 
   it("builds Sanity CDN image URLs from asset refs", async () => {

@@ -211,6 +211,16 @@ describe(extractHeadings, () => {
     expect(headings.map((h) => h.text)).toStrictEqual(["Title", "Real"]);
   });
 
+  it("keeps a trailing # that is part of the heading text", () => {
+    const body = ["## What is C#", "## Setup ##"].join("\n");
+    // A closing hash sequence needs preceding whitespace (CommonMark); a bare
+    // trailing `#` is heading text.
+    expect(extractHeadings(body).map((h) => h.text)).toStrictEqual([
+      "What is C#",
+      "Setup",
+    ]);
+  });
+
   it("slugs anchors like the renderer: keeps `--` and disambiguates dupes", () => {
     const body = ["## The read & write fallback", "## Setup", "## Setup"].join(
       "\n"

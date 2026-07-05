@@ -27,14 +27,32 @@ export const entriesDigest = (entries: SourceEntry[]): string =>
  * Build an opt-in polling watcher for a remote source: re-`load()` on an
  * interval and fire `onChange` only when the entry digest changes, so a remote
  * source can hot-reload in dev without refetching the world on every keystroke.
+ *
+ * `load` must fetch fresh (bypassing the cache-first dev path) — polling the
+ * cache-first loader would serve the identical snapshot on every tick and
+ * never observe a remote change. `seed` (the source's regular, cache-first
+ * loader) establishes the baseline digest from what dev actually served, so a
+ * remote change landing before the first tick still fires.
  */
 export const pollingWatch =
   (
     load: () => Promise<SourceLoadResult>,
-    intervalSeconds: number
+    intervalSeconds: number,
+    seed?: () => Promise<SourceLoadResult>
   ): ((onChange: () => void) => () => void) =>
   (onChange) => {
     let last = "";
+    if (seed) {
+      const seedBaseline = async (): Promise<void> => {
+        try {
+          const { entries } = await seed();
+          last ||= entriesDigest(entries);
+        } catch {
+          // Fall back to first-tick seeding.
+        }
+      };
+      void seedBaseline();
+    }
     const tick = async (): Promise<void> => {
       try {
         const { entries } = await load();

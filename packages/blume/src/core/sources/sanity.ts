@@ -183,7 +183,9 @@ export const sanitySource = (
     };
   };
 
-  const load = async (): Promise<SourceLoadResult> => {
+  const load = async (
+    refresh = ctx?.refresh ?? true
+  ): Promise<SourceLoadResult> => {
     const result = await loadWithCache(
       options.name,
       cache,
@@ -194,7 +196,7 @@ export const sanitySource = (
         );
         return docs.map(toEntry);
       },
-      ctx?.refresh ?? true
+      refresh
     );
     snapshot = new Map(result.entries.map((entry) => [entry.ref, entry]));
     return result;
@@ -216,7 +218,11 @@ export const sanitySource = (
     read,
     staged: true,
     watch: options.pollInterval
-      ? pollingWatch(load, options.pollInterval)
+      ? pollingWatch(
+          () => load(true),
+          options.pollInterval,
+          () => load()
+        )
       : undefined,
   };
 };

@@ -2,6 +2,7 @@ import { afterAll, describe, expect, it } from "bun:test";
 import { existsSync } from "node:fs";
 import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
+import { setTimeout as sleep } from "node:timers/promises";
 
 import { dirname, join } from "pathe";
 
@@ -92,6 +93,43 @@ const failingFetch: typeof fetch = (() =>
   } as unknown as Response)) as unknown as typeof fetch;
 
 describe("githubReleasesSource", () => {
+  it("watch polls fresh past the dev cache and fires on a new release", async () => {
+    let version = 0;
+    const fetchImpl = (() => {
+      version += 1;
+      return Promise.resolve({
+        json: () =>
+          Promise.resolve([
+            makeRelease({ id: version, tag_name: `v${version}.0.0` }),
+          ]),
+        ok: true,
+        status: 200,
+      } as unknown as Response);
+    }) as unknown as typeof fetch;
+    const source = githubReleasesSource(
+      {
+        fetchImpl,
+        name: "changelog",
+        owner: "acme",
+        pollInterval: 0.01,
+        repo: "sdk",
+      },
+      // Dev-like context: regular loads are cache-first.
+      ctxFor(await tempDir(), false)
+    );
+    await source.load();
+
+    let changes = 0;
+    const stop = source.watch?.(() => {
+      changes += 1;
+    });
+    await sleep(80);
+    stop?.();
+    // The cache-first dev loader would have served v1 forever; the poller must
+    // fetch fresh and see the new release.
+    expect(changes).toBeGreaterThanOrEqual(1);
+  });
+
   it("maps a release to a staged changelog entry", async () => {
     const { fetchImpl } = releasesFetch({
       1: [makeRelease({ body: "- Added widgets\r\n- Fixed bugs" })],

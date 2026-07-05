@@ -8,6 +8,11 @@ import { hashText } from "./cache.ts";
 const MD_IMAGE = /!\[(?<alt>[^\]]*)\]\((?<url>[^)\s]+)\)/gu;
 const REMOTE = /^https?:\/\//u;
 const SAFE_EXT = /^\.[a-z0-9]+$/iu;
+const CODE_FENCE_BLOCK =
+  /^(?<fence>`{3,}|~{3,})[^\n]*\n[\s\S]*?^\k<fence>[^\n]*(?=\n|$)/gmu;
+// NUL delimiters cannot appear in authored markdown, so tokens never collide.
+// oxlint-disable-next-line no-control-regex -- the NUL is the collision guard.
+const FENCE_TOKEN = /\u0000blume-fence-(?<index>\d+)\u0000/gu;
 
 /** Where to write downloaded assets and how to reference them publicly. */
 export interface AssetContext {
@@ -37,8 +42,17 @@ export const materializeAssets = async (
   const doFetch = ctx.fetchImpl ?? globalThis.fetch;
   const diagnostics: Diagnostic[] = [];
 
+  // Mask fenced code blocks so an image URL inside a code sample is neither
+  // downloaded nor rewritten — the sample must keep showing what the author
+  // wrote.
+  const fences: string[] = [];
+  const masked = markdown.replace(CODE_FENCE_BLOCK, (block) => {
+    fences.push(block);
+    return `\u0000blume-fence-${fences.length - 1}\u0000`;
+  });
+
   const urls = new Set<string>();
-  for (const match of markdown.matchAll(MD_IMAGE)) {
+  for (const match of masked.matchAll(MD_IMAGE)) {
     const url = match.groups?.url;
     if (url && REMOTE.test(url)) {
       urls.add(url);
@@ -68,10 +82,12 @@ export const materializeAssets = async (
     })
   );
 
-  const rewritten = markdown.replaceAll(MD_IMAGE, (match, alt, url) => {
-    const local = rewrites.get(url);
-    return local ? `![${alt}](${local})` : match;
-  });
+  const rewritten = masked
+    .replaceAll(MD_IMAGE, (match, alt, url) => {
+      const local = rewrites.get(url);
+      return local ? `![${alt}](${local})` : match;
+    })
+    .replaceAll(FENCE_TOKEN, (token, index) => fences[Number(index)] ?? token);
 
   return { diagnostics, markdown: rewritten };
 };

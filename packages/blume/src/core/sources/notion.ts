@@ -335,10 +335,40 @@ export const notionSource = (
     blocks: NotionBlock[]
   ): Promise<string> => {
     const parts = await Promise.all(
-      blocks.map(
-        (block) =>
-          renderLeaf(block) ?? renderContainer(client, block, renderBlocks)
-      )
+      blocks.map(async (block) => {
+        const leaf = renderLeaf(block);
+        if (leaf === null) {
+          return renderContainer(client, block, renderBlocks);
+        }
+        // Leaf blocks can still carry children (nested list items, indented
+        // paragraphs); dropping them would silently lose content.
+        if (!block.has_children) {
+          return leaf;
+        }
+        const nested = await renderBlocks(
+          client,
+          await childrenOf(client, block.id)
+        );
+        if (!nested) {
+          return leaf;
+        }
+        if (isListItem(block)) {
+          // Indent past the list marker so the children belong to the item
+          // (`1. ` needs three columns, `- `/`- [x] ` two).
+          const indent = " ".repeat(
+            block.type === "numbered_list_item" ? 3 : 2
+          );
+          const indented = nested
+            .split("\n")
+            .map((line) => (line ? `${indent}${line}` : line))
+            .join("\n");
+          return `${leaf}\n${indented}`;
+        }
+        // Other leaves (paragraph, quote) keep their children as following
+        // sibling blocks — the indentation semantics are lost but the content
+        // survives.
+        return `${leaf}\n\n${nested}`;
+      })
     );
     // Join with a blank line, except between consecutive list items, which stay
     // tight so they render as a single list rather than separate loose ones.
@@ -430,7 +460,9 @@ export const notionSource = (
     };
   };
 
-  const load = async (): Promise<SourceLoadResult> => {
+  const load = async (
+    refresh = ctx?.refresh ?? true
+  ): Promise<SourceLoadResult> => {
     const assetDiagnostics: Diagnostic[] = [];
     const result = await loadWithCache(
       options.name,
@@ -453,7 +485,7 @@ export const notionSource = (
         }
         return built.map((item) => item.entry);
       },
-      ctx?.refresh ?? true
+      refresh
     );
     snapshot = new Map(result.entries.map((entry) => [entry.ref, entry]));
     return {
@@ -478,7 +510,11 @@ export const notionSource = (
     read,
     staged: true,
     watch: options.pollInterval
-      ? pollingWatch(load, options.pollInterval)
+      ? pollingWatch(
+          () => load(true),
+          options.pollInterval,
+          () => load()
+        )
       : undefined,
   };
 };

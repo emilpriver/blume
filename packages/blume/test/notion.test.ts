@@ -1,6 +1,7 @@
 import { afterAll, describe, expect, it, mock } from "bun:test";
 import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
+import { setTimeout as sleep } from "node:timers/promises";
 
 import { join } from "pathe";
 
@@ -56,8 +57,35 @@ const BLOCKS: Record<string, unknown[]> = {
     { has_children: true, id: "col1", type: "column" },
     { has_children: true, id: "col2", type: "column" },
   ],
+  "li-empty": [],
+  li1: [
+    {
+      bulleted_list_item: { rich_text: [rich("child item")] },
+      id: "li2",
+      type: "bulleted_list_item",
+    },
+  ],
   page1: [
     { heading_2: { rich_text: [rich("Title")] }, id: "h1", type: "heading_2" },
+    {
+      bulleted_list_item: { rich_text: [rich("parent item")] },
+      has_children: true,
+      id: "li1",
+      type: "bulleted_list_item",
+    },
+    {
+      bulleted_list_item: { rich_text: [rich("lonely item")] },
+      // has_children with an empty children list: the item renders alone.
+      has_children: true,
+      id: "li-empty",
+      type: "bulleted_list_item",
+    },
+    {
+      has_children: true,
+      id: "pk",
+      paragraph: { rich_text: [rich("intro paragraph")] },
+      type: "paragraph",
+    },
     {
       id: "p1",
       paragraph: { rich_text: [rich("Body "), rich("bold", { bold: true })] },
@@ -93,6 +121,13 @@ const BLOCKS: Record<string, unknown[]> = {
         file: { url: "https://notion.so/signed/pic.png" },
       },
       type: "image",
+    },
+  ],
+  pk: [
+    {
+      id: "pk-child",
+      paragraph: { rich_text: [rich("indented detail")] },
+      type: "paragraph",
     },
   ],
   toggle1: [
@@ -212,6 +247,57 @@ describe("notionSource", () => {
     expect(body).toContain("left");
     expect(body).toContain("right");
     expect(body).toContain("```ts");
+    // A list item's children (nested Notion bullets) must survive, indented
+    // under their parent item.
+    expect(body).toContain("- parent item\n  - child item");
+    // Empty children collapse to just the item.
+    expect(body).toContain("- lonely item");
+    // A paragraph's children survive as following sibling blocks.
+    expect(body).toContain("intro paragraph\n\nindented detail");
+  });
+
+  it("watch polls fresh past the dev cache and fires on an edited page", async () => {
+    let calls = 0;
+    const dynamic = {
+      ...client(),
+      databases: {
+        query: () => {
+          calls += 1;
+          return Promise.resolve({
+            has_more: false,
+            next_cursor: null,
+            results: [
+              {
+                ...PAGE,
+                properties: {
+                  ...PAGE.properties,
+                  Name: { title: [rich(`Hello ${calls}`)], type: "title" },
+                },
+              },
+            ],
+          });
+        },
+      },
+    } as unknown as NotionClientLike;
+    const source = notionSource(
+      {
+        client: dynamic,
+        database: "db1",
+        fetchImpl,
+        name: "handbook",
+        pollInterval: 0.01,
+      },
+      { ...(await ctxFor()), refresh: false }
+    );
+    await source.load();
+
+    let changes = 0;
+    const stop = source.watch?.(() => {
+      changes += 1;
+    });
+    await sleep(150);
+    stop?.();
+    expect(changes).toBeGreaterThanOrEqual(1);
   });
 
   it("materializes images to the public asset path", async () => {
