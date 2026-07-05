@@ -218,7 +218,9 @@ const initialId =
         // `group`: a collapsible `<details>` disclosure.
         if (display === "group") {
           const active = hasActivePage(item);
-          const open = depth === 0 || active || item.collapsed === false;
+          // Default every group closed; open only those on the active path (so
+          // the current page's ancestors stay expanded) or forced open via meta.
+          const open = active || item.collapsed === false;
           return (
             <li class={spacing}>
               <details class="group" open={open}>
