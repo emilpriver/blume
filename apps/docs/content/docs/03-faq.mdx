@@ -1,0 +1,132 @@
+---
+title: FAQ
+description: Common questions about Blume — how it compares to other documentation tools, and why a Markdown formatter might collapse your callout directives.
+sidebar:
+  label: FAQ
+---
+
+Answers to questions that come up often. Missing one? [Open an issue](https://github.com/haydenbleasel/blume/issues) or ask the in-page assistant.
+
+## How is Blume different from Mintlify, Fumadocs, and others?
+
+Most documentation tools sit at one of two extremes. **Managed platforms** like Mintlify give you a polished result fast, but the build and hosting are their service — you author inside their system and deploy to their infrastructure. **Component libraries and starters** like Fumadocs, Nextra, or Docusaurus are open-source and flexible, but they hand you an application (a Next.js or React project) that you scaffold, wire up, and maintain before and after you write a word.
+
+Blume takes a third path: **the framework is the template.** You point it at a folder of Markdown and it generates and drives the whole site — navigation, search, theming, Open Graph images, SEO, and AI endpoints — with no app to own. It's fully open-source and self-hostable, so there's no managed service and no vendor lock-in, but there's also no boilerplate to maintain.
+
+|  | Blume | Mintlify | Fumadocs / Nextra / Docusaurus |
+| --- | --- | --- | --- |
+| **Model** | Zero-config framework; content only | Hosted platform | Library + app you scaffold |
+| **Source** | Open-source (MIT) | Closed core | Open-source |
+| **Hosting** | Anywhere — static or a server function | Their managed infrastructure | Anywhere; you build and deploy |
+| **You maintain** | Your Markdown | Your Markdown + platform config | Your Markdown + the app around it |
+| **Rendering** | Astro; core theme ships zero client JS | Their runtime | React/Next.js runtime |
+| **AI features** | `llms.txt`, raw Markdown, Ask AI, MCP — built in, no hosted service | Built in (hosted) | Bring your own |
+
+A few consequences worth calling out:
+
+- **You own the output.** `blume build` produces a plain site you host on Vercel, Netlify, Cloudflare, S3, or your own box. Nothing phones home.
+- **No lock-in, two ways out.** Your content is portable Markdown, and `blume eject` turns the project into a standalone Astro app that still uses the `blume` package when you want full control.
+- **Fast by default.** The core theme is React-free and renders static HTML, so pages score well on Core Web Vitals without tuning. You opt into server features (Ask AI, MCP) only when you need them.
+- **Type-safe configuration.** `blume.config.ts` and every `meta.ts` are real TypeScript validated by a schema — not loosely-typed YAML.
+
+:::note
+This isn't "better than everything" — managed platforms and full frameworks are the right call when you want a hosted product or maximum control over the app. Blume is for teams who want a production-grade docs site without owning either the platform or the plumbing.
+:::
+
+See [Why Blume exists](/docs) for the longer version.
+
+## Is Blume free and open-source?
+
+Yes — Blume is MIT-licensed and free. You install the `blume` package, keep your content in your own repository, and host the build wherever you like. There's no paid tier, no per-seat pricing, and no account to sign up for. The source lives on [GitHub](https://github.com/haydenbleasel/blume).
+
+## Do I need to know Astro, React, or Tailwind?
+
+No. A folder of Markdown is a complete site — navigation, search, and theming are inferred or set with a handful of tokens. You only reach for the underlying stack when you want to customize: [interactive islands](/docs/content/islands) (React), [component overrides](/docs/configuration/customization), or [theme tokens](/docs/configuration/theming) (Tailwind). Even then, [`blume.config.ts`](/docs/configuration) is typed, so your editor guides you.
+
+## Can I use React components and MDX?
+
+Yes. Any page can be `.md` or `.mdx`, and MDX lets you drop in the [built-in components](/docs/content/components) with no imports. You can also add your own `.tsx`/`.jsx` [islands](/docs/content/islands) — Blume auto-enables React only for the pages that use them, so the core theme stays JavaScript-free everywhere else.
+
+## Where can I deploy it?
+
+Anywhere. `blume build` outputs static HTML by default, which you can serve from any static host or CDN — Vercel, Netlify, Cloudflare Pages, GitHub Pages, S3, or your own server. Server-only features (Ask AI, the MCP server, on-demand rendering) switch the build to a server function through an adapter for Vercel, Node, Netlify, or Cloudflare. See [Deployment](/docs/deployment).
+
+## Does search need a hosted service?
+
+No. [Orama](/docs/configuration/search) builds a local index that works in both dev and production with nothing to host or pay for. For very large sites, [Pagefind](/docs/configuration/search) is one flag away. Either way the index ships as part of your site.
+
+## How do I customize the look?
+
+Start with [theme tokens](/docs/configuration/theming) — accent color, fonts, radius, and a `theme.css` for anything else Tailwind can express. Go further by [overriding built-in components](/docs/configuration/customization) or adding [custom pages](/docs/configuration/customization#custom-pages). When you want the Astro project itself, [`blume eject`](/docs/reference/cli) hands you a standalone app that still uses the `blume` package.
+
+## Why is oxfmt / Ultracite collapsing my directives?
+
+If you format your Markdown with [Ultracite](https://www.ultracite.ai) (which runs oxlint + [oxfmt](https://oxc.rs)) — as Blume itself does — you may notice that container directives get flattened onto a single line after a format pass:
+
+```md
+:::note
+Regenerate the project with blume dev.
+:::
+```
+
+becomes
+
+```md
+:::note Regenerate the project with blume dev. :::
+```
+
+Once the opening `:::note` fence is joined to the prose, it's no longer a directive, so it renders as literal text instead of a [callout](/docs/content/syntax#callouts).
+
+### Why it happens
+
+This is a bug in oxfmt's Markdown formatter (inherited from Prettier's Markdown printer — see [prettier/prettier#19040](https://github.com/prettier/prettier/pull/19040)). When it wraps prose, it treats the `:::` fence lines as ordinary text and joins them with the adjacent line, breaking the directive. It affects every container directive — `:::note`, `:::tip`, `:::warning`, `:::danger`, `:::success`.
+
+We reported it upstream in [oxc-project/oxc#24096](https://github.com/oxc-project/oxc/issues/24096); until it's fixed there, the patch below is the workaround.
+
+### The fix
+
+Patch oxfmt so it preserves the line break that sits directly against a `:::` fence. Blume ships exactly this patch in its own repo, and you can apply the same one in any project.
+
+1. Save the patch as `patches/oxfmt@0.55.0.patch`:
+
+   ```diff patches/oxfmt@0.55.0.patch
+   diff --git a/dist/markdown-Bowe09rB.js b/dist/markdown-Bowe09rB.js
+   index 0fe63ff712e07c9c2188711fa0940f7a7d8f7d74..44435d91a2f5a6711512981c9bcaddedc1760be4 100644
+   --- a/dist/markdown-Bowe09rB.js
+   +++ b/dist/markdown-Bowe09rB.js
+   @@ -1141,7 +1141,14 @@ function Yf(e, r, t) {
+    		case "sentence": return Yi(e, t);
+    		case "word": return Li(e);
+    		case "whitespace": {
+   -			let { next: i } = e, u = i && /^>|^(?:[*+-]|#{1,6}|\d+[).])$/u.test(i.value) ? "never" : r.proseWrap;
+   +			let { next: i, previous: oxfmtFencePrev } = e;
+   +			// Preserve line breaks that sit directly against a `:::` container
+   +			// directive fence, so `proseWrap: "never"` keeps the opening/closing
+   +			// fence on their own lines instead of joining them into the prose (which
+   +			// breaks the directive). Ordinary prose still wraps per proseWrap.
+   +			// See prettier/prettier#19040.
+   +			let oxfmtIsFence = (w) => w != null && typeof w.value === "string" && w.value.startsWith(":::");
+   +			let u = oxfmtIsFence(oxfmtFencePrev) || oxfmtIsFence(i) ? "preserve" : i && /^>|^(?:[*+-]|#{1,6}|\d+[).])$/u.test(i.value) ? "never" : r.proseWrap;
+    			return qt(e, n.value, u);
+    		}
+    		case "emphasis": {
+   ```
+
+2. Register it with your package manager's `patchedDependencies`. With Bun or pnpm, add to `package.json`:
+
+   ```json package.json
+   {
+     "patchedDependencies": {
+       "oxfmt@0.55.0": "patches/oxfmt@0.55.0.patch"
+     }
+   }
+   ```
+
+3. Reinstall so the patch is applied:
+
+   ```package-install
+   bun install
+   ```
+
+:::warning[Version-pinned] The patch targets oxfmt `0.55.0` — its diff references a file hashed to that build (`dist/markdown-Bowe09rB.js`). When you bump oxfmt, regenerate the patch (e.g. `bun patch oxfmt`) or check whether the upstream fix has landed and the patch is no longer needed.
+:::
