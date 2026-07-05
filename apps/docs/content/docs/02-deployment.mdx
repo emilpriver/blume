@@ -100,6 +100,10 @@ redirects: [{ from: "/old", to: "/new", status: 301 }];
 
 `status` accepts `301`, `302`, `307`, or `308` (default `301`). Server builds handle redirects at request time. Static builds emit redirect pages **and** platform files so your host issues a real HTTP redirect: `_redirects` (Netlify, Cloudflare Pages), `vercel.json` (Vercel), and `blume-redirects.json` — a structured manifest for anything else (nginx/Apache rules, an edge worker). A `_redirects` or `vercel.json` you ship in `public/` is left untouched.
 
+:::note
+`from` is matched as an exact path — wildcards and pattern matching (e.g. `/blog/:slug` or `/old/*`) aren't supported. If you need pattern-based rules, handle them in an infrastructure file like `vercel.json` (which supports wildcard `source` patterns) or your host's redirect config instead. A `vercel.json` you ship in `public/` is preserved as-is.
+:::
+
 ## Environment variables
 
 When a feature needs a runtime secret, Blume warns at `blume dev`/`build` if it's missing — so the problem surfaces early instead of at the first request:
