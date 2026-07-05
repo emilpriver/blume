@@ -72,11 +72,20 @@ export const markdownVariantUrl = (
     }
   }
 
-  const pathname =
-    path !== "/" && path.endsWith("/") ? path.slice(0, -1) : path;
+  const trimmed = path !== "/" && path.endsWith("/") ? path.slice(0, -1) : path;
+  // Requests arrive percent-encoded while routes are stored decoded, so a
+  // non-ASCII route (`/ja/はじめに` requested as `/ja/%E3%81%AF…`) must be
+  // decoded before the lookup. Malformed sequences stay verbatim.
+  let pathname = trimmed;
+  try {
+    pathname = decodeURIComponent(trimmed);
+  } catch {
+    // Keep the raw path; it simply won't match a content route.
+  }
   if (!routes.has(pathname)) {
     return null;
   }
   const target = pathname === "/" ? "/index" : pathname;
-  return `${prefix}${target}.md${query}`;
+  // Re-encode: the variant URL goes back into the request pipeline.
+  return `${prefix}${encodeURI(target)}.md${query}`;
 };

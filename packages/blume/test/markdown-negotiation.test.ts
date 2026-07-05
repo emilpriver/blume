@@ -58,6 +58,16 @@ describe("markdownVariantUrl", () => {
     expect(markdownVariantUrl("/not-a-doc", routes)).toBeNull();
   });
 
+  it("decodes a percent-encoded request for a non-ASCII route", () => {
+    const localized = new Set(["/ja/はじめに"]);
+    // Browsers send the encoded form; routes are stored decoded.
+    expect(
+      markdownVariantUrl("/ja/%E3%81%AF%E3%81%98%E3%82%81%E3%81%AB", localized)
+    ).toBe("/ja/%E3%81%AF%E3%81%98%E3%82%81%E3%81%AB.md");
+    // A malformed sequence is kept verbatim and simply doesn't match.
+    expect(markdownVariantUrl("/%E0%A4%A", localized)).toBeNull();
+  });
+
   it("strips and re-adds a non-root base", () => {
     // The dev URL is base-prefixed; routes are not.
     expect(markdownVariantUrl("/docs/guides/intro", routes, "/docs")).toBe(

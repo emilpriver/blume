@@ -389,6 +389,18 @@ describe("rss feeds", () => {
       '<atom:link href="https://example.com/blog/rss.xml" rel="self"'
     );
   });
+
+  it("URI-encodes item links like the sitemap does", () => {
+    const pages = [
+      postPage("Tips", "/tips & tricks/café", "blog", { date: "2026-01-01" }),
+    ];
+    const [feed] = buildRssFeeds(makeProject(pages));
+    // A raw space or non-ASCII character in <link>/<guid> is an invalid URL
+    // for feed readers; the route must be percent-encoded.
+    expect(feed?.items[0]?.link).toBe(
+      "https://example.com/tips%20&%20tricks/caf%C3%A9"
+    );
+  });
 });
 
 describe("structured data", () => {

@@ -743,10 +743,14 @@ interface McpPlan {
 
 /**
  * Decide whether (and how) to generate the MCP server. Skipped — with a
- * warning — when a content page already occupies its route, so the user's page
- * keeps working.
+ * warning — when a content page or a custom `.astro` page already occupies its
+ * route, so the user's page keeps working instead of colliding.
  */
-const planMcp = (project: BlumeProject, srcDir: string): McpPlan => {
+const planMcp = (
+  project: BlumeProject,
+  srcDir: string,
+  userPages: { pattern: string }[]
+): McpPlan => {
   const { config } = project;
   const { route } = config.mcp;
   const dir = join(srcDir, "blume-mcp");
@@ -761,11 +765,11 @@ const planMcp = (project: BlumeProject, srcDir: string): McpPlan => {
   if (!config.mcp.enabled) {
     return base;
   }
-  if (project.graph.pages.some((page) => page.route === route)) {
+  if (routeIsTaken(userPages, project.graph.pages, route)) {
     return {
       ...base,
       warnings: [
-        `MCP server route "${route}" is already used by a content page; the MCP server was not generated. Set a different "mcp.route" in blume.config.ts.`,
+        `MCP server route "${route}" is already used by a content or custom page; the MCP server was not generated. Set a different "mcp.route" in blume.config.ts.`,
       ],
     };
   }
@@ -879,9 +883,13 @@ export interface GenerateResult {
  * `type: changelog` entries — or when a release-backed changelog source is
  * configured, so its route (and any nav tab pointing at it) still resolves to an
  * empty timeline on a build where the source could not be fetched (e.g. CI
- * without a token). Skipped when a user content page already owns `/changelog`.
+ * without a token). Skipped when a user content page or a custom `.astro` page
+ * already owns `/changelog`.
  */
-const shouldGenerateChangelog = (project: BlumeProject): boolean => {
+const shouldGenerateChangelog = (
+  project: BlumeProject,
+  userPages: { pattern: string }[]
+): boolean => {
   const hasChangelog = project.graph.pages.some(
     (page) =>
       page.contentType === "changelog" &&
@@ -890,10 +898,10 @@ const shouldGenerateChangelog = (project: BlumeProject): boolean => {
   const hasChangelogSource = (project.config.content.sources ?? []).some(
     (source) => source.type === "github-releases"
   );
-  const changelogRouteTaken = project.graph.pages.some(
-    (page) => page.route === "/changelog"
+  return (
+    (hasChangelog || hasChangelogSource) &&
+    !routeIsTaken(userPages, project.graph.pages, "/changelog")
   );
-  return (hasChangelog || hasChangelogSource) && !changelogRouteTaken;
 };
 
 /**
@@ -999,7 +1007,7 @@ export const generateRuntime = async (
   // The hosted MCP server. The `.well-known` discovery docs are injected as
   // prerendered routes alongside user pages; the server endpoint itself is a
   // normal (server-rendered) page written by `writeMcpFiles`.
-  const mcp = planMcp(project, srcDir);
+  const mcp = planMcp(project, srcDir, pages);
   pages.push(...mcp.discoveryPages);
 
   // Staged (non-filesystem) sources materialize into `.blume/content`; keyed by
@@ -1134,7 +1142,7 @@ export const generateRuntime = async (
   }
 
   // Changelog index (`/changelog`), rendered through the Update timeline layout.
-  if (shouldGenerateChangelog(project)) {
+  if (shouldGenerateChangelog(project, pages)) {
     await write(
       join(srcDir, "pages", "changelog.astro"),
       changelogIndexTemplate({
@@ -1228,7 +1236,7 @@ export const generateRuntime = async (
     ...pages.map((page) => page.pattern),
     ...referenceTabs(config).map((tab) => tab.path),
   ]);
-  if (shouldGenerateChangelog(project)) {
+  if (shouldGenerateChangelog(project, pages)) {
     navTargetRoutes.add("/changelog");
   }
   warnings.push(

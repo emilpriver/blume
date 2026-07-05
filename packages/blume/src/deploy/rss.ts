@@ -68,7 +68,9 @@ export const buildRssFeeds = (project: BlumeProject): RssFeed[] => {
       .map((page) => ({
         date: pageDate(page),
         description: page.description,
-        link: `${base}${page.route}`,
+        // Encode like the sitemap does: a route with spaces or non-ASCII
+        // must still yield a valid <link>/<guid> URL after XML decoding.
+        link: encodeURI(`${base}${page.route}`),
         title: page.title,
       }))
       .toSorted((a, b) => (b.date?.getTime() ?? 0) - (a.date?.getTime() ?? 0))

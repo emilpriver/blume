@@ -1103,7 +1103,10 @@ const ogPath = data.config.og.enabled
   ? \`/og/\${route === "/" ? "index" : route.slice(1)}.png\`
   : null;
 const ogRel = seo.image ?? ogPath;
-const ogImage = ogRel && base ? \`\${base}\${ogRel}\` : ogRel;
+// Only absolutize root-relative paths: \`seo.image\` may be an external URL,
+// which must pass through verbatim (mirrors PageLayout's absolutizeOgImage).
+const ogImage =
+  ogRel && base && ogRel.startsWith("/") ? \`\${base}\${ogRel}\` : ogRel;
 
 const canonical =
   seo.canonical ?? (base ? \`\${base}\${route === "/" ? "" : route}\` : null);
@@ -1548,8 +1551,16 @@ const exampleDirective = (spec: ExampleSpec): string => {
 };
 
 /** Filesystem-safe slug for an example's generated wrapper file. */
+/**
+ * A filesystem-safe, injective token for an example path. Distinct paths must
+ * never share a wrapper file (`button.demo` vs `button-demo` used to collide),
+ * so every non-alphanumeric character is hex-escaped rather than collapsed.
+ */
 export const exampleSlug = (path: string): string =>
-  path.replaceAll("/", "__").replaceAll(/[^a-zA-Z0-9_]+/gu, "-");
+  path.replaceAll(
+    /[^a-zA-Z0-9]/gu,
+    (char) => `_${(char.codePointAt(0) ?? 0).toString(16)}_`
+  );
 
 /**
  * Generate `.blume/src/generated/examples/<slug>.astro` — a wrapper that renders

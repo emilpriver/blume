@@ -563,7 +563,28 @@ describe("generateRuntime", () => {
     );
     const result = await generateRuntime(project);
     expect(
-      result.warnings.some((w) => w.includes("already used by a content page"))
+      result.warnings.some((w) =>
+        w.includes("already used by a content or custom page")
+      )
+    ).toBe(true);
+    expect(existsSync(join(project.context.outDir, "src/pages/mcp.ts"))).toBe(
+      false
+    );
+  });
+
+  it("skips the MCP server when a custom .astro page owns its route", async () => {
+    const project = await scanProject(
+      await writeProject({
+        "blume.config.ts": "export default { mcp: { enabled: true } };\n",
+        "docs/index.md": "# Home\n",
+        "pages/mcp.astro": "---\n---\n<h1>Custom MCP page</h1>\n",
+      })
+    );
+    const result = await generateRuntime(project);
+    expect(
+      result.warnings.some((w) =>
+        w.includes("already used by a content or custom page")
+      )
     ).toBe(true);
     expect(existsSync(join(project.context.outDir, "src/pages/mcp.ts"))).toBe(
       false

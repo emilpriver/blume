@@ -210,9 +210,16 @@ describe("islandMapTemplate", () => {
 });
 
 describe("exampleSlug", () => {
-  it("replaces path separators and unsafe characters", () => {
-    expect(exampleSlug("forms/login")).toBe("forms__login");
-    expect(exampleSlug("a/b-c")).toBe("a__b-c");
+  it("hex-escapes every non-alphanumeric character", () => {
+    expect(exampleSlug("forms/login")).toBe("forms_2f_login");
+    expect(exampleSlug("a/b-c")).toBe("a_2f_b_2d_c");
+  });
+
+  it("never collides distinct paths onto one wrapper file", () => {
+    // `button.demo` and `button-demo` used to both slug to `button-demo`,
+    // making one example render the other's component.
+    expect(exampleSlug("button.demo")).not.toBe(exampleSlug("button-demo"));
+    expect(exampleSlug("a/b")).not.toBe(exampleSlug("a__b"));
   });
 });
 
@@ -253,7 +260,7 @@ describe("exampleMapTemplate", () => {
       example({ lang: "astro", path: "forms/login" }),
     ]);
     expect(out).toContain('import E0 from "./examples/counter.astro"');
-    expect(out).toContain('import E1 from "./examples/forms__login.astro"');
+    expect(out).toContain('import E1 from "./examples/forms_2f_login.astro"');
     expect(out).toContain('"counter": { Component: E0,');
     expect(out).toContain('"forms/login": { Component: E1,');
     expect(out).toContain('lang: "tsx"');
