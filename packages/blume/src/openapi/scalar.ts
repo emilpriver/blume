@@ -61,7 +61,7 @@ const themeConfiguration = (
   const accent = resolveAccent(config.theme);
   const radius = resolveRadius(config.theme);
   return {
-    customCss: `:root,.light-mode,.dark-mode{--scalar-color-accent:${accent};--scalar-radius:${radius};}`,
+    customCss: `:root,.light-mode,.dark-mode{--scalar-color-accent:${accent.light};--scalar-radius:${radius};}.dark-mode{--scalar-color-accent:${accent.dark};}`,
     ...darkModeConfig(config.theme.mode),
   };
 };

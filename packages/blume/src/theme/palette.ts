@@ -111,12 +111,18 @@ ${tokens.join("\n")}
 };
 
 /**
- * Resolve the configured accent to a CSS color. A named accent resolves to its
- * preset; any other value is treated as a raw CSS color so users can pass
- * arbitrary colors without a config change.
+ * Resolve the configured accent to per-mode CSS colors. A named accent
+ * resolves to its preset; any other value is treated as a raw CSS color so
+ * users can pass arbitrary colors without a config change. A string accent
+ * has already been normalized by the config schema to the same color for
+ * both modes.
  */
-export const resolveAccent = (theme: ResolvedConfig["theme"]): string =>
-  presetOrColor(theme.accent);
+export const resolveAccent = (
+  theme: ResolvedConfig["theme"]
+): { dark: string; light: string } => ({
+  dark: presetOrColor(theme.accent.dark),
+  light: presetOrColor(theme.accent.light),
+});
 
 /** Resolve the configured radius preset to a CSS length. */
 export const resolveRadius = (theme: ResolvedConfig["theme"]): string =>
@@ -128,17 +134,16 @@ export const resolveRadius = (theme: ResolvedConfig["theme"]): string =>
  * arbitrary colors without a config change.
  */
 export const buildThemeCss = (theme: ResolvedConfig["theme"]): string => {
-  const accent = presetOrColor(theme.accent);
-  const accentDark = theme.accentDark ? presetOrColor(theme.accentDark) : null;
+  const accent = resolveAccent(theme);
   const action = theme.action ? presetOrColor(theme.action) : null;
   const radius = RADII[theme.radius];
   const root = themeRootCss(theme, {
-    accent,
+    accent: accent.light,
     action,
     radius,
   });
   const dark = themeDarkCss(theme, {
-    accent: accentDark ?? accent,
+    accent: accent.dark,
     action,
   });
 

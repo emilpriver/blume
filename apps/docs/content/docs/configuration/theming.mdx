@@ -34,6 +34,8 @@ theme: {
 
 Named presets: `blue` (default), `green`, `orange`, `pink`, `purple`, `red`, and `teal`.
 
+A string applies to both color modes; pass an object for [a different accent per mode](#dark-mode-colors).
+
 ### Radius
 
 `radius` sets the corner rounding shared by cards, code blocks, callouts, and inputs — `none`, `sm`, `md` (default), or `lg`.
@@ -89,18 +91,17 @@ Need a font that isn't listed, or want to drop back to the system stack? Overrid
 
 ### Dark-mode colors
 
-By default light and dark share one `accent`. Set `accentDark` for a different accent in dark mode, and `background` / `backgroundDark` to override the page background per mode:
+A string `accent` applies to both color modes. Pass a `{ light, dark }` object for a different accent per mode, and set `background` / `backgroundDark` to override the page background per mode:
 
 ```ts blume.config.ts lineNumbers
 theme: {
-  accent: "blue",
-  accentDark: "teal",        // a different accent in dark mode
+  accent: { light: "blue", dark: "teal" },
   background: "#ffffff",     // light-mode page background
   backgroundDark: "#0a0a0a", // dark-mode page background
 }
 ```
 
-Each takes a named preset or any CSS color, exactly like `accent`.
+Each color takes a named preset or any CSS color.
 
 ### Action color
 

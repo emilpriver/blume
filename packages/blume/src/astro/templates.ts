@@ -883,7 +883,7 @@ const siteHost = (() => {
 
 export async function GET({ props }) {
   const png = await renderOgImage({
-    accent: data.config.theme.accent,
+    accent: data.config.theme.accent.light,
     brand: data.config.title,
     description: data.config.description,
     logo: data.config.logo?.svg,

@@ -442,8 +442,15 @@ const fontSlug = z.string().refine(isFontSlug, (value) => ({
 
 const themeConfigSchema = z
   .object({
-    accent: z.string().default("blue"),
-    accentDark: z.string().optional(),
+    accent: z
+      .union([
+        z.string(),
+        z.object({ dark: z.string(), light: z.string() }).strict(),
+      ])
+      .default("blue")
+      .transform((value) =>
+        typeof value === "string" ? { dark: value, light: value } : value
+      ),
     action: z.string().optional(),
     background: z.string().optional(),
     backgroundDark: z.string().optional(),

@@ -19,21 +19,31 @@ const themeOf = (over: Record<string, unknown>) =>
   blumeConfigSchema.parse({ theme: over }).theme;
 
 describe("resolveAccent", () => {
-  it("maps a named accent preset to its OKLCH value", () => {
-    expect(resolveAccent(themeOf({ accent: "purple" }))).toBe(
-      "oklch(0.58 0.2 290)"
-    );
+  it("maps a named accent preset to its OKLCH value for both modes", () => {
+    expect(resolveAccent(themeOf({ accent: "purple" }))).toStrictEqual({
+      dark: "oklch(0.58 0.2 290)",
+      light: "oklch(0.58 0.2 290)",
+    });
+  });
+
+  it("resolves per-mode accents from a { light, dark } object", () => {
+    expect(
+      resolveAccent(themeOf({ accent: { dark: "teal", light: "purple" } }))
+    ).toStrictEqual({
+      dark: "oklch(0.6 0.12 195)",
+      light: "oklch(0.58 0.2 290)",
+    });
   });
 
   it("passes an unknown accent through as a raw CSS color", () => {
-    expect(resolveAccent(themeOf({ accent: "#ff0000" }))).toBe("#ff0000");
+    expect(resolveAccent(themeOf({ accent: "#ff0000" })).light).toBe("#ff0000");
   });
 
   it("rejects a value that could break out of the CSS declaration", () => {
     // A `;}` would end the rule and inject new ones; fall back to the default.
-    expect(resolveAccent(themeOf({ accent: "red;}body{display:none}" }))).toBe(
-      "oklch(0.62 0.16 250)"
-    );
+    expect(
+      resolveAccent(themeOf({ accent: "red;}body{display:none}" })).light
+    ).toBe("oklch(0.62 0.16 250)");
   });
 });
 
@@ -73,7 +83,7 @@ describe("buildThemeCss — backgrounds and dark mode", () => {
   it("emits a dark-theme block when any dark token is set", () => {
     const css = buildThemeCss(
       themeOf({
-        accentDark: "purple",
+        accent: { dark: "purple", light: "blue" },
         backgroundDark: "oklch(0.2 0 0)",
         backgroundImageDark: "/dark.png",
       })
@@ -92,7 +102,7 @@ describe("buildThemeCss — backgrounds and dark mode", () => {
     expect(css).toContain("--blume-accent: constructor;");
   });
 
-  it("shares the accent into dark mode when accentDark is unset", () => {
+  it("shares a string accent into dark mode", () => {
     // The base stylesheet's dark block outranks :root config tokens on
     // specificity, so the shared accent must be re-declared for dark.
     const css = buildThemeCss(themeOf({ accent: "teal" }));
