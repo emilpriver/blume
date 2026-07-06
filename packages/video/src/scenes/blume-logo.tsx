@@ -95,19 +95,32 @@ export const BlumeLogo = ({
     extrapolateRight: "clamp",
   });
 
+  const containerStyle = {
+    alignItems: "center",
+    background: "transparent",
+    display: "flex",
+    flexDirection: "row",
+    gap,
+    inset: 0,
+    justifyContent: "center",
+    position: "absolute",
+  } as const;
+
+  const wordmarkStyle = {
+    color,
+    filter: `blur(${wordBlur}px)`,
+    fontFamily:
+      "var(--font-geist-sans), -apple-system, BlinkMacSystemFont, sans-serif",
+    fontSize: wordmarkSize,
+    fontWeight: 600,
+    letterSpacing: "-0.04em",
+    lineHeight: 1,
+    opacity: wordOpacity,
+    transform: `translateY(-0.01em) translateX(${wordX}px)`,
+  } as const;
+
   return (
-    <div
-      style={{
-        alignItems: "center",
-        background: "transparent",
-        display: "flex",
-        flexDirection: "row",
-        gap,
-        inset: 0,
-        justifyContent: "center",
-        position: "absolute",
-      }}
-    >
+    <div style={containerStyle}>
       <svg
         width={markWidth}
         height={markHeight}
@@ -135,7 +148,7 @@ export const BlumeLogo = ({
               d={dot.d}
               fill="currentColor"
               stroke="currentColor"
-              strokeWidth={2.025_32}
+              strokeWidth={2.02532}
               style={{
                 filter: `blur(${blur}px)`,
                 opacity,
@@ -148,22 +161,7 @@ export const BlumeLogo = ({
         })}
       </svg>
 
-      <span
-        style={{
-          color,
-          filter: `blur(${wordBlur}px)`,
-          fontFamily:
-            "var(--font-geist-sans), -apple-system, BlinkMacSystemFont, sans-serif",
-          fontSize: wordmarkSize,
-          fontWeight: 600,
-          letterSpacing: "-0.04em",
-          lineHeight: 1,
-          opacity: wordOpacity,
-          transform: `translateY(-0.01em) translateX(${wordX}px)`,
-        }}
-      >
-        {wordmark}
-      </span>
+      <span style={wordmarkStyle}>{wordmark}</span>
     </div>
   );
 };

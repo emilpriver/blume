@@ -43,6 +43,26 @@ const jsonContentType = (
   return entries.find(([type]) => type.includes("json")) ?? entries[0];
 };
 
+/** The `?a=1&b=2` query string from an operation's required query params. */
+const queryString = (
+  params: ParamLike[],
+  schemas: Record<string, SchemaLike>
+): string => {
+  const query: string[] = [];
+  for (const param of params) {
+    if (!(param.in === "query" && param.required && param.name)) {
+      continue;
+    }
+    const value = param.example ?? exampleValue(param.schema, schemas);
+    query.push(
+      `${encodeURIComponent(param.name)}=${encodeURIComponent(
+        String(value ?? "")
+      )}`
+    );
+  }
+  return query.length > 0 ? `?${query.join("&")}` : "";
+};
+
 /** Assemble a representative request from an operation and the spec servers. */
 export const buildRequestSample = (
   operation: OperationLike,
@@ -65,15 +85,7 @@ export const buildRequestSample = (
     }
   }
 
-  const query = params
-    .filter((param) => param.in === "query" && param.required && param.name)
-    .map((param) => {
-      const value = param.example ?? exampleValue(param.schema, schemas);
-      return `${encodeURIComponent(param.name ?? "")}=${encodeURIComponent(
-        String(value ?? "")
-      )}`;
-    });
-  const search = query.length > 0 ? `?${query.join("&")}` : "";
+  const search = queryString(params, schemas);
 
   const headers: Record<string, string> = {};
   for (const param of params) {
@@ -117,7 +129,8 @@ const curlSnippet = (sample: RequestSample): string => {
   if (sample.body) {
     // Close-quote/escaped-quote/reopen: the POSIX way to put a literal ' in a
     // single-quoted string, so an example like "it's" doesn't break the shell.
-    lines.push(`  -d '${sample.body.replaceAll("'", String.raw`'\''`)}'`);
+    const escapedBody = sample.body.replaceAll("'", String.raw`'\''`);
+    lines.push(`  -d '${escapedBody}'`);
   }
   return lines.join(" \\\n");
 };
@@ -200,11 +213,12 @@ const ALIASES: Record<string, string> = {
 /** The sample languages to render, resolved from config ids (unknown ids dropped). */
 export const sampleLanguages = (ids: string[]): SampleLanguage[] => {
   const wanted = ids.length > 0 ? ids : ["curl", "js", "python"];
+  const byId = new Map(LANGUAGES.map((entry) => [entry.id, entry]));
   const out: SampleLanguage[] = [];
   const seen = new Set<string>();
   for (const raw of wanted) {
     const id = ALIASES[raw.toLowerCase()] ?? raw.toLowerCase();
-    const language = LANGUAGES.find((entry) => entry.id === id);
+    const language = byId.get(id);
     if (language && !seen.has(id)) {
       seen.add(id);
       out.push(language);

@@ -88,7 +88,8 @@ const releaseToEntry = (release: GithubRelease): SourceEntry => {
     type: "changelog",
   };
   const raw = matter.stringify(`${body}\n`, data);
-  const ref = `${slugifyTag(release.tag_name) || `release-${release.id}`}.md`;
+  const fallbackRef = `release-${release.id}`;
+  const ref = `${slugifyTag(release.tag_name) || fallbackRef}.md`;
   return {
     body: { format: "md", text: body },
     data,

@@ -242,6 +242,9 @@ describe("exampleWrapperTemplate", () => {
 
   it("emits no client directive for an astro example", () => {
     const out = exampleWrapperTemplate(
+      // An astro example has no client directive; client is optional, so this
+      // clears the factory default with undefined rather than null.
+      // oxlint-disable-next-line sonarjs/no-undefined-assignment
       example({ client: undefined, framework: "astro", lang: "astro" })
     );
     expect(out).toContain("<Example {...Astro.props}><slot /></Example>");

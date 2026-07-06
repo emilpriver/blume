@@ -9,7 +9,17 @@
  */
 import nodePath from "node:path";
 
-import type * as TypeScriptApi from "typescript";
+import type {
+  CompilerHost,
+  CompilerOptions,
+  DeclarationStatement,
+  Program,
+} from "typescript";
+
+// `typeof import(...)` is the only way to name the whole lazily-imported
+// `typescript` module without a value import (see components/props.ts).
+// oxlint-disable-next-line typescript/consistent-type-imports
+type TypeScriptApi = typeof import("typescript");
 
 /** A single documented property — one generated row of a type table. */
 export interface TypeTableProperty {
@@ -36,10 +46,10 @@ const VIRTUAL_FILE = "__blume_auto_type_table__.ts";
 
 /** Build a compiler host that serves a single in-memory file plus the real libs. */
 const inMemoryHost = (
-  ts: typeof TypeScriptApi,
-  options: TypeScriptApi.CompilerOptions,
+  ts: TypeScriptApi,
+  options: CompilerOptions,
   source: string
-): TypeScriptApi.CompilerHost => {
+): CompilerHost => {
   const host = ts.createCompilerHost(options, true);
   const getSourceFile = host.getSourceFile.bind(host);
   host.getSourceFile = (requested, languageVersion, onError, shouldCreate) =>
@@ -65,9 +75,9 @@ export const extractTypeTable = async (
 ): Promise<TypeTableProperty[]> => {
   const { name, path, root = process.cwd(), source } = options;
   const tsModule = await import("typescript");
-  const ts = (tsModule.default ?? tsModule) as typeof TypeScriptApi;
+  const ts = (tsModule.default ?? tsModule) as TypeScriptApi;
 
-  const compilerOptions: TypeScriptApi.CompilerOptions = {
+  const compilerOptions: CompilerOptions = {
     allowJs: true,
     module: ts.ModuleKind.ESNext,
     moduleResolution: ts.ModuleResolutionKind.Bundler,
@@ -78,7 +88,7 @@ export const extractTypeTable = async (
   };
 
   let fileName: string;
-  let program: TypeScriptApi.Program;
+  let program: Program;
   if (source === undefined) {
     if (path === undefined) {
       throw new Error("AutoTypeTable needs a `path` or inline `type` source.");
@@ -100,7 +110,7 @@ export const extractTypeTable = async (
   }
 
   const declaration = sourceFile.statements.find(
-    (statement): statement is TypeScriptApi.DeclarationStatement =>
+    (statement): statement is DeclarationStatement =>
       (ts.isInterfaceDeclaration(statement) ||
         ts.isTypeAliasDeclaration(statement)) &&
       statement.name?.text === name

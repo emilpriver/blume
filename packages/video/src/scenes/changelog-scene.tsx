@@ -72,6 +72,20 @@ const TAG_STYLES: Record<Entry["category"], { bg: string; fg: string }> = {
   Release: { bg: "rgba(111,66,193,0.12)", fg: "#6f42c1" },
 };
 
+const rssLabelStyle = {
+  alignItems: "center",
+  color: MUTED,
+  display: "flex",
+  fontFamily: SANS,
+  fontSize: 12,
+  fontWeight: 600,
+  gap: 6,
+  position: "absolute",
+  right: 18,
+  top: "50%",
+  transform: "translateY(-50%)",
+} as const;
+
 const TrafficLight = ({ color }: { color: string }) => (
   <span
     style={{
@@ -139,26 +153,28 @@ const Segment = ({
   active: boolean;
   icon: ReactNode;
   label: string;
-}) => (
-  <div
-    style={{
-      alignItems: "center",
-      color: active ? INK : MUTED,
-      display: "flex",
-      fontFamily: SANS,
-      fontSize: 12.5,
-      fontWeight: 600,
-      gap: 6,
-      justifyContent: "center",
-      position: "relative",
-      width: SEG_W,
-      zIndex: 1,
-    }}
-  >
-    {icon}
-    {label}
-  </div>
-);
+}) => {
+  const segmentStyle = {
+    alignItems: "center",
+    color: active ? INK : MUTED,
+    display: "flex",
+    fontFamily: SANS,
+    fontSize: 12.5,
+    fontWeight: 600,
+    gap: 6,
+    justifyContent: "center",
+    position: "relative",
+    width: SEG_W,
+    zIndex: 1,
+  } as const;
+
+  return (
+    <div style={segmentStyle}>
+      {icon}
+      {label}
+    </div>
+  );
+};
 
 // One release on the vertical rail: a dot, a connecting line (except the last),
 // and the version + category tag + a verbose, optionally bulleted note beside it.
@@ -237,6 +253,7 @@ const TimelineRow = ({
               borderRadius: 6,
               color: tag.fg,
               fontFamily: SANS,
+              // oxlint-disable-next-line react-doctor/no-tiny-text -- intentional video visual — tag type size tuned for launch render
               fontSize: 11.5,
               fontWeight: 600,
               padding: "2px 8px",
@@ -326,6 +343,46 @@ export const ChangelogScene = () => {
   });
   const subOp = interpolate(frame, [42, 64], [0, 1], clamp);
 
+  const leftCardStyle = {
+    // oxlint-disable-next-line react-doctor/no-large-animated-blur -- intentional video visual — frosted-glass blur radius tuned for launch render
+    WebkitBackdropFilter: "blur(16px)",
+    // oxlint-disable-next-line react-doctor/no-large-animated-blur -- intentional video visual — frosted-glass blur radius tuned for launch render
+    backdropFilter: "blur(16px)",
+    background: "rgba(255,255,255,0.82)",
+    border: "1px solid rgba(255,255,255,0.85)",
+    borderRadius: 14,
+    boxShadow:
+      "0 30px 70px rgba(30,40,60,0.24), inset 0 1px 0 rgba(255,255,255,0.8)",
+    flex: "0 0 auto",
+    opacity: cardOpacity,
+    overflow: "hidden",
+    transform: `translateX(${cardX}px) scale(${cardScale})`,
+    width: CARD_W,
+  } as const;
+
+  const toggleThumbStyle = {
+    background: WHITE,
+    borderRadius: 999,
+    boxShadow: "0 1px 3px rgba(20,30,50,0.16)",
+    height: 28,
+    left: 3,
+    position: "absolute",
+    top: 3,
+    transform: `translateX(${activeX}px)`,
+    width: SEG_W,
+  } as const;
+
+  const titleStyle = {
+    color: WHITE,
+    fontFamily: SANS,
+    fontSize: 46,
+    fontWeight: 600,
+    letterSpacing: "-0.03em",
+    lineHeight: 1.08,
+    opacity: titleOp,
+    transform: `translateY(${titleY}px)`,
+  } as const;
+
   return (
     <AbsoluteFill
       style={{
@@ -336,22 +393,7 @@ export const ChangelogScene = () => {
       }}
     >
       {/* Left — the generated /changelog timeline */}
-      <div
-        style={{
-          WebkitBackdropFilter: "blur(16px)",
-          backdropFilter: "blur(16px)",
-          background: "rgba(255,255,255,0.82)",
-          border: "1px solid rgba(255,255,255,0.85)",
-          borderRadius: 14,
-          boxShadow:
-            "0 30px 70px rgba(30,40,60,0.24), inset 0 1px 0 rgba(255,255,255,0.8)",
-          flex: "0 0 auto",
-          opacity: cardOpacity,
-          overflow: "hidden",
-          transform: `translateX(${cardX}px) scale(${cardScale})`,
-          width: CARD_W,
-        }}
-      >
+      <div style={leftCardStyle}>
         {/* browser chrome */}
         <div
           style={{
@@ -404,19 +446,7 @@ export const ChangelogScene = () => {
               position: "relative",
             }}
           >
-            <div
-              style={{
-                background: WHITE,
-                borderRadius: 999,
-                boxShadow: "0 1px 3px rgba(20,30,50,0.16)",
-                height: 28,
-                left: 3,
-                position: "absolute",
-                top: 3,
-                transform: `translateX(${activeX}px)`,
-                width: SEG_W,
-              }}
-            />
+            <div style={toggleThumbStyle} />
             <Segment
               active={!githubActive}
               icon={<PencilIcon color={githubActive ? MUTED : INK} size={13} />}
@@ -428,21 +458,7 @@ export const ChangelogScene = () => {
               label="GitHub Releases"
             />
           </div>
-          <div
-            style={{
-              alignItems: "center",
-              color: MUTED,
-              display: "flex",
-              fontFamily: SANS,
-              fontSize: 12,
-              fontWeight: 600,
-              gap: 6,
-              position: "absolute",
-              right: 18,
-              top: "50%",
-              transform: "translateY(-50%)",
-            }}
-          >
+          <div style={rssLabelStyle}>
             <RssIcon color={MUTED} size={13} />
             RSS
           </div>
@@ -470,20 +486,7 @@ export const ChangelogScene = () => {
           width: RIGHT_W,
         }}
       >
-        <div
-          style={{
-            color: WHITE,
-            fontFamily: SANS,
-            fontSize: 46,
-            fontWeight: 600,
-            letterSpacing: "-0.03em",
-            lineHeight: 1.08,
-            opacity: titleOp,
-            transform: `translateY(${titleY}px)`,
-          }}
-        >
-          Hand-write it, or let GitHub write it.
-        </div>
+        <div style={titleStyle}>Hand-write it, or let GitHub write it.</div>
         <div
           style={{
             color: WHITE_MUTED,

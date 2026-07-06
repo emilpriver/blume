@@ -126,6 +126,8 @@ const collectImports = (
   sourceFile: ts.SourceFile
 ): Map<string, ImportBinding> => {
   const map = new Map<string, ImportBinding>();
+  // Extracting the body into an early-returning helper regressed coverage.
+  // oxlint-disable-next-line sonarjs/too-many-break-or-continue-in-loop
   for (const statement of sourceFile.statements) {
     if (
       !ts.isImportDeclaration(statement) ||
@@ -238,6 +240,8 @@ const readDescriptor = (
   dir: string
 ): RawDescriptor => {
   const descriptor: RawDescriptor = { hadComponent: false, source: null };
+  // Extracting the body into an early-returning helper regressed coverage.
+  // oxlint-disable-next-line sonarjs/too-many-break-or-continue-in-loop
   for (const property of object.properties) {
     if (ts.isShorthandPropertyAssignment(property)) {
       if (property.name.text === "component") {
@@ -447,14 +451,17 @@ export const analyzeComponentOverrides = (
 
   const imports = collectImports(sourceFile);
   const dir = dirname(filePath);
+  const groupNames = new Set<string>(GROUPS);
 
+  // Extracting the body into an early-returning helper regressed coverage.
+  // oxlint-disable-next-line sonarjs/too-many-break-or-continue-in-loop
   for (const property of object.properties) {
     if (!ts.isPropertyAssignment(property)) {
       continue;
     }
     const name = propName(property.name);
     if (
-      !(name && (GROUPS as readonly string[]).includes(name)) ||
+      !(name && groupNames.has(name)) ||
       !ts.isObjectLiteralExpression(property.initializer)
     ) {
       continue;

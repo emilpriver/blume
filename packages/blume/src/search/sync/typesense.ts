@@ -40,10 +40,12 @@ export const syncTypesense = async (
   });
 
   const collection = client.collections(config.collection);
-  const exists = await collection
-    .retrieve()
-    .then(() => true)
-    .catch(() => false);
+  let exists = true;
+  try {
+    await collection.retrieve();
+  } catch {
+    exists = false;
+  }
   if (exists) {
     await collection.delete();
   }

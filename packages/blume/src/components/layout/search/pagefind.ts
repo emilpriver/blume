@@ -21,6 +21,9 @@ interface PagefindModule {
 export const createSearch = async (opts: {
   url: string;
 }): Promise<SearchFn> => {
+  // The pagefind bundle lives in the built site (not node_modules) and is
+  // resolved at runtime by URL — it can't be a static, code-splittable path.
+  // oxlint-disable-next-line react-doctor/no-dynamic-import-path
   const pagefind = (await import(
     /* @vite-ignore */
     opts.url

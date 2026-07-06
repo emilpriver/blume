@@ -104,27 +104,29 @@ export const SeoAeoScene = () => {
   });
   const subOpacity = interpolate(frame, [80, 100], [0, 1], clamp);
 
+  const cardStyle = {
+    // oxlint-disable-next-line react-doctor/no-large-animated-blur -- intentional video visual — frosted-glass blur radius tuned for launch render
+    WebkitBackdropFilter: "blur(16px)",
+    // oxlint-disable-next-line react-doctor/no-large-animated-blur -- intentional video visual — frosted-glass blur radius tuned for launch render
+    backdropFilter: "blur(16px)",
+    background: "rgba(255,255,255,0.82)",
+    border: "1px solid rgba(255,255,255,0.85)",
+    borderRadius: 14,
+    boxShadow:
+      "0 30px 70px rgba(30,40,60,0.24), inset 0 1px 0 rgba(255,255,255,0.8)",
+    marginTop: 80,
+    opacity: cardOpacity,
+    overflow: "hidden",
+    transform: `translateY(${cardY}px) scale(${cardScale})`,
+    width: CARD_W,
+  } as const;
+
   return (
     <AbsoluteFill
       style={{ alignItems: "center", justifyContent: "flex-start" }}
     >
       {/* config card — centered, wider, and mostly opaque so the code reads clearly */}
-      <div
-        style={{
-          WebkitBackdropFilter: "blur(16px)",
-          backdropFilter: "blur(16px)",
-          background: "rgba(255,255,255,0.82)",
-          border: "1px solid rgba(255,255,255,0.85)",
-          borderRadius: 14,
-          boxShadow:
-            "0 30px 70px rgba(30,40,60,0.24), inset 0 1px 0 rgba(255,255,255,0.8)",
-          marginTop: 80,
-          opacity: cardOpacity,
-          overflow: "hidden",
-          transform: `translateY(${cardY}px) scale(${cardScale})`,
-          width: CARD_W,
-        }}
-      >
+      <div style={cardStyle}>
         <div
           style={{
             alignItems: "center",
@@ -177,6 +179,7 @@ export const SeoAeoScene = () => {
             });
             return (
               <div
+                // oxlint-disable-next-line react-doctor/no-array-index-as-key -- static config listing with duplicate lines (`},`); index is the only stable key
                 key={i}
                 style={{ opacity, transform: `translateY(${ty}px)` }}
               >

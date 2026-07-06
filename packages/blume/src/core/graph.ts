@@ -13,19 +13,21 @@ import type {
   PageRecord,
 } from "./types.ts";
 
-/** Assemble the content graph: routes map, nav, and duplicate diagnostics. */
-export const buildContentGraph = (
-  pages: PageRecord[],
-  options: {
-    folderMeta: Map<string, FolderMeta>;
-    sharedFolderMeta?: Map<string, FolderMeta>;
-    navigation: ResolvedConfig["navigation"];
-    i18n?: ResolvedI18nConfig;
-  }
-): ContentGraph => {
+interface BuildContentGraphOptions {
+  folderMeta: Map<string, FolderMeta>;
+  sharedFolderMeta?: Map<string, FolderMeta>;
+  navigation: ResolvedConfig["navigation"];
+  i18n?: ResolvedI18nConfig;
+}
+
+type FallbackLocale = ReturnType<typeof resolveFallbackLocale>;
+
+/** Build the route → page-id map, flagging any duplicate-route collisions. */
+const collectRoutes = (
+  pages: PageRecord[]
+): { diagnostics: Diagnostic[]; routes: Map<string, string> } => {
   const routes = new Map<string, string>();
   const diagnostics: Diagnostic[] = [];
-
   for (const page of pages) {
     const existing = routes.get(page.route);
     if (existing) {
@@ -40,94 +42,147 @@ export const buildContentGraph = (
     }
     routes.set(page.route, page.id);
   }
+  return { diagnostics, routes };
+};
 
-  const { i18n } = options;
-  const navigationByLocale: Record<string, Navigation> = {};
-  let navigation: Navigation;
-
-  if (i18n) {
-    // Pages of the fallback locale, by translation key — used to fill in a
-    // locale's sidebar for pages it hasn't translated yet, so navigation mirrors
-    // the default structure instead of showing an empty (or partial) tree.
-    const fallback = resolveFallbackLocale(i18n);
-    const fallbackByKey = new Map<string, PageRecord>();
-    if (fallback) {
-      for (const page of pages) {
-        if (page.locale === fallback) {
-          fallbackByKey.set(page.translationKey, page);
-        }
-      }
-    }
-
-    // Each locale gets an independent tree from its own pages and folder meta,
-    // so navigation may diverge per language.
-    for (const { code } of i18n.locales) {
-      // Localize internal tab paths so a header tab points to its in-locale
-      // route (e.g. `/docs` -> `/fr/docs`); external paths pass through.
-      const tabs = options.navigation.tabs?.map((tab) => ({
-        ...tab,
-        path: tab.path.startsWith("/")
-          ? localizeRoute(tab.path, code, i18n)
-          : tab.path,
-      }));
-
-      const real = pages.filter((page) => page.locale === code);
-      let localePages = real;
-      if (fallback && code !== fallback) {
-        const present = new Set(real.map((page) => page.translationKey));
-        const filled: PageRecord[] = [];
-        for (const [key, source] of fallbackByKey) {
-          if (!present.has(key)) {
-            filled.push({
-              ...source,
-              locale: code,
-              route: localizeRoute(key, code, i18n),
-            });
-          }
-        }
-        localePages = [...real, ...filled];
-      }
-
-      navigationByLocale[code] = buildNavigation(localePages, {
-        display: options.navigation.sidebar.display,
-        featured: options.navigation.featured,
-        folderMeta: options.folderMeta,
-        // Meta files live in locale directories only under the `dir` parser
-        // (`fr/guides/meta.ts` -> key `fr/guides`). Under `dot`, translations
-        // sit next to the originals and `guides/meta.ts` applies to every
-        // locale — prefixing would look up keys that can never exist.
-        metaPrefix:
-          i18n.parser === "dir" && code !== i18n.defaultLocale ? code : "",
-        refByLogical: true,
-        selectors: options.navigation.selectors,
-        sharedFolderMeta: options.sharedFolderMeta,
-        sidebar: options.navigation.sidebar.items,
-        tabs,
+/**
+ * A locale's pages, padded with fallback-locale entries for any translation it
+ * hasn't authored yet, so navigation mirrors the default structure instead of
+ * showing an empty (or partial) tree.
+ */
+const localePagesFor = (
+  code: string,
+  real: PageRecord[],
+  fallback: FallbackLocale,
+  fallbackByKey: Map<string, PageRecord>,
+  i18n: ResolvedI18nConfig
+): PageRecord[] => {
+  if (!(fallback && code !== fallback)) {
+    return real;
+  }
+  const present = new Set(real.map((page) => page.translationKey));
+  const filled: PageRecord[] = [];
+  for (const [key, source] of fallbackByKey) {
+    if (!present.has(key)) {
+      filled.push({
+        ...source,
+        locale: code,
+        route: localizeRoute(key, code, i18n),
       });
     }
-    navigation = navigationByLocale[i18n.defaultLocale] ?? {
-      featured: [],
-      selectors: [],
-      sidebar: [],
-      tabs: [],
-    };
-  } else {
-    navigation = buildNavigation(pages, {
-      display: options.navigation.sidebar.display,
-      featured: options.navigation.featured,
-      folderMeta: options.folderMeta,
-      selectors: options.navigation.selectors,
-      sharedFolderMeta: options.sharedFolderMeta,
-      sidebar: options.navigation.sidebar.items,
-      tabs: options.navigation.tabs,
-    });
   }
+  return [...real, ...filled];
+};
+
+/** Build one locale's navigation tree from its own pages and folder meta. */
+const buildLocaleNavigation = (
+  code: string,
+  pages: PageRecord[],
+  fallback: FallbackLocale,
+  fallbackByKey: Map<string, PageRecord>,
+  options: BuildContentGraphOptions,
+  i18n: ResolvedI18nConfig
+): Navigation => {
+  // Localize internal tab paths so a header tab points to its in-locale route
+  // (e.g. `/docs` -> `/fr/docs`); external paths pass through.
+  const tabs = options.navigation.tabs?.map((tab) => ({
+    ...tab,
+    path: tab.path.startsWith("/")
+      ? localizeRoute(tab.path, code, i18n)
+      : tab.path,
+  }));
+  const real = pages.filter((page) => page.locale === code);
+  const localePages = localePagesFor(code, real, fallback, fallbackByKey, i18n);
+  return buildNavigation(localePages, {
+    display: options.navigation.sidebar.display,
+    featured: options.navigation.featured,
+    folderMeta: options.folderMeta,
+    // Meta files live in locale directories only under the `dir` parser
+    // (`fr/guides/meta.ts` -> key `fr/guides`). Under `dot`, translations sit
+    // next to the originals and `guides/meta.ts` applies to every locale —
+    // prefixing would look up keys that can never exist.
+    metaPrefix:
+      i18n.parser === "dir" && code !== i18n.defaultLocale ? code : "",
+    refByLogical: true,
+    selectors: options.navigation.selectors,
+    sharedFolderMeta: options.sharedFolderMeta,
+    sidebar: options.navigation.sidebar.items,
+    tabs,
+  });
+};
+
+/** Per-locale navigation trees plus the default-locale tree for i18n sites. */
+const buildI18nNavigation = (
+  pages: PageRecord[],
+  options: BuildContentGraphOptions,
+  i18n: ResolvedI18nConfig
+): {
+  navigation: Navigation;
+  navigationByLocale: Record<string, Navigation>;
+} => {
+  // Pages of the fallback locale, by translation key — used to fill in a
+  // locale's sidebar for pages it hasn't translated yet.
+  const fallback = resolveFallbackLocale(i18n);
+  const fallbackByKey = new Map<string, PageRecord>();
+  if (fallback) {
+    for (const page of pages) {
+      if (page.locale === fallback) {
+        fallbackByKey.set(page.translationKey, page);
+      }
+    }
+  }
+
+  // Each locale gets an independent tree, so navigation may diverge per language.
+  const navigationByLocale: Record<string, Navigation> = {};
+  for (const { code } of i18n.locales) {
+    navigationByLocale[code] = buildLocaleNavigation(
+      code,
+      pages,
+      fallback,
+      fallbackByKey,
+      options,
+      i18n
+    );
+  }
+  const navigation = navigationByLocale[i18n.defaultLocale] ?? {
+    featured: [],
+    selectors: [],
+    sidebar: [],
+    tabs: [],
+  };
+  return { navigation, navigationByLocale };
+};
+
+/** Assemble the content graph: routes map, nav, and duplicate diagnostics. */
+export const buildContentGraph = (
+  pages: PageRecord[],
+  options: BuildContentGraphOptions
+): ContentGraph => {
+  const { diagnostics, routes } = collectRoutes(pages);
+  const { i18n } = options;
+
+  const { navigation, navigationByLocale } = i18n
+    ? buildI18nNavigation(pages, options, i18n)
+    : {
+        navigation: buildNavigation(pages, {
+          display: options.navigation.sidebar.display,
+          featured: options.navigation.featured,
+          folderMeta: options.folderMeta,
+          selectors: options.navigation.selectors,
+          sharedFolderMeta: options.sharedFolderMeta,
+          sidebar: options.navigation.sidebar.items,
+          tabs: options.navigation.tabs,
+        }),
+        navigationByLocale: {} as Record<string, Navigation>,
+      };
 
   // Icon typos, duplicate labels, and hidden-page-in-sidebar are validated on
   // the built navigation. Missing-target detection needs the full route set
   // (incl. custom + generated pages), so it runs later in generateRuntime.
-  diagnostics.push(...validateNavIcons(navigation));
-  diagnostics.push(...validateNavStructure(navigation, pages));
+  diagnostics.push(
+    ...validateNavIcons(navigation),
+    ...validateNavStructure(navigation, pages)
+  );
 
   return {
     diagnostics,

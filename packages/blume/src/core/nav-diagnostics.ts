@@ -157,7 +157,7 @@ const hiddenInSidebarDiagnostics = (
   pages: PageRecord[]
 ): Diagnostic[] => {
   const hidden = new Set(
-    pages.filter((page) => page.meta.sidebar.hidden).map((page) => page.id)
+    pages.flatMap((page) => (page.meta.sidebar.hidden ? [page.id] : []))
   );
   if (hidden.size === 0) {
     return [];

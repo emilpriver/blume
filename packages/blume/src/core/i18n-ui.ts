@@ -153,7 +153,7 @@ const mergeUI = (base: UIStrings, override?: UIStringsOverride): UIStrings => {
  * pack so adopters get translated chrome out of the box. Re-exported here so the
  * resolver and existing imports keep a single entry point.
  */
-export { UI_PACKS };
+export { UI_PACKS } from "./ui-packs/index.ts";
 
 /** Case-insensitive index for region-variant lookup (`pt-br` -> `pt-BR`). */
 const PACKS_BY_LOWER: Record<string, UIStringsOverride> = Object.fromEntries(

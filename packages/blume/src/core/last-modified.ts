@@ -54,11 +54,13 @@ export const gitLastModifiedTimes = (
 ): Map<string, string> => {
   try {
     const gitRoot = execFileSync(
+      // oxlint-disable-next-line sonarjs/no-os-command-from-path -- git is a required dev-tool dependency resolved from PATH
       "git",
       ["-C", root, "rev-parse", "--show-toplevel"],
       { encoding: "utf-8" }
     ).trim();
     const output = execFileSync(
+      // oxlint-disable-next-line sonarjs/no-os-command-from-path -- git is a required dev-tool dependency resolved from PATH
       "git",
       [
         "-C",

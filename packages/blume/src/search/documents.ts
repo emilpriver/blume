@@ -65,9 +65,9 @@ const toPlainText = (markdown: string): string => {
   for (const match of withoutBlocks.matchAll(INLINE_CODE)) {
     const start = match.index ?? 0;
     pieces.push(
-      withoutBlocks.slice(cursor, start).replaceAll(HTML_OR_JSX, " ")
+      withoutBlocks.slice(cursor, start).replaceAll(HTML_OR_JSX, " "),
+      match.groups?.code ?? ""
     );
-    pieces.push(match.groups?.code ?? "");
     cursor = start + match[0].length;
   }
   pieces.push(withoutBlocks.slice(cursor).replaceAll(HTML_OR_JSX, " "));

@@ -113,25 +113,25 @@ const Segments = ({
 }: {
   segments: [string, string][];
   revealed: number;
-}) => {
-  let remaining = revealed;
-  return (
-    <>
-      {segments.map(([text, color], i) => {
-        if (remaining <= 0) {
-          return null;
-        }
-        const shown = text.slice(0, remaining);
-        remaining -= text.length;
-        return (
-          <span key={i} style={{ color }}>
-            {shown}
-          </span>
-        );
-      })}
-    </>
-  );
-};
+}) => (
+  <>
+    {segments.map(([text, color], i) => {
+      // Chars consumed by earlier segments — derived, never reassigned mid-render.
+      const start = segments
+        .slice(0, i)
+        .reduce((acc, [prev]) => acc + prev.length, 0);
+      const remaining = revealed - start;
+      if (remaining <= 0) {
+        return null;
+      }
+      return (
+        <span key={text} style={{ color }}>
+          {text.slice(0, remaining)}
+        </span>
+      );
+    })}
+  </>
+);
 
 const urlSegments = (text: string): [string, string][] => {
   const idx = text.indexOf("localhost");
@@ -145,6 +145,7 @@ const urlSegments = (text: string): [string, string][] => {
   ];
 };
 
+// oxlint-disable-next-line react-doctor/no-giant-component -- splitting this working Remotion scene risks the tightly choreographed render; not worth it
 export const DevPreview = () => {
   const frame = useCurrentFrame();
   const { fps } = useVideoConfig();
@@ -213,6 +214,24 @@ export const DevPreview = () => {
       activeIndex = i;
     }
   }
+
+  const terminalStyle = {
+    // oxlint-disable-next-line react-doctor/no-large-animated-blur -- intentional video visual — frosted-glass blur radius tuned for launch render
+    WebkitBackdropFilter: "blur(22px)",
+    // oxlint-disable-next-line react-doctor/no-large-animated-blur -- intentional video visual — frosted-glass blur radius tuned for launch render
+    backdropFilter: "blur(22px)",
+    background: "rgba(255,255,255,0.4)",
+    borderTop: "1px solid rgba(120,130,150,0.18)",
+    display: "flex",
+    flexDirection: "column",
+    height: TERMINAL_H,
+    left: 0,
+    opacity: termFade,
+    position: "absolute",
+    top: CONTENT_H,
+    transform: `translateY(${termOut}px)`,
+    width: CARD_W,
+  } as const;
 
   return (
     <AbsoluteFill style={{ alignItems: "center", justifyContent: "center" }}>
@@ -340,23 +359,7 @@ export const DevPreview = () => {
         </div>
 
         {/* Terminal — frosted glass; slides out the bottom during the split */}
-        <div
-          style={{
-            WebkitBackdropFilter: "blur(22px)",
-            backdropFilter: "blur(22px)",
-            background: "rgba(255,255,255,0.4)",
-            borderTop: "1px solid rgba(120,130,150,0.18)",
-            display: "flex",
-            flexDirection: "column",
-            height: TERMINAL_H,
-            left: 0,
-            opacity: termFade,
-            position: "absolute",
-            top: CONTENT_H,
-            transform: `translateY(${termOut}px)`,
-            width: CARD_W,
-          }}
-        >
+        <div style={terminalStyle}>
           <div
             style={{
               alignItems: "center",
@@ -430,7 +433,7 @@ export const DevPreview = () => {
 
               return (
                 <div
-                  key={i}
+                  key={line.text}
                   style={{
                     alignItems: "center",
                     display: "flex",

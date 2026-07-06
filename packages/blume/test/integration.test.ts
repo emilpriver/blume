@@ -210,6 +210,9 @@ describe("showBlumeErrorOverlay", () => {
 
     expect(payload).toEqual({
       err: {
+        // Asserts the overlay payload carries an explicit `id: undefined`;
+        // null would change the equality check.
+        // oxlint-disable-next-line sonarjs/no-undefined-assignment
         id: undefined,
         message: "Blume found 1 error(s):\n\n[BLUME_UNMAPPED] boom",
         plugin: "blume",

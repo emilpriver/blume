@@ -37,49 +37,48 @@ const REGEX_SPECIAL = /[.*+?^${}()|[\]\\]/u;
 const escapeChar = (char: string): string =>
   REGEX_SPECIAL.test(char) ? `\\${char}` : char;
 
+/** Translate one glob token at `i` into RegExp source + the next index. */
+const globToken = (
+  pattern: string,
+  i: number
+): { source: string; next: number } => {
+  const char = pattern[i] ?? "";
+  if (char === "*") {
+    if (pattern[i + 1] === "*") {
+      // `**/` spans zero or more whole segments — `docs/**/guide.md` must
+      // match `docs/guide.md` and `docs/a/guide.md` but not `docs/subguide.md`.
+      if (pattern[i + 2] === "/") {
+        return { next: i + 3, source: "(?:.*/)?" };
+      }
+      return { next: i + 2, source: ".*" };
+    }
+    return { next: i + 1, source: "[^/]*" };
+  }
+  if (char === "?") {
+    return { next: i + 1, source: "[^/]" };
+  }
+  if (char === "{") {
+    const end = pattern.indexOf("}", i);
+    if (end !== -1) {
+      const options = pattern
+        .slice(i + 1, end)
+        .split(",")
+        .map((part) => [...part].map(escapeChar).join(""))
+        .join("|");
+      return { next: end + 1, source: `(?:${options})` };
+    }
+  }
+  return { next: i + 1, source: escapeChar(char) };
+};
+
 /** Compile a glob (`**`, `*`, `?`, `{a,b}`) into an anchored RegExp. */
 const globToRegExp = (pattern: string): RegExp => {
   let source = "";
   let i = 0;
   while (i < pattern.length) {
-    const char = pattern[i] ?? "";
-    if (char === "*") {
-      if (pattern[i + 1] === "*") {
-        i += 2;
-        // `**/` spans zero or more whole segments — `docs/**/guide.md` must
-        // match `docs/guide.md` and `docs/a/guide.md` but not `docs/subguide.md`.
-        if (pattern[i] === "/") {
-          i += 1;
-          source += "(?:.*/)?";
-        } else {
-          source += ".*";
-        }
-        continue;
-      }
-      source += "[^/]*";
-      i += 1;
-      continue;
-    }
-    if (char === "?") {
-      source += "[^/]";
-      i += 1;
-      continue;
-    }
-    if (char === "{") {
-      const end = pattern.indexOf("}", i);
-      if (end !== -1) {
-        const options = pattern
-          .slice(i + 1, end)
-          .split(",")
-          .map((part) => [...part].map(escapeChar).join(""))
-          .join("|");
-        source += `(?:${options})`;
-        i = end + 1;
-        continue;
-      }
-    }
-    source += escapeChar(char);
-    i += 1;
+    const token = globToken(pattern, i);
+    source += token.source;
+    i = token.next;
   }
   return new RegExp(`^${source}$`, "u");
 };
@@ -137,15 +136,22 @@ const enumerateGithub = async (
     truncated?: boolean;
   };
   const prefix = base ? `${base}/` : "";
-  const refs = (body.tree ?? [])
-    .filter((node) => node.type === "blob" && node.path.startsWith(prefix))
-    .map((node) => node.path.slice(prefix.length))
-    .filter((rel) => matchesInclude(rel, include))
-    .map((rel) => ({
-      editUrl: `https://github.com/${owner}/${repo}/edit/${ref}/${prefix}${rel}`,
-      fetchUrl: `https://raw.githubusercontent.com/${owner}/${repo}/${ref}/${prefix}${rel}`,
-      ref: rel,
-    }));
+  const refs = (body.tree ?? []).flatMap((node) => {
+    if (!(node.type === "blob" && node.path.startsWith(prefix))) {
+      return [];
+    }
+    const rel = node.path.slice(prefix.length);
+    if (!matchesInclude(rel, include)) {
+      return [];
+    }
+    return [
+      {
+        editUrl: `https://github.com/${owner}/${repo}/edit/${ref}/${prefix}${rel}`,
+        fetchUrl: `https://raw.githubusercontent.com/${owner}/${repo}/${ref}/${prefix}${rel}`,
+        ref: rel,
+      },
+    ];
+  });
   // GitHub caps the recursive tree response (~100k entries / 7MB) and flags it
   // with `truncated`; ignoring it would silently import only part of the repo.
   return { refs, truncated: body.truncated === true };
@@ -173,13 +179,11 @@ export const mdxRemoteSource = (
     }
     if (options.files && options.url) {
       const base = options.url.replace(/\/$/u, "");
-      const refs = options.files
-        .filter((ref) => matchesInclude(ref, options.include))
-        .map((ref) => ({
-          editUrl: `${base}/${ref}`,
-          fetchUrl: `${base}/${ref}`,
-          ref,
-        }));
+      const refs = options.files.flatMap((ref) =>
+        matchesInclude(ref, options.include)
+          ? [{ editUrl: `${base}/${ref}`, fetchUrl: `${base}/${ref}`, ref }]
+          : []
+      );
       return { refs, truncated: false };
     }
     throw new BlumeError({

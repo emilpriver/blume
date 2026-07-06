@@ -20,35 +20,40 @@ export const createDiagnostic = (diagnostic: Diagnostic): Diagnostic =>
 /** Docs site base; diagnostic help links resolve against it. */
 const DOCS_BASE = "https://useblume.dev";
 
+const DOCS_DEPLOYMENT = "/docs/deployment";
+const DOCS_REFERENCE_CLI = "/docs/reference/cli";
+const DOCS_CONTENT_SOURCES = "/docs/content/sources";
+const DOCS_CONTENT_NAVIGATION = "/docs/content/navigation";
+
 /** Diagnostic code → the docs page that explains it. */
 const DOCS_PATHS: Record<string, string> = {
-  BLUME_ADAPTER_REQUIRED: "/docs/deployment",
-  BLUME_ASSETS_UNCHECKED: "/docs/reference/cli",
-  BLUME_ASSET_FETCH_FAILED: "/docs/content/sources",
-  BLUME_BROKEN_ANCHOR: "/docs/reference/cli",
-  BLUME_BROKEN_ASSET: "/docs/reference/cli",
-  BLUME_BROKEN_LINK: "/docs/reference/cli",
+  BLUME_ADAPTER_REQUIRED: DOCS_DEPLOYMENT,
+  BLUME_ASSETS_UNCHECKED: DOCS_REFERENCE_CLI,
+  BLUME_ASSET_FETCH_FAILED: DOCS_CONTENT_SOURCES,
+  BLUME_BROKEN_ANCHOR: DOCS_REFERENCE_CLI,
+  BLUME_BROKEN_ASSET: DOCS_REFERENCE_CLI,
+  BLUME_BROKEN_LINK: DOCS_REFERENCE_CLI,
   BLUME_CONFIG_INVALID: "/docs/configuration",
   BLUME_CONFIG_LOAD_FAILED: "/docs/configuration",
-  BLUME_CONTENT_ROOT_MISSING: "/docs/content/sources",
-  BLUME_DEAD_LINK: "/docs/reference/cli",
-  BLUME_DUPLICATE_ROUTE: "/docs/content/navigation",
+  BLUME_CONTENT_ROOT_MISSING: DOCS_CONTENT_SOURCES,
+  BLUME_DEAD_LINK: DOCS_REFERENCE_CLI,
+  BLUME_DUPLICATE_ROUTE: DOCS_CONTENT_NAVIGATION,
   BLUME_FRONTMATTER_INVALID: "/docs/reference/frontmatter",
   BLUME_META_INVALID: "/docs/content/meta",
   BLUME_META_LOAD_FAILED: "/docs/content/meta",
-  BLUME_MISSING_SECRET: "/docs/deployment",
-  BLUME_NAV_DUPLICATE_LABEL: "/docs/content/navigation",
-  BLUME_NAV_HIDDEN_IN_SIDEBAR: "/docs/content/navigation",
-  BLUME_NAV_MISSING_PAGE: "/docs/content/navigation",
+  BLUME_MISSING_SECRET: DOCS_DEPLOYMENT,
+  BLUME_NAV_DUPLICATE_LABEL: DOCS_CONTENT_NAVIGATION,
+  BLUME_NAV_HIDDEN_IN_SIDEBAR: DOCS_CONTENT_NAVIGATION,
+  BLUME_NAV_MISSING_PAGE: DOCS_CONTENT_NAVIGATION,
   BLUME_NODE_VERSION: "/docs/quickstart",
-  BLUME_SERVER_FEATURE_REQUIRED: "/docs/deployment",
-  BLUME_SOURCE_FETCH_FAILED: "/docs/content/sources",
-  BLUME_SOURCE_MISCONFIGURED: "/docs/content/sources",
-  BLUME_SOURCE_OFFLINE: "/docs/content/sources",
-  BLUME_SOURCE_SDK_MISSING: "/docs/content/sources",
-  BLUME_SOURCE_UNAVAILABLE: "/docs/content/sources",
+  BLUME_SERVER_FEATURE_REQUIRED: DOCS_DEPLOYMENT,
+  BLUME_SOURCE_FETCH_FAILED: DOCS_CONTENT_SOURCES,
+  BLUME_SOURCE_MISCONFIGURED: DOCS_CONTENT_SOURCES,
+  BLUME_SOURCE_OFFLINE: DOCS_CONTENT_SOURCES,
+  BLUME_SOURCE_SDK_MISSING: DOCS_CONTENT_SOURCES,
+  BLUME_SOURCE_UNAVAILABLE: DOCS_CONTENT_SOURCES,
   BLUME_UNKNOWN_COMPONENT: "/docs/configuration/customization",
-  BLUME_UNKNOWN_ICON: "/docs/content/navigation",
+  BLUME_UNKNOWN_ICON: DOCS_CONTENT_NAVIGATION,
 };
 
 /** The docs URL that explains a diagnostic code, if one is mapped. */
@@ -74,6 +79,29 @@ const escapeRegExp = (value: string): string =>
  * lands under its parent. Array indices are skipped. Returns 1-based line/column,
  * or undefined when nothing matches.
  */
+const stepSegment = (
+  source: string,
+  segment: string | number,
+  cursor: number
+): { index: number; next: number; stop: boolean } => {
+  // A non-string path segment (array index) is skipped without moving on.
+  if (typeof segment !== "string") {
+    return { index: -1, next: cursor, stop: false };
+  }
+  // The negative lookbehind keeps a segment like `title` from matching the
+  // tail of an unrelated key such as `subtitle:`.
+  const matcher = new RegExp(
+    `(?<![\\w$])${escapeRegExp(segment)}\\s*[:=]`,
+    "gu"
+  );
+  matcher.lastIndex = cursor;
+  const match = matcher.exec(source);
+  if (!match) {
+    return { index: -1, next: cursor, stop: true };
+  }
+  return { index: match.index, next: matcher.lastIndex, stop: false };
+};
+
 const locatePath = (
   source: string,
   path: readonly (string | number)[]
@@ -81,22 +109,14 @@ const locatePath = (
   let cursor = 0;
   let found = -1;
   for (const segment of path) {
-    if (typeof segment !== "string") {
-      continue;
-    }
-    // The negative lookbehind keeps a segment like `title` from matching the
-    // tail of an unrelated key such as `subtitle:`.
-    const matcher = new RegExp(
-      `(?<![\\w$])${escapeRegExp(segment)}\\s*[:=]`,
-      "gu"
-    );
-    matcher.lastIndex = cursor;
-    const match = matcher.exec(source);
-    if (!match) {
+    const step = stepSegment(source, segment, cursor);
+    if (step.stop) {
       break;
     }
-    found = match.index;
-    cursor = matcher.lastIndex;
+    cursor = step.next;
+    if (step.index >= 0) {
+      found = step.index;
+    }
   }
   if (found < 0) {
     return;

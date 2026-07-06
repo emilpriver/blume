@@ -158,12 +158,11 @@ export const scanProject = async (
   // Folder meta is discovered per filesystem source, under each source's own
   // root and keyed by its route prefix, so a prefixed/root-differing source's
   // `meta.ts` still lines up with its (prefixed) sidebar group path.
-  const metaSources: FolderMetaSource[] = sources
-    .filter((source) => !source.staged && source.contentRoot)
-    .map((source) => ({
-      prefix: source.prefix,
-      root: source.contentRoot ?? "",
-    }));
+  const metaSources: FolderMetaSource[] = sources.flatMap((source) =>
+    source.staged || !source.contentRoot
+      ? []
+      : [{ prefix: source.prefix, root: source.contentRoot }]
+  );
 
   // Run every source's `load()` in parallel, then funnel each entry through the
   // shared `normalizeEntry` so route mapping is identical regardless of origin.
@@ -172,9 +171,9 @@ export const scanProject = async (
   // `discoverFolderMeta`).
   const localeDirs =
     config.i18n && config.i18n.parser === "dir"
-      ? config.i18n.locales
-          .map((locale) => locale.code)
-          .filter((code) => code !== config.i18n?.defaultLocale)
+      ? config.i18n.locales.flatMap((locale) =>
+          locale.code === config.i18n?.defaultLocale ? [] : [locale.code]
+        )
       : undefined;
 
   const [loaded, folderMeta] = await Promise.all([

@@ -112,6 +112,7 @@ export const extractOperations = (
 ): { operations: ApiOperationRef[]; tags: ApiTagRef[] } => {
   const operations: ApiOperationRef[] = [];
   const tagOrder: string[] = [];
+  const tagsSeen = new Set<string>();
   const tagMeta = new Map(
     (document.tags ?? []).map((tag) => [tag.name, tag.description ?? ""])
   );
@@ -129,7 +130,8 @@ export const extractOperations = (
       }
       const tag = operation.tags?.[0] ?? UNTAGGED;
       const tagSlug = slugify(tag) || "operations";
-      if (!tagOrder.includes(tag)) {
+      if (!tagsSeen.has(tag)) {
+        tagsSeen.add(tag);
         tagOrder.push(tag);
       }
       let key = operationKey(method, path, operation.operationId);

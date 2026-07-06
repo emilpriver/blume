@@ -11,4 +11,26 @@ export type {
   IslandDescriptor,
 } from "../core/define-components.ts";
 export type { HydrationMode } from "../core/schema.ts";
-export type * from "./props.ts";
+export type {
+  AccordionItemProps,
+  AccordionProps,
+  BadgeProps,
+  CalloutProps,
+  CardGroupProps,
+  CardProps,
+  CodeGroupProps,
+  ColumnProps,
+  ColumnsProps,
+  ExpandableProps,
+  FrameProps,
+  IconProps,
+  PanelProps,
+  PromptProps,
+  StepProps,
+  StepsProps,
+  TabProps,
+  TabsProps,
+  TileProps,
+  TooltipProps,
+  YouTubeProps,
+} from "./props.ts";

@@ -21,38 +21,65 @@ import { dirname, isAbsolute, join, resolve } from "pathe";
  * aliases (the prior behavior).
  */
 
+interface ScanStep {
+  append: string;
+  inString: boolean;
+  next: number;
+}
+
+/** Scan one character (or comment/escape run) starting at `index`. */
+const scanJsonChar = (
+  text: string,
+  index: number,
+  inString: boolean
+): ScanStep => {
+  const char = text[index];
+  if (inString) {
+    if (char === "\\") {
+      return {
+        append: char + (text[index + 1] ?? ""),
+        inString: true,
+        next: index + 2,
+      };
+    }
+    return { append: char ?? "", inString: char !== '"', next: index + 1 };
+  }
+  if (char === '"') {
+    return { append: char, inString: true, next: index + 1 };
+  }
+  if (char === "/" && text[index + 1] === "/") {
+    const newline = text.indexOf("\n", index + 2);
+    return {
+      append: "",
+      inString: false,
+      next: newline === -1 ? text.length : newline,
+    };
+  }
+  if (char === "/" && text[index + 1] === "*") {
+    const end = text.indexOf("*/", index + 2);
+    return {
+      append: "",
+      inString: false,
+      next: end === -1 ? text.length : end + 2,
+    };
+  }
+  return { append: char ?? "", inString: false, next: index + 1 };
+};
+
 /** Strip `//` line and `/* *\/` block comments that sit outside strings. */
 const stripJsonComments = (text: string): string => {
   let out = "";
   let inString = false;
-  for (let index = 0; index < text.length; index += 1) {
-    const char = text[index];
-    if (inString) {
-      out += char;
-      if (char === "\\") {
-        out += text[index + 1] ?? "";
-        index += 1;
-      } else if (char === '"') {
-        inString = false;
-      }
-      continue;
-    }
-    if (char === '"') {
-      inString = true;
-      out += char;
-      continue;
-    }
-    if (char === "/" && text[index + 1] === "/") {
-      const newline = text.indexOf("\n", index + 2);
-      index = newline === -1 ? text.length : newline - 1;
-      continue;
-    }
-    if (char === "/" && text[index + 1] === "*") {
-      const end = text.indexOf("*/", index + 2);
-      index = end === -1 ? text.length : end + 1;
-      continue;
-    }
-    out += char;
+  let index = 0;
+  while (index < text.length) {
+    const {
+      append,
+      inString: nextInString,
+      next,
+    } = scanJsonChar(text, index, inString);
+    out += append;
+    inString = nextInString;
+    index = next;
   }
   return out;
 };
@@ -97,10 +124,12 @@ const resolveExtends = (spec: string, fromDir: string): string | null => {
   }
   // A bare specifier points at a package's shared config (e.g. `@tsconfig/*`).
   try {
-    const require_ = createRequire(pathToFileURL(join(fromDir, "_.js")).href);
+    const requireFromDir = createRequire(
+      pathToFileURL(join(fromDir, "_.js")).href
+    );
     for (const sub of [`${spec}/tsconfig.json`, spec]) {
       try {
-        return require_.resolve(sub);
+        return requireFromDir.resolve(sub);
       } catch {
         // try the next candidate
       }

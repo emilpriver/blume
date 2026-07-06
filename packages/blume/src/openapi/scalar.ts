@@ -88,6 +88,35 @@ const specConfiguration = async (
 };
 
 /**
+ * Accept one resolved reference into the deduped Scalar set, or return null to
+ * skip it (recording a warning for a route collision). Mutates `seen`.
+ */
+const acceptScalarReference = (
+  ref: ReferenceSource,
+  seen: Set<string>,
+  contentRoutes: ReadonlySet<string>,
+  warnings: string[]
+): ReferenceSource | null => {
+  if (ref.renderer !== "scalar") {
+    return null;
+  }
+  if (seen.has(ref.route)) {
+    warnings.push(
+      `Two API reference sources resolve to ${ref.route}; keeping the first.`
+    );
+    return null;
+  }
+  if (contentRoutes.has(ref.route)) {
+    warnings.push(
+      `API reference route ${ref.route} collides with a content page; skipping the reference there.`
+    );
+    return null;
+  }
+  seen.add(ref.route);
+  return ref;
+};
+
+/**
  * Build the Scalar reference page(s) for the project. Only Scalar-rendered
  * references are emitted here (Blume-rendered OpenAPI is staged content). Reads
  * local specs, maps the theme, and skips routes that collide with a content page
@@ -105,23 +134,10 @@ export const buildReferenceFiles = async (options: {
   const seen = new Set<string>();
   const accepted: ReferenceSource[] = [];
   for (const ref of resolveReferences(config)) {
-    if (ref.renderer !== "scalar") {
-      continue;
+    const next = acceptScalarReference(ref, seen, contentRoutes, warnings);
+    if (next) {
+      accepted.push(next);
     }
-    if (seen.has(ref.route)) {
-      warnings.push(
-        `Two API reference sources resolve to ${ref.route}; keeping the first.`
-      );
-      continue;
-    }
-    if (contentRoutes.has(ref.route)) {
-      warnings.push(
-        `API reference route ${ref.route} collides with a content page; skipping the reference there.`
-      );
-      continue;
-    }
-    seen.add(ref.route);
-    accepted.push(ref);
   }
 
   const built = await Promise.all(

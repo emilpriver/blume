@@ -454,8 +454,8 @@ export const contentConfigTemplate = (options: {
         // e.g. a prior `dist/*.mdx` render — and crash the content-module graph.
         // The runtime dir (`.blume`, or a custom distDir) is excluded precisely
         // by `outDirIgnore` instead, so it's left out of this baseline.
-        ...BLUME_IGNORE_DIRS.filter((dir) => dir !== ".blume").map(
-          (dir) => `!**/${dir}/**`
+        ...BLUME_IGNORE_DIRS.flatMap((dir) =>
+          dir === ".blume" ? [] : [`!**/${dir}/**`]
         ),
         ...outDirIgnore,
       ]

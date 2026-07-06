@@ -142,29 +142,46 @@ export const referenceTabs = (config: ResolvedConfig): NavTab[] =>
     path: ref.route,
   }));
 
+/**
+ * Accept one resolved reference into the deduped Blume-rendered set, or return
+ * null to skip it. Mutates `seen`/`usedSlugs` so repeated routes/slugs collapse.
+ */
+const blumeReferenceOf = (
+  ref: ReferenceSource,
+  seen: Set<string>,
+  usedSlugs: Set<string>
+): ReferenceSource | null => {
+  if (ref.kind !== "openapi" || ref.renderer !== "blume") {
+    return null;
+  }
+  if (seen.has(ref.route)) {
+    return null;
+  }
+  seen.add(ref.route);
+  // Distinct routes can slugify identically (`/api/v1` and `/api-v1` both
+  // yield `api-v1`). The slug keys the `blume:openapi` data module, so a
+  // collision would let one spec silently overwrite the other while the
+  // loser's pages still point at the shared key — disambiguate.
+  let { slug } = ref;
+  let n = 2;
+  while (usedSlugs.has(slug)) {
+    slug = `${ref.slug}-${n}`;
+    n += 1;
+  }
+  usedSlugs.add(slug);
+  return slug === ref.slug ? ref : { ...ref, slug };
+};
+
 /** Blume-rendered OpenAPI references, deduped by route (first wins). */
 export const blumeReferences = (config: ResolvedConfig): ReferenceSource[] => {
   const seen = new Set<string>();
   const usedSlugs = new Set<string>();
   const result: ReferenceSource[] = [];
   for (const ref of resolveReferences(config)) {
-    if (ref.kind !== "openapi" || ref.renderer !== "blume") {
-      continue;
+    const accepted = blumeReferenceOf(ref, seen, usedSlugs);
+    if (accepted) {
+      result.push(accepted);
     }
-    if (seen.has(ref.route)) {
-      continue;
-    }
-    seen.add(ref.route);
-    // Distinct routes can slugify identically (`/api/v1` and `/api-v1` both
-    // yield `api-v1`). The slug keys the `blume:openapi` data module, so a
-    // collision would let one spec silently overwrite the other while the
-    // loser's pages still point at the shared key — disambiguate.
-    let { slug } = ref;
-    for (let n = 2; usedSlugs.has(slug); n += 1) {
-      slug = `${ref.slug}-${n}`;
-    }
-    usedSlugs.add(slug);
-    result.push(slug === ref.slug ? ref : { ...ref, slug });
   }
   return result;
 };

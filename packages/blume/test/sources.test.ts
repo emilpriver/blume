@@ -706,11 +706,15 @@ describe("remote watch", () => {
       name: "sdk",
       url: "https://example.com",
     };
+    // Static fixture paths for a source-context shape assertion; nothing is
+    // written to these tmp paths, so the world-writable-dir warning is moot.
+    /* oxlint-disable sonarjs/publicly-writable-directories */
     const ctx: SourceContext = {
       cacheDir: "/tmp/x",
       mode: "dev",
       projectRoot: "/tmp",
     };
+    /* oxlint-enable sonarjs/publicly-writable-directories */
     expect(mdxRemoteSource(base, ctx).watch).toBeUndefined();
     expect(
       typeof mdxRemoteSource({ ...base, pollInterval: 30 }, ctx).watch

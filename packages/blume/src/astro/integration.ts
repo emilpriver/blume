@@ -30,17 +30,21 @@ const overlayChannel = (): OverlayChannel | undefined =>
  * overlay clears itself on the next successful HMR update.
  */
 export const showBlumeErrorOverlay = (diagnostics: Diagnostic[]): void => {
-  const errors = diagnostics
-    .filter((diagnostic) => diagnostic.severity === "error")
-    .map(enrichDiagnostic);
+  const errors: Diagnostic[] = [];
+  for (const diagnostic of diagnostics) {
+    if (diagnostic.severity === "error") {
+      errors.push(enrichDiagnostic(diagnostic));
+    }
+  }
   const channel = overlayChannel();
   if (errors.length === 0 || !channel) {
     return;
   }
   const body = errors
     .map((diagnostic) => {
+      const lineSuffix = diagnostic.line ? `:${diagnostic.line}` : "";
       const where = diagnostic.file
-        ? `\n  at ${diagnostic.file}${diagnostic.line ? `:${diagnostic.line}` : ""}`
+        ? `\n  at ${diagnostic.file}${lineSuffix}`
         : "";
       const fix = diagnostic.suggestion
         ? `\n  fix: ${diagnostic.suggestion}`

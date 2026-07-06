@@ -30,18 +30,27 @@ import { prepareProject } from "../prepare.ts";
 
 const ADAPTERS = ["vercel", "node", "netlify", "cloudflare"] as const;
 
+const BUDGET_JS = "budget-js";
+const BUDGET_CSS = "budget-css";
+
+interface BudgetArgs {
+  "budget-css"?: string;
+  "budget-js"?: string;
+}
+
 /**
  * Reject a non-numeric performance budget. `Number("250kb")` is `NaN` and
  * `total > NaN` is always false, so a typo'd flag would silently pass the gate;
  * fail up front instead.
  */
-const validateBudgetFlags = (args: {
-  "budget-css"?: string;
-  "budget-js"?: string;
-}): void => {
-  for (const flag of ["budget-js", "budget-css"] as const) {
+const validateBudgetFlags = (args: BudgetArgs): void => {
+  for (const flag of [BUDGET_JS, BUDGET_CSS] as const) {
     const value = args[flag];
-    if (value !== undefined && !(Number(value) > 0)) {
+    const parsed = Number(value);
+    // Equivalent to `!(parsed > 0)` but without the inverted check: this must
+    // also reject `NaN` (a typo'd flag like "250kb"), which `parsed <= 0` alone
+    // would let through since `NaN <= 0` is false.
+    if (value !== undefined && (Number.isNaN(parsed) || parsed <= 0)) {
       logger.error(
         `Invalid --${flag} "${value}" (expected a positive number of kB).`
       );
@@ -82,10 +91,13 @@ const emitRedirectFiles = async (
   logger.success(`Emitted redirect files for ${redirects.length} redirect(s)`);
 };
 
-const formatBytes = (bytes: number): string =>
-  bytes < 1024
-    ? `${bytes} B`
-    : `${(bytes / 1024).toFixed(bytes < 1024 * 100 ? 1 : 0)} kB`;
+const formatBytes = (bytes: number): string => {
+  if (bytes < 1024) {
+    return `${bytes} B`;
+  }
+  const digits = bytes < 1024 * 100 ? 1 : 0;
+  return `${(bytes / 1024).toFixed(digits)} kB`;
+};
 
 /** Sizes of `dist/_astro/*.<ext>`, largest first (empty when none exist). */
 const astroAssets = async (
@@ -144,14 +156,14 @@ const reportBundleSizes = async (distDir: string): Promise<void> => {
  */
 const enforceBudget = async (
   distDir: string,
-  args: { "budget-css"?: string; "budget-js"?: string }
+  args: BudgetArgs
 ): Promise<"fail" | "pass" | "skip"> => {
   const checks: { ext: string; limitKb: number; name: string }[] = [
-    ...(args["budget-js"]
-      ? [{ ext: "js", limitKb: Number(args["budget-js"]), name: "JavaScript" }]
+    ...(args[BUDGET_JS]
+      ? [{ ext: "js", limitKb: Number(args[BUDGET_JS]), name: "JavaScript" }]
       : []),
-    ...(args["budget-css"]
-      ? [{ ext: "css", limitKb: Number(args["budget-css"]), name: "CSS" }]
+    ...(args[BUDGET_CSS]
+      ? [{ ext: "css", limitKb: Number(args[BUDGET_CSS]), name: "CSS" }]
       : []),
   ];
   if (checks.length === 0) {
@@ -185,7 +197,7 @@ const enforceBudget = async (
 const publishBuildArtifacts = async (
   project: BlumeProject,
   distDir: string,
-  args: { analyze?: boolean; "budget-css"?: string; "budget-js"?: string }
+  args: { analyze?: boolean } & BudgetArgs
 ): Promise<void> => {
   if (project.config.search.provider === "pagefind") {
     logger.start("Building search index");
@@ -280,11 +292,11 @@ export const buildCommand = defineCommand({
       description: "Base path the site is served under (e.g. /docs).",
       type: "string",
     },
-    "budget-css": {
+    [BUDGET_CSS]: {
       description: "Fail if total client CSS exceeds this many kB.",
       type: "string",
     },
-    "budget-js": {
+    [BUDGET_JS]: {
       description: "Fail if total client JavaScript exceeds this many kB.",
       type: "string",
     },

@@ -20,6 +20,9 @@ export default defineConfig({
     // upstream and gets clobbered on the next skill update.
     "**/.agents/skills/**",
     "**/.claude/skills/**",
+    // Docs code-sample source shown verbatim in a before/after diff; the
+    // PascalCase `Button` export IS the example, so naming rules don't apply.
+    "apps/docs/diffs",
     "packages/video/src/components",
     "packages/video/src/lib/utils.ts",
     "packages/video/src/lib/remocn-ui",

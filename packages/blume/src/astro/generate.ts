@@ -145,7 +145,12 @@ const linkDepsJunction = async (
   link: string,
   depsDir: string
 ): Promise<void> => {
-  const existing = await lstat(link).catch(() => null);
+  let existing: Awaited<ReturnType<typeof lstat>> | null;
+  try {
+    existing = await lstat(link);
+  } catch {
+    existing = null;
+  }
   if (existing) {
     if (!existing.isSymbolicLink()) {
       return;
@@ -397,12 +402,14 @@ export const pruneOrphans = async (
     cwd: srcDir,
     onlyFiles: true,
   });
-  await Promise.all(
-    existing
-      .map((path) => normalize(path))
-      .filter((path) => !written.has(path))
-      .map((path) => rm(path, { force: true }))
-  );
+  const removals: Promise<void>[] = [];
+  for (const path of existing) {
+    const normalized = normalize(path);
+    if (!written.has(normalized)) {
+      removals.push(rm(normalized, { force: true }));
+    }
+  }
+  await Promise.all(removals);
 };
 
 /**
@@ -601,7 +608,8 @@ export const buildRuntimeData = (project: BlumeProject): string => {
       return null;
     }
     const rel = relative(context.root, sourcePath).split("\\").join("/");
-    return `${editBase}/${github?.dir ? `${github.dir}/${rel}` : rel}`;
+    const editPath = github?.dir ? `${github.dir}/${rel}` : rel;
+    return `${editBase}/${editPath}`;
   };
 
   const { i18n } = config;
@@ -962,6 +970,10 @@ export const generateRuntime = async (
   const askEnabled = config.ai.ask?.enabled ?? false;
   const exportPdf = config.export.pdf;
   const exportEpub = config.export.epub;
+  // Statically analyze `components.ts` overrides (never executed): drives the
+  // `islands` group, hydration on layout/mdx overrides, string-path resolution,
+  // and the "framework component with no client mode" diagnostic. Independent of
+  // the discovery reads, so it joins the same parallel batch.
   const [
     pages,
     detectedReact,
@@ -969,6 +981,7 @@ export const generateRuntime = async (
     userTheme,
     islandDiscovery,
     exampleDiscovery,
+    componentSlots,
   ] = await Promise.all([
     context.pagesRoot ? discoverPages(context.pagesRoot) : Promise.resolve([]),
     detectNeedsReact(context.root),
@@ -976,15 +989,13 @@ export const generateRuntime = async (
     readOptional(context.themeFile),
     discoverIslands(context.root),
     discoverExamples(context.root, config.examples),
+    buildComponentSlots(context.componentsFile),
   ]);
-  // Statically analyze `components.ts` overrides (never executed): drives the
-  // `islands` group, hydration on layout/mdx overrides, string-path resolution,
-  // and the "framework component with no client mode" diagnostic.
   const {
     plan: slotPlan,
     tags: overrideTags,
     warnings: overrideWarnings,
-  } = await buildComponentSlots(context.componentsFile);
+  } = componentSlots;
 
   // Each island/example framework enables its Astro renderer. React also
   // switches on for any project `.tsx`/`.jsx` and for Ask AI; Vue/Svelte are
@@ -1020,119 +1031,121 @@ export const generateRuntime = async (
   // project root for nothing — see contentConfigTemplate.
   const hasFilesystemSource = project.sources.some((source) => !source.staged);
 
-  const structural = await Promise.all([
-    write(
-      join(out, "astro.config.mjs"),
-      astroConfigTemplate({
-        aliases: resolveTsconfigAliases(context.root),
-        config,
-        contentRoutes: project.manifest.routes.map((route) => route.path),
-        context,
-        dataPath,
-        examplesPath,
-        needsReact,
-        needsSvelte,
-        needsVue,
-        openapiPath,
-        pages,
-        searchClientPath,
+  // All of these write to distinct generated paths and never read one another's
+  // output, so the structural files, the per-convention hydration wrappers, and
+  // the Ask/MCP writers all run in one parallel batch. Only the structural
+  // writes' change flags feed `structuralChange`, so they stay a nested group.
+  const [structural] = await Promise.all([
+    Promise.all([
+      write(
+        join(out, "astro.config.mjs"),
+        astroConfigTemplate({
+          aliases: resolveTsconfigAliases(context.root),
+          config,
+          contentRoutes: project.manifest.routes.map((route) => route.path),
+          context,
+          dataPath,
+          examplesPath,
+          needsReact,
+          needsSvelte,
+          needsVue,
+          openapiPath,
+          pages,
+          searchClientPath,
+          themePath,
+        })
+      ),
+      write(
+        join(out, "package.json"),
+        runtimePackageTemplate(
+          runtimeDependencies({ config, needsReact, needsSvelte, needsVue })
+        )
+      ),
+      write(join(out, "tsconfig.json"), runtimeTsconfigTemplate()),
+      write(join(srcDir, "env.d.ts"), envTemplate()),
+      write(
+        join(srcDir, "content.config.ts"),
+        contentConfigTemplate({
+          collection: resolveDocsCollection(config, context),
+          config,
+          context,
+          filesystem: hasFilesystemSource,
+          staged: hasStaged,
+        })
+      ),
+      write(
+        join(srcDir, "pages", "[...slug].astro"),
+        catchAllPageTemplate({
+          askEnabled,
+          exportEpub,
+          exportPdf,
+          mathEnabled: usesMath,
+          needsReact,
+        })
+      ),
+      write(join(srcDir, "generated", "components.ts"), slotPlan.module),
+      write(
+        join(srcDir, "generated", "islands.ts"),
+        islandMapTemplate(islandDiscovery.islands)
+      ),
+      write(
+        join(srcDir, "generated", "examples.ts"),
+        exampleMapTemplate(exampleDiscovery.examples)
+      ),
+      write(
         themePath,
-      })
-    ),
-    write(
-      join(out, "package.json"),
-      runtimePackageTemplate(
-        runtimeDependencies({ config, needsReact, needsSvelte, needsVue })
+        tailwindEntryTemplate({
+          configTokens: `${buildThemeCss(config.theme)}${buildFontsCss(config.theme.fonts)}`,
+          sources: [
+            `${BLUME_SRC}/**/*.{astro,ts,tsx}`,
+            `${context.root}/**/*.{astro,mdx,ts,tsx}`,
+          ],
+          twoslashCss: twoslashCss(),
+          userTheme,
+        })
+      ),
+    ]),
+    // Per-island hydration wrappers for the `islands/` convention. The map
+    // module (written above, always) imports these; orphans from removed
+    // islands are pruned at the end of the pass.
+    Promise.all(
+      islandDiscovery.islands.map((island) =>
+        write(
+          join(srcDir, "generated", "islands", `${island.name}.astro`),
+          islandWrapperTemplate(island)
+        )
       )
     ),
-    write(join(out, "tsconfig.json"), runtimeTsconfigTemplate()),
-    write(join(srcDir, "env.d.ts"), envTemplate()),
-    write(
-      join(srcDir, "content.config.ts"),
-      contentConfigTemplate({
-        collection: resolveDocsCollection(config, context),
-        config,
-        context,
-        filesystem: hasFilesystemSource,
-        staged: hasStaged,
-      })
+    // Per-override hydration wrappers for `defineComponents` islands and
+    // `client:*` layout/mdx overrides. The generated `components.ts` (written
+    // above) imports these; orphans from removed overrides are pruned at the
+    // end of the pass.
+    Promise.all(
+      slotPlan.wrappers.map((wrapper) =>
+        write(
+          join(srcDir, "generated", "component-slots", `${wrapper.name}.astro`),
+          wrapper.content
+        )
+      )
     ),
-    write(
-      join(srcDir, "pages", "[...slug].astro"),
-      catchAllPageTemplate({
-        askEnabled,
-        exportEpub,
-        exportPdf,
-        mathEnabled: usesMath,
-        needsReact,
-      })
+    // Per-example live wrappers for the `examples/` convention, resolved by
+    // `<Component path>` through the `examples.ts` map (written above, always).
+    Promise.all(
+      exampleDiscovery.examples.map((example) =>
+        write(
+          join(
+            srcDir,
+            "generated",
+            "examples",
+            `${exampleSlug(example.path)}.astro`
+          ),
+          exampleWrapperTemplate(example)
+        )
+      )
     ),
-    write(join(srcDir, "generated", "components.ts"), slotPlan.module),
-    write(
-      join(srcDir, "generated", "islands.ts"),
-      islandMapTemplate(islandDiscovery.islands)
-    ),
-    write(
-      join(srcDir, "generated", "examples.ts"),
-      exampleMapTemplate(exampleDiscovery.examples)
-    ),
-    write(
-      themePath,
-      tailwindEntryTemplate({
-        configTokens: `${buildThemeCss(config.theme)}${buildFontsCss(config.theme.fonts)}`,
-        sources: [
-          `${BLUME_SRC}/**/*.{astro,ts,tsx}`,
-          `${context.root}/**/*.{astro,mdx,ts,tsx}`,
-        ],
-        twoslashCss: twoslashCss(),
-        userTheme,
-      })
-    ),
+    writeAskFiles(project, srcDir, write),
+    writeMcpFiles(project, mcp, write),
   ]);
-
-  // Per-island hydration wrappers for the `islands/` convention. The map module
-  // (written above, always) imports these; orphans from removed islands are
-  // pruned at the end of the pass.
-  await Promise.all(
-    islandDiscovery.islands.map((island) =>
-      write(
-        join(srcDir, "generated", "islands", `${island.name}.astro`),
-        islandWrapperTemplate(island)
-      )
-    )
-  );
-
-  // Per-override hydration wrappers for `defineComponents` islands and `client:*`
-  // layout/mdx overrides. The generated `components.ts` (written above) imports
-  // these; orphans from removed overrides are pruned at the end of the pass.
-  await Promise.all(
-    slotPlan.wrappers.map((wrapper) =>
-      write(
-        join(srcDir, "generated", "component-slots", `${wrapper.name}.astro`),
-        wrapper.content
-      )
-    )
-  );
-
-  // Per-example live wrappers for the `examples/` convention, resolved by
-  // `<Component path>` through the `examples.ts` map (written above, always).
-  await Promise.all(
-    exampleDiscovery.examples.map((example) =>
-      write(
-        join(
-          srcDir,
-          "generated",
-          "examples",
-          `${exampleSlug(example.path)}.astro`
-        ),
-        exampleWrapperTemplate(example)
-      )
-    )
-  );
-
-  await writeAskFiles(project, srcDir, write);
-
-  await writeMcpFiles(project, mcp, write);
 
   if (config.seo.og.enabled) {
     await write(
@@ -1302,27 +1315,26 @@ export const generateRuntime = async (
     );
   }
 
-  // Data and manifest are not "structural" for Astro; they hot-reload.
-  await write(
-    join(srcDir, "generated", "data.json"),
-    buildRuntimeData(project)
-  );
   // The parsed OpenAPI specs behind the `blume:openapi` alias. Always written
   // (even as `{}`) so the alias resolves whether or not a reference is enabled;
   // the source parsed the specs during the scan, so this is just serialization.
   const openApiSource = project.sources.find(isOpenApiSource);
-  await write(
-    openapiPath,
-    `${JSON.stringify(openApiSource ? openApiSource.openApiData() : {})}\n`
-  );
-  await write(
-    join(out, "blume.manifest.json"),
-    `${JSON.stringify(project.manifest, null, 2)}\n`
-  );
-
-  // Write staged source bodies and prune orphans under `.blume/content` (its own
-  // tree, outside `.blume/src`), so a removed remote entry doesn't linger.
-  await writeStagedContent(out, staged);
+  // These write to distinct trees and never read one another, so they batch.
+  // `data.json`/`openapi.json` and the manifest are not "structural" for Astro;
+  // they hot-reload. `writeStagedContent` owns the `.blume/content` tree (its
+  // own pruning), outside `.blume/src`, so a removed remote entry doesn't linger.
+  await Promise.all([
+    write(join(srcDir, "generated", "data.json"), buildRuntimeData(project)),
+    write(
+      openapiPath,
+      `${JSON.stringify(openApiSource ? openApiSource.openApiData() : {})}\n`
+    ),
+    write(
+      join(out, "blume.manifest.json"),
+      `${JSON.stringify(project.manifest, null, 2)}\n`
+    ),
+    writeStagedContent(out, staged),
+  ]);
 
   // Remove anything under `.blume/src` this pass didn't write — e.g. an Ask AI
   // endpoint left behind after the feature was switched off.

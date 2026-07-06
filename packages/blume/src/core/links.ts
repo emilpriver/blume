@@ -70,6 +70,18 @@ const isIndexPage = (page: PageRecord): boolean => {
   return /^index\.(?:md|mdx)$/iu.test(basename(ref));
 };
 
+/** Apply one relative-path segment to the accumulated route segments. */
+const applyRelativePart = (segments: string[], part: string): void => {
+  if (part === "" || part === ".") {
+    return;
+  }
+  if (part === "..") {
+    segments.pop();
+    return;
+  }
+  segments.push(part);
+};
+
 /** Resolve a relative link target against the directory of a page route. */
 const resolveRelative = (
   pageRoute: string,
@@ -83,14 +95,7 @@ const resolveRelative = (
     segments.pop();
   }
   for (const part of target.split("/")) {
-    if (part === "" || part === ".") {
-      continue;
-    }
-    if (part === "..") {
-      segments.pop();
-      continue;
-    }
-    segments.push(part);
+    applyRelativePart(segments, part);
   }
   return `/${segments.join("/")}`;
 };
@@ -222,10 +227,11 @@ const probe = async (
   url: string
 ): Promise<Awaited<ReturnType<typeof request>>> => {
   const head = await request(url, "HEAD");
+  const unreachable = !head.ok && head.status === undefined && !head.timedOut;
   const retry =
     head.status === STATUS_METHOD_NOT_ALLOWED ||
     head.status === STATUS_NOT_IMPLEMENTED ||
-    (!head.ok && head.status === undefined && !head.timedOut);
+    unreachable;
   return retry ? await request(url, "GET") : head;
 };
 

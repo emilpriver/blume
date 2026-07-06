@@ -57,6 +57,9 @@ describe("deployStaticDir", () => {
   });
 
   it("falls back to <root>/dist when the context has no distDir", () => {
+    // Exercises the "no distDir" fallback; distDir is optional (string), so
+    // it must be undefined rather than null.
+    // oxlint-disable-next-line sonarjs/no-undefined-assignment
     const ctx: ProjectContext = { ...context("/proj"), distDir: undefined };
     expect(deployStaticDir(config(), ctx)).toBe("/proj/dist");
   });

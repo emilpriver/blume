@@ -105,11 +105,12 @@ const renderItem = (item: RssItem): string => {
 
 /** Serialize a resolved feed into an RSS 2.0 XML document. */
 export const renderRssFeed = (feed: RssFeed): string => {
+  const feedSelfHref = `${feed.link}${feed.path}`;
   const channel = [
     `  <title>${escapeXml(feed.title)}</title>`,
     `  <link>${escapeXml(feed.link)}</link>`,
     `  <description>${escapeXml(feed.description ?? feed.title)}</description>`,
-    `  <atom:link href="${escapeXml(`${feed.link}${feed.path}`)}" rel="self" type="application/rss+xml" />`,
+    `  <atom:link href="${escapeXml(feedSelfHref)}" rel="self" type="application/rss+xml" />`,
   ];
   const items = feed.items.map(renderItem).join("\n");
   return `<?xml version="1.0" encoding="UTF-8"?>

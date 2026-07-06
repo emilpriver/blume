@@ -34,8 +34,8 @@ const minSupportedNode = (): string => {
 };
 
 const versionBelow = (current: string, minimum: string): boolean => {
-  const a = current.split(".").map((part) => Number.parseInt(part, 10));
-  const b = minimum.split(".").map((part) => Number.parseInt(part, 10));
+  const a = current.split(".").map((part) => Math.trunc(Number(part)));
+  const b = minimum.split(".").map((part) => Math.trunc(Number(part)));
   for (let i = 0; i < 3; i += 1) {
     const delta = (a[i] ?? 0) - (b[i] ?? 0);
     if (delta !== 0) {

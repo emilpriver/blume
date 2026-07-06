@@ -1,5 +1,8 @@
 import type { Crumb } from "../components/layout/nav-utils.ts";
 
+/** A date-ish value carried through frontmatter (string, YAML Date, or unset). */
+type DateInput = string | Date | null;
+
 /** Inputs for a page's JSON-LD, all known at render time in RootLayout. */
 export interface StructuredDataInput {
   siteName: string;
@@ -12,9 +15,9 @@ export interface StructuredDataInput {
   /** Content type — `blog` and `changelog` map to richer article types. */
   pageType?: string;
   /** Publish date (string or YAML Date); emitted as ISO `datePublished`. */
-  published?: string | Date | null;
+  published?: DateInput;
   /** Last-modified date; emitted as ISO `dateModified`. */
-  modified?: string | Date | null;
+  modified?: DateInput;
   /** BCP-47 language tag for `inLanguage`; defaults to `en`. */
   locale?: string;
   breadcrumbs: Crumb[];
@@ -31,7 +34,7 @@ const trimSlash = (value: string): string => value.replace(/\/$/u, "");
 const absolute = (base: string | null, path: string): string =>
   base ? `${base}${path}` : path;
 
-const toIso = (value: string | Date | null | undefined): string | undefined => {
+const toIso = (value: DateInput | undefined): string | undefined => {
   if (!value) {
     return;
   }

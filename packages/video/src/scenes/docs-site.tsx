@@ -41,6 +41,69 @@ export const DOCS_SIDEBAR_W = 232;
 export const DOCS_TOC_W = 210;
 export const DOCS_CONTENT_W = 700;
 
+const BORDER_BOX = "border-box" as const;
+
+const docsHeaderStyle = {
+  alignItems: "center",
+  background: "#fff",
+  borderBottom: `1px solid ${BORDER}`,
+  boxSizing: BORDER_BOX,
+  color: FG,
+  display: "flex",
+  fontFamily: INTER,
+  height: DOCS_HEADER_H,
+  justifyContent: "space-between",
+  padding: "0 22px",
+  width: DOCS_WIDTH,
+} as const;
+
+const searchPillStyle = {
+  alignItems: "center",
+  border: `1px solid ${BORDER}`,
+  borderRadius: 999,
+  color: MUTED,
+  display: "flex",
+  fontSize: 13,
+  gap: 8,
+  padding: "6px 12px",
+} as const;
+
+const docsSidebarStyle = {
+  background: "#fff",
+  borderRight: `1px solid ${BORDER}`,
+  boxSizing: BORDER_BOX,
+  fontFamily: INTER,
+  fontSize: 13.5,
+  height: "100%",
+  padding: 22,
+  width: DOCS_SIDEBAR_W,
+} as const;
+
+const tipCalloutStyle = {
+  alignItems: "flex-start",
+  background: CALLOUT_BG,
+  border: `1px solid ${CALLOUT_BORDER}`,
+  borderRadius: 8,
+  color: "#33484a",
+  display: "flex",
+  fontSize: 14,
+  gap: 10,
+  lineHeight: 1.55,
+  margin: "20px 0 0",
+  padding: "13px 16px",
+} as const;
+
+const docsTocStyle = {
+  background: "#fff",
+  borderLeft: `1px solid ${BORDER}`,
+  boxSizing: BORDER_BOX,
+  fontFamily: INTER,
+  fontSize: 13.5,
+  height: "100%",
+  padding: 22,
+  width: DOCS_TOC_W,
+} as const;
+
 // Shiki github-light token palette.
 const SH = {
   comment: "#6a737d",
@@ -404,21 +467,7 @@ const InlineCode = ({ children }: { children: string }) => (
 
 // The docs top bar — rendered pinned by the caller so it stays put on scroll.
 export const DocsHeader = () => (
-  <div
-    style={{
-      alignItems: "center",
-      background: "#fff",
-      borderBottom: `1px solid ${BORDER}`,
-      boxSizing: "border-box",
-      color: FG,
-      display: "flex",
-      fontFamily: INTER,
-      height: DOCS_HEADER_H,
-      justifyContent: "space-between",
-      padding: "0 22px",
-      width: DOCS_WIDTH,
-    }}
-  >
+  <div style={docsHeaderStyle}>
     <div style={{ alignItems: "center", display: "flex", gap: 26 }}>
       <span
         style={{
@@ -456,18 +505,7 @@ export const DocsHeader = () => (
       </nav>
     </div>
     <div style={{ alignItems: "center", display: "flex", gap: 10 }}>
-      <span
-        style={{
-          alignItems: "center",
-          border: `1px solid ${BORDER}`,
-          borderRadius: 999,
-          color: MUTED,
-          display: "flex",
-          fontSize: 13,
-          gap: 8,
-          padding: "6px 12px",
-        }}
-      >
+      <span style={searchPillStyle}>
         <SearchIcon />
         Search
         <span
@@ -491,18 +529,7 @@ export const DocsHeader = () => (
 
 // The left nav. Rendered as its own pane so the caller can pin / animate it.
 export const DocsSidebar = () => (
-  <div
-    style={{
-      background: "#fff",
-      borderRight: `1px solid ${BORDER}`,
-      boxSizing: "border-box",
-      fontFamily: INTER,
-      fontSize: 13.5,
-      height: "100%",
-      padding: 22,
-      width: DOCS_SIDEBAR_W,
-    }}
-  >
+  <div style={docsSidebarStyle}>
     {SIDEBAR.map((group) => (
       <div key={group.label} style={{ marginBottom: 22 }}>
         <p style={{ color: FG, fontWeight: 500, margin: 0 }}>{group.label}</p>
@@ -532,7 +559,7 @@ export const DocsContent = () => (
   <div
     style={{
       background: "#fff",
-      boxSizing: "border-box",
+      boxSizing: BORDER_BOX,
       color: FG,
       fontFamily: INTER,
       padding: "34px 40px",
@@ -552,26 +579,12 @@ export const DocsContent = () => (
       Quickstart
     </div>
     <P>
-      Send your first transactional message in minutes. Comet's REST API works
-      with any language — this guide uses the official TypeScript SDK.
+      Send your first transactional message in minutes. Comet&apos;s REST API
+      works with any language — this guide uses the official TypeScript SDK.
     </P>
 
     {/* tip callout */}
-    <div
-      style={{
-        alignItems: "flex-start",
-        background: CALLOUT_BG,
-        border: `1px solid ${CALLOUT_BORDER}`,
-        borderRadius: 8,
-        color: "#33484a",
-        display: "flex",
-        fontSize: 14,
-        gap: 10,
-        lineHeight: 1.55,
-        margin: "20px 0 0",
-        padding: "13px 16px",
-      }}
-    >
+    <div style={tipCalloutStyle}>
       <span style={{ flexShrink: 0, marginTop: 1 }}>
         <LightbulbIcon />
       </span>
@@ -679,18 +692,7 @@ export const DocsContent = () => (
 
 // The right-hand on-this-page rail.
 export const DocsToc = () => (
-  <div
-    style={{
-      background: "#fff",
-      borderLeft: `1px solid ${BORDER}`,
-      boxSizing: "border-box",
-      fontFamily: INTER,
-      fontSize: 13.5,
-      height: "100%",
-      padding: 22,
-      width: DOCS_TOC_W,
-    }}
-  >
+  <div style={docsTocStyle}>
     <p style={{ color: FG, fontWeight: 500, margin: 0 }}>On this page</p>
     <ul
       style={{

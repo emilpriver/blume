@@ -23,9 +23,9 @@ afterAll(async () => {
   await Promise.all(dirs.map((d) => rm(d, { force: true, recursive: true })));
 });
 
-const rich = (plain_text: string, annotations?: Record<string, boolean>) => ({
+const rich = (plainText: string, annotations?: Record<string, boolean>) => ({
   annotations,
-  plain_text,
+  plain_text: plainText,
 });
 
 const PAGE = {

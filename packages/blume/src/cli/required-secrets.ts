@@ -15,9 +15,10 @@ export const checkRequiredSecrets = (config: ResolvedConfig): Diagnostic[] => {
     if (process.env[env]) {
       return;
     }
+    const noteSuffix = note ? ` (${note})` : "";
     diagnostics.push({
       code: "BLUME_MISSING_SECRET",
-      message: `${feature} is enabled but ${env} is not set${note ? ` (${note})` : ""}.`,
+      message: `${feature} is enabled but ${env} is not set${noteSuffix}.`,
       severity: "warning",
       suggestion: `Set ${env} in .env.local for local dev, or in your host's environment for production.`,
     });

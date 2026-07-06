@@ -24,20 +24,19 @@ export const buildSitemap = (project: BlumeProject): string | null => {
   }
 
   const base = site.replace(/\/$/u, "");
-  const urls = project.graph.pages
-    .filter(
-      (page) =>
-        !(page.meta.draft || page.meta.sidebar.hidden || page.meta.seo.noindex)
-    )
+  const urls: string[] = [];
+  for (const page of project.graph.pages) {
+    if (page.meta.draft || page.meta.sidebar.hidden || page.meta.seo.noindex) {
+      continue;
+    }
     // `<loc>` must be a well-formed, XML-escaped URL: percent-encode the path,
     // then escape XML metacharacters (notably `&`) so a route like
     // `/Tips & Tricks` doesn't produce invalid XML that gets the whole sitemap
     // rejected.
-    .map(
-      (page) =>
-        `  <url><loc>${escapeXml(encodeURI(`${base}${page.route}`))}</loc>${lastmodTag(page.lastModified)}</url>`
-    )
-    .toSorted();
+    const loc = escapeXml(encodeURI(`${base}${page.route}`));
+    urls.push(`  <url><loc>${loc}</loc>${lastmodTag(page.lastModified)}</url>`);
+  }
+  urls.sort();
 
   return `<?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">

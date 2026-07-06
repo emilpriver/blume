@@ -45,6 +45,29 @@ const titleCase = (value: string): string =>
     .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
     .join(" ");
 
+/** Fold one raw path part into the accumulating route segments/groups. */
+const addRouteSegment = (
+  part: string,
+  segments: string[],
+  groups: string[]
+): void => {
+  // A leading/trailing/double slash yields an empty part; keeping it would
+  // produce a malformed route (`//foo`, `/foo/`) that nothing can link to.
+  if (part === "") {
+    return;
+  }
+  const group = groupLabel(part);
+  if (group !== null) {
+    groups.push(group);
+    return;
+  }
+  const clean = stripNumericPrefix(part);
+  if (clean === "index") {
+    return;
+  }
+  segments.push(clean);
+};
+
 /** Convert a content-root-relative path into URL + nav metadata. */
 const mapRoute = (
   relativePath: string
@@ -59,21 +82,7 @@ const mapRoute = (
   const groups: string[] = [];
 
   for (const part of rawParts) {
-    // A leading/trailing/double slash yields an empty part; keeping it would
-    // produce a malformed route (`//foo`, `/foo/`) that nothing can link to.
-    if (part === "") {
-      continue;
-    }
-    const group = groupLabel(part);
-    if (group !== null) {
-      groups.push(group);
-      continue;
-    }
-    const clean = stripNumericPrefix(part);
-    if (clean === "index") {
-      continue;
-    }
-    segments.push(clean);
+    addRouteSegment(part, segments, groups);
   }
 
   const route = segments.length === 0 ? "/" : `/${segments.join("/")}`;
@@ -95,25 +104,35 @@ const ATX_HEADING = /^(?<hashes>#{1,6})\s+(?<text>.+?)(?:\s+#+)?\s*$/u;
  * (a hand slugify collapses `--`; github-slugger keeps it) and resolves repeated
  * headings the same way (`setup`, `setup-1`).
  */
+/** Scan one line for an ATX heading; returns the next fenced-block state. */
+const scanHeadingLine = (
+  line: string,
+  inFence: boolean,
+  slugger: GithubSlugger,
+  headings: Heading[]
+): boolean => {
+  if (CODE_FENCE.test(line.trimStart())) {
+    return !inFence;
+  }
+  if (inFence) {
+    return inFence;
+  }
+  const match = line.match(ATX_HEADING);
+  if (match?.groups) {
+    const depth = match.groups.hashes?.length ?? 1;
+    const text = (match.groups.text ?? "").trim();
+    headings.push({ depth, slug: slugger.slug(text), text });
+  }
+  return inFence;
+};
+
 export const extractHeadings = (body: string): Heading[] => {
   const headings: Heading[] = [];
   const slugger = new GithubSlugger();
   let inFence = false;
 
   for (const line of body.split("\n")) {
-    if (CODE_FENCE.test(line.trimStart())) {
-      inFence = !inFence;
-      continue;
-    }
-    if (inFence) {
-      continue;
-    }
-    const match = line.match(ATX_HEADING);
-    if (match?.groups) {
-      const depth = match.groups.hashes?.length ?? 1;
-      const text = (match.groups.text ?? "").trim();
-      headings.push({ depth, slug: slugger.slug(text), text });
-    }
+    inFence = scanHeadingLine(line, inFence, slugger, headings);
   }
 
   return headings;
@@ -126,6 +145,43 @@ const INLINE_CODE = /`[^`]*`/gu;
  * Extract link targets from a markdown body for later validation, recording the
  * 1-based line/column of each target. Skips fenced code blocks and inline code.
  */
+/** Scan one line for link targets; returns the next fenced-block state. */
+const scanLinkLine = (
+  line: string,
+  lineNumber: number,
+  inFence: boolean,
+  links: PageLink[]
+): boolean => {
+  if (CODE_FENCE.test(line.trimStart())) {
+    return !inFence;
+  }
+  if (inFence) {
+    return inFence;
+  }
+  // Blank out inline code spans (`[label](/x)` shown as syntax, not a link)
+  // with same-length padding so recorded columns stay accurate.
+  const masked = line.replaceAll(INLINE_CODE, (span) =>
+    " ".repeat(span.length)
+  );
+  for (const match of masked.matchAll(MD_LINK)) {
+    const target = match.groups?.target;
+    if (target === undefined || match.index === undefined) {
+      continue;
+    }
+    // Locate the target from the `](` boundary rather than searching for the
+    // target text from the match start — otherwise a label that contains the
+    // same text (e.g. `[/a/b](/a/b)`) reports the column inside the label. The
+    // label can't contain `]`, so `](` is unambiguous.
+    const targetOffset = match.index + match[0].indexOf("](") + "](".length;
+    links.push({
+      column: targetOffset + 1,
+      line: lineNumber,
+      target,
+    });
+  }
+  return inFence;
+};
+
 export const extractLinks = (body: string): PageLink[] => {
   const links: PageLink[] = [];
   let inFence = false;
@@ -133,34 +189,7 @@ export const extractLinks = (body: string): PageLink[] => {
 
   for (const line of body.split("\n")) {
     lineNumber += 1;
-    if (CODE_FENCE.test(line.trimStart())) {
-      inFence = !inFence;
-      continue;
-    }
-    if (inFence) {
-      continue;
-    }
-    // Blank out inline code spans (`[label](/x)` shown as syntax, not a link)
-    // with same-length padding so recorded columns stay accurate.
-    const masked = line.replaceAll(INLINE_CODE, (span) =>
-      " ".repeat(span.length)
-    );
-    for (const match of masked.matchAll(MD_LINK)) {
-      const target = match.groups?.target;
-      if (target === undefined || match.index === undefined) {
-        continue;
-      }
-      // Locate the target from the `](` boundary rather than searching for the
-      // target text from the match start — otherwise a label that contains the
-      // same text (e.g. `[/a/b](/a/b)`) reports the column inside the label. The
-      // label can't contain `]`, so `](` is unambiguous.
-      const targetOffset = match.index + match[0].indexOf("](") + "](".length;
-      links.push({
-        column: targetOffset + 1,
-        line: lineNumber,
-        target,
-      });
-    }
+    inFence = scanLinkLine(line, lineNumber, inFence, links);
   }
 
   return links;
@@ -179,26 +208,33 @@ const JSX_OPEN = /<(?<tag>[A-Z][A-Za-z0-9]*)/gu;
  * strings so code samples and prose don't count. Powers the missing-component
  * diagnostic.
  */
+/** Scan one line for JSX component tags; returns the next fenced-block state. */
+const scanTagLine = (
+  line: string,
+  inFence: boolean,
+  tags: Set<string>
+): boolean => {
+  if (CODE_FENCE.test(line.trimStart())) {
+    return !inFence;
+  }
+  if (inFence) {
+    return inFence;
+  }
+  const clean = line.replaceAll(INLINE_CODE, "").replaceAll(DOUBLE_QUOTED, "");
+  for (const match of clean.matchAll(JSX_OPEN)) {
+    const tag = match.groups?.tag;
+    if (tag) {
+      tags.add(tag);
+    }
+  }
+  return inFence;
+};
+
 export const extractComponentTags = (body: string): string[] => {
   const tags = new Set<string>();
   let inFence = false;
   for (const line of body.split("\n")) {
-    if (CODE_FENCE.test(line.trimStart())) {
-      inFence = !inFence;
-      continue;
-    }
-    if (inFence) {
-      continue;
-    }
-    const clean = line
-      .replaceAll(INLINE_CODE, "")
-      .replaceAll(DOUBLE_QUOTED, "");
-    for (const match of clean.matchAll(JSX_OPEN)) {
-      const tag = match.groups?.tag;
-      if (tag) {
-        tags.add(tag);
-      }
-    }
+    inFence = scanTagLine(line, inFence, tags);
   }
   return [...tags];
 };

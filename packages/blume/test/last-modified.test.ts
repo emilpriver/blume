@@ -18,6 +18,8 @@ const nul = String.fromCodePoint(0);
 const dateLine = (iso: string): string => `${nul}${iso}`;
 
 const runGit = (root: string, args: string[]): void => {
+  // Test fixture drives a real git repo; `git` is expected on PATH in CI/dev.
+  // oxlint-disable-next-line sonarjs/no-os-command-from-path
   execFileSync("git", ["-C", root, ...args], { stdio: "ignore" });
 };
 

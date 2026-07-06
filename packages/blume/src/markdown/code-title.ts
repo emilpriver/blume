@@ -37,6 +37,16 @@ const QUOTED_ATTR = /[\w-]+=(?:"[^"]*"|'[^']*')/gu;
 const withoutQuotedAttrs = (raw: string): string =>
   raw.replace(QUOTED_ATTR, " ");
 
+// The first bare token is the title (```ts blume.config.ts): a non-empty token
+// that isn't a Shiki line range (`{1,3-5}`), a `key=value` attr, or a reserved
+// `lineNumbers`/`twoslash` keyword.
+const isTitleToken = (token: string): boolean => {
+  if (token.length === 0 || token.startsWith("{") || token.includes("=")) {
+    return false;
+  }
+  return token !== "lineNumbers" && token !== "twoslash";
+};
+
 const parseTitle = (raw: string | undefined): string | undefined => {
   if (!raw) {
     return undefined;
@@ -46,20 +56,7 @@ const parseTitle = (raw: string | undefined): string | undefined => {
   if (attrTitle) {
     return attrTitle;
   }
-  // The first bare token is the title (```ts blume.config.ts), skipping Shiki
-  // line ranges (`{1,3-5}`), `key=value` attrs, and the reserved `lineNumbers`
-  // and `twoslash` keywords.
-  return withoutQuotedAttrs(raw)
-    .trim()
-    .split(/\s+/u)
-    .find(
-      (token) =>
-        token.length > 0 &&
-        token !== "lineNumbers" &&
-        token !== "twoslash" &&
-        !token.startsWith("{") &&
-        !token.includes("=")
-    );
+  return withoutQuotedAttrs(raw).trim().split(/\s+/u).find(isTitleToken);
 };
 
 const hasLineNumbers = (raw: string | undefined): boolean =>

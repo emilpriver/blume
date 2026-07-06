@@ -21,6 +21,9 @@ const setWindow = (stub: WindowStub): void => {
 };
 
 afterEach(() => {
+  // Reset to `undefined` (not null): the code under test guards on
+  // `typeof window === "undefined"`, so null would not restore SSR state.
+  // oxlint-disable-next-line sonarjs/no-undefined-assignment
   (globalThis as { window?: unknown }).window = undefined;
   vercelTrack.mockClear();
 });

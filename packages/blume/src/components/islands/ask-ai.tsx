@@ -78,6 +78,9 @@ const renderMarkdown = (content: string): string =>
 const Glyph = ({ path, size = 16 }: { path: string; size?: number }) => (
   <svg
     aria-hidden="true"
+    // `path` is a trusted, server-resolved Lucide glyph body (inline SVG),
+    // not user content; it must be injected as markup to render the icon.
+    // oxlint-disable-next-line react/no-danger -- trusted server-resolved inline SVG glyph
     dangerouslySetInnerHTML={{ __html: path }}
     fill="none"
     height={size}
@@ -126,7 +129,9 @@ const AskAI = ({
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
 
-  // Portal target (document.body) only exists after mount; guards SSR.
+  // Portal target (document.body) only exists after mount; guards SSR. The
+  // one-time false→true flip is deliberate, so the initial `false` is required.
+  // oxlint-disable-next-line react/react-compiler, react-doctor/no-initialize-state -- deliberate post-mount portal guard
   useEffect(() => setMounted(true), []);
 
   // The search modal forwards its query so "Ask AI: <query>" carries straight in.
@@ -213,17 +218,19 @@ const AskAI = ({
       const decoder = new TextDecoder();
       let done = false;
       while (!done) {
-        // oxlint-disable-next-line no-await-in-loop -- sequential stream reads
+        // oxlint-disable-next-line no-await-in-loop, react-doctor/async-await-in-loop -- sequential stream consumption; iterations are not independent
         const chunk = await reader.read();
         ({ done } = chunk);
         if (chunk.value) {
           // Streaming mode: a multi-byte UTF-8 sequence split across chunks
           // must not flush as U+FFFD garbage.
+          // oxlint-disable-next-line react/react-compiler -- local streaming accumulator, spread into state below
           assistant.content += decoder.decode(chunk.value, { stream: true });
           setMessages((current) => [...current.slice(0, -1), { ...assistant }]);
         }
       }
     } catch {
+      // oxlint-disable-next-line react/react-compiler -- local streaming accumulator, spread into state below
       assistant.content = t.error;
       setMessages((current) => [...current.slice(0, -1), { ...assistant }]);
     } finally {
@@ -268,7 +275,6 @@ const AskAI = ({
             className={ICON_BUTTON_CLASS}
             disabled={!hasMessages}
             onClick={copyConversation}
-            title={t.copy}
             type="button"
           >
             <Glyph path={icons.copy} />
@@ -278,7 +284,6 @@ const AskAI = ({
             className={ICON_BUTTON_CLASS}
             disabled={!hasMessages}
             onClick={() => setMessages([])}
-            title={t.clear}
             type="button"
           >
             <Glyph path={icons.clear} />
@@ -287,7 +292,6 @@ const AskAI = ({
             aria-label={t.close}
             className={ICON_BUTTON_CLASS}
             onClick={() => setOpen(false)}
-            title={t.close}
             type="button"
           >
             <Glyph path={icons.close} size={18} />
@@ -311,6 +315,8 @@ const AskAI = ({
                   {message.content ? (
                     // biome-ignore lint/security/noDangerouslySetInnerHtml: sanitized above
                     <div
+                      // renderMarkdown runs marked output through DOMPurify.sanitize.
+                      // oxlint-disable-next-line react/no-danger -- sanitized (DOMPurify) rendered-markdown output
                       dangerouslySetInnerHTML={{
                         __html: renderMarkdown(message.content),
                       }}
@@ -339,6 +345,7 @@ const AskAI = ({
                 {suggestion.icon && (
                   <span
                     className="shrink-0 text-muted-foreground [&_svg]:h-[18px] [&_svg]:w-[18px]"
+                    // oxlint-disable-next-line react/no-danger -- trusted server-resolved inline SVG glyph
                     dangerouslySetInnerHTML={{ __html: suggestion.icon }}
                   />
                 )}
@@ -391,7 +398,6 @@ const AskAI = ({
         aria-label={t.title}
         className={TRIGGER_CLASS}
         onClick={() => setOpen((value) => !value)}
-        title={t.title}
         type="button"
       >
         <Glyph path={icons.chat} size={18} />

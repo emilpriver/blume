@@ -28,7 +28,7 @@ const humanize = (segment: string): string =>
 
 const numericOrder = (segment: string): number => {
   const value = segment.match(NUMERIC_PREFIX)?.groups?.order;
-  return value ? Number.parseInt(value, 10) : Number.POSITIVE_INFINITY;
+  return value ? Math.trunc(Number(value)) : Number.POSITIVE_INFINITY;
 };
 
 /** The nav key of a raw path segment: group label or numeric-stripped name. */
@@ -335,6 +335,59 @@ const routeForRef = (
   return byRoute.get(normalized)?.route ?? normalized;
 };
 
+/**
+ * Convert one non-group explicit-config sidebar item (string ref, `root`, or
+ * `href`) to a nav node, or null to skip. Group items (`item.items`) are handled
+ * by `buildConfigSidebar` itself so it owns the recursion.
+ */
+const configItemToNode = (
+  item: SidebarItemConfig,
+  byRoute: Map<string, PageRecord>
+): NavNode | null => {
+  if (typeof item === "string") {
+    const page = byRoute.get(normalizeRef(item));
+    if (!page) {
+      return null;
+    }
+    return {
+      badge: page.meta.sidebar.badge,
+      deprecated: page.meta.deprecated || undefined,
+      description: page.description,
+      icon: page.meta.sidebar.icon,
+      kind: "page",
+      label: page.meta.sidebar.label ?? page.title,
+      pageId: page.id,
+      route: page.route,
+    };
+  }
+
+  if (item.root) {
+    const page = byRoute.get(normalizeRef(item.root));
+    return {
+      badge: item.badge,
+      deprecated: page?.meta.deprecated || undefined,
+      icon: item.icon,
+      kind: "page",
+      label: item.label,
+      pageId: page?.id ?? "",
+      route: page?.route ?? normalizeRef(item.root),
+    };
+  }
+
+  if (item.href) {
+    return {
+      badge: item.badge,
+      icon: item.icon,
+      kind: "page",
+      label: item.label,
+      pageId: "",
+      route: item.href,
+    };
+  }
+
+  return null;
+};
+
 /** Build the sidebar tree from an explicit config spec. */
 const buildConfigSidebar = (
   items: SidebarItemConfig[],
@@ -342,26 +395,8 @@ const buildConfigSidebar = (
   display: SidebarDisplay
 ): NavNode[] => {
   const nodes: NavNode[] = [];
-
   for (const item of items) {
-    if (typeof item === "string") {
-      const page = byRoute.get(normalizeRef(item));
-      if (page) {
-        nodes.push({
-          badge: page.meta.sidebar.badge,
-          deprecated: page.meta.deprecated || undefined,
-          description: page.description,
-          icon: page.meta.sidebar.icon,
-          kind: "page",
-          label: page.meta.sidebar.label ?? page.title,
-          pageId: page.id,
-          route: page.route,
-        });
-      }
-      continue;
-    }
-
-    if (item.items) {
+    if (typeof item !== "string" && item.items) {
       nodes.push({
         badge: item.badge,
         children: buildConfigSidebar(item.items, byRoute, display),
@@ -375,33 +410,11 @@ const buildConfigSidebar = (
       });
       continue;
     }
-
-    if (item.root) {
-      const page = byRoute.get(normalizeRef(item.root));
-      nodes.push({
-        badge: item.badge,
-        deprecated: page?.meta.deprecated || undefined,
-        icon: item.icon,
-        kind: "page",
-        label: item.label,
-        pageId: page?.id ?? "",
-        route: page?.route ?? normalizeRef(item.root),
-      });
-      continue;
-    }
-
-    if (item.href) {
-      nodes.push({
-        badge: item.badge,
-        icon: item.icon,
-        kind: "page",
-        label: item.label,
-        pageId: "",
-        route: item.href,
-      });
+    const node = configItemToNode(item, byRoute);
+    if (node) {
+      nodes.push(node);
     }
   }
-
   return nodes;
 };
 
@@ -459,7 +472,7 @@ export const buildNavigation = (
       sharedFolderMeta,
       metaPrefix,
       display,
-      new Set(tabs.map((tab) => tab.path).filter((path) => path !== "/"))
+      new Set(tabs.flatMap((tab) => (tab.path === "/" ? [] : [tab.path])))
     ),
     tabs,
   };

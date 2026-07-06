@@ -18,6 +18,9 @@ import type { ContentSource } from "./sources/types.ts";
 /** Icon inputs in serializable contexts (frontmatter, meta files). */
 const iconName = z.string().min(1);
 
+/** Default include glob for filesystem-backed content sources. */
+const DEFAULT_CONTENT_GLOB = "**/*.{md,mdx}";
+
 const hydrationMode = z.enum(["load", "idle", "visible", "media", "only"]);
 export type HydrationMode = z.infer<typeof hydrationMode>;
 
@@ -33,41 +36,36 @@ const dateSchema = z
 // Page frontmatter
 // ---------------------------------------------------------------------------
 
-const sidebarMetaSchema = z
-  .object({
-    badge: z.string().optional(),
-    hidden: z.boolean().default(false),
-    icon: iconName.optional(),
-    label: z.string().optional(),
-    order: z.number().optional(),
-  })
-  .strict();
+const sidebarMetaSchema = z.strictObject({
+  badge: z.string().optional(),
+  hidden: z.boolean().default(false),
+  icon: iconName.optional(),
+  label: z.string().optional(),
+  order: z.number().optional(),
+});
 
-const seoMetaSchema = z
-  .object({
-    canonical: z.string().url().optional(),
-    description: z.string().optional(),
-    image: z.string().optional(),
-    noindex: z.boolean().default(false),
-    title: z.string().optional(),
-  })
-  .strict();
+const seoMetaSchema = z.strictObject({
+  // blume bundles Zod 3; top-level `z.url()` is undefined at runtime and
+  // schemas must stay dual-compatible with consumer projects on Zod 4.
+  // oxlint-disable-next-line react-doctor/zod-v4-prefer-top-level-string-formats
+  canonical: z.string().url().optional(),
+  description: z.string().optional(),
+  image: z.string().optional(),
+  noindex: z.boolean().default(false),
+  title: z.string().optional(),
+});
 
-const searchMetaSchema = z
-  .object({
-    boost: z.number().optional(),
-    exclude: z.boolean().default(false),
-    tags: z.array(z.string()).optional(),
-  })
-  .strict();
+const searchMetaSchema = z.strictObject({
+  boost: z.number().optional(),
+  exclude: z.boolean().default(false),
+  tags: z.array(z.string()).optional(),
+});
 
-const changelogMetaSchema = z
-  .object({
-    category: z.string().optional(),
-    date: dateSchema.optional(),
-    version: z.string().optional(),
-  })
-  .strict();
+const changelogMetaSchema = z.strictObject({
+  category: z.string().optional(),
+  date: dateSchema.optional(),
+  version: z.string().optional(),
+});
 
 /**
  * A post author: a bare name/handle, or an object with a name plus optional
@@ -85,34 +83,32 @@ const authorSchema = z.union([
       name: z.string(),
       url: z.string().optional(),
     })
-    .passthrough(),
+    .catchall(z.unknown()),
 ]);
 
 /** Frontmatter accepted on any content page. */
-const pageMetaBaseSchema = z
-  .object({
-    /** Post author(s) for blog/changelog content; preserved, not yet rendered. */
-    authors: z.union([authorSchema, z.array(authorSchema)]).optional(),
-    changelog: changelogMetaSchema.optional(),
-    /** Publish date for feed-backed content like blog/changelog. */
-    date: dateSchema.optional(),
-    deprecated: z.boolean().default(false),
-    description: z.string().optional(),
-    draft: z.boolean().default(false),
-    hidden: z.boolean().default(false),
-    icon: iconName.optional(),
-    /** Overrides the git-derived last-modified date when `lastModified` is on. */
-    lastModified: dateSchema.optional(),
-    noindex: z.boolean().default(false),
-    search: searchMetaSchema.default({}),
-    seo: seoMetaSchema.default({}),
-    sidebar: sidebarMetaSchema.default({}),
-    slug: z.string().optional(),
-    title: z.string().optional(),
-    // No default: an absent `type` must fall through to `content.defaultType`.
-    type: z.string().optional(),
-  })
-  .strict();
+const pageMetaBaseSchema = z.strictObject({
+  /** Post author(s) for blog/changelog content; preserved, not yet rendered. */
+  authors: z.union([authorSchema, z.array(authorSchema)]).optional(),
+  changelog: changelogMetaSchema.optional(),
+  /** Publish date for feed-backed content like blog/changelog. */
+  date: dateSchema.optional(),
+  deprecated: z.boolean().default(false),
+  description: z.string().optional(),
+  draft: z.boolean().default(false),
+  hidden: z.boolean().default(false),
+  icon: iconName.optional(),
+  /** Overrides the git-derived last-modified date when `lastModified` is on. */
+  lastModified: dateSchema.optional(),
+  noindex: z.boolean().default(false),
+  search: searchMetaSchema.default({}),
+  seo: seoMetaSchema.default({}),
+  sidebar: sidebarMetaSchema.default({}),
+  slug: z.string().optional(),
+  title: z.string().optional(),
+  // No default: an absent `type` must fall through to `content.defaultType`.
+  type: z.string().optional(),
+});
 
 export const pageMetaSchema = pageMetaBaseSchema;
 
@@ -133,16 +129,14 @@ export type PageMetaInput = z.input<typeof pageMetaBaseSchema>;
 const sidebarDisplaySchema = z.enum(["flat", "group", "page"]);
 export type SidebarDisplay = z.infer<typeof sidebarDisplaySchema>;
 
-export const folderMetaSchema = z
-  .object({
-    collapsed: z.boolean().optional(),
-    icon: iconName.optional(),
-    order: z.number().optional(),
-    /** Explicit child ordering by slug segment (without numeric prefix). */
-    pages: z.array(z.string()).optional(),
-    title: z.string().optional(),
-  })
-  .strict();
+export const folderMetaSchema = z.strictObject({
+  collapsed: z.boolean().optional(),
+  icon: iconName.optional(),
+  order: z.number().optional(),
+  /** Explicit child ordering by slug segment (without numeric prefix). */
+  pages: z.array(z.string()).optional(),
+  title: z.string().optional(),
+});
 
 export type FolderMeta = z.infer<typeof folderMetaSchema>;
 
@@ -153,13 +147,11 @@ export type FolderMeta = z.infer<typeof folderMetaSchema>;
 /** The logo mark: a single image path/URL, or light/dark variants with alt text. */
 const logoImageSchema = z.union([
   z.string(),
-  z
-    .object({
-      alt: z.string().optional(),
-      dark: z.string().optional(),
-      light: z.string().optional(),
-    })
-    .strict(),
+  z.strictObject({
+    alt: z.string().optional(),
+    dark: z.string().optional(),
+    light: z.string().optional(),
+  }),
 ]);
 
 /**
@@ -171,75 +163,63 @@ const logoImageSchema = z.union([
  */
 const logoConfigSchema = z.union([
   z.string(),
-  z
-    .object({
-      href: z.string().optional(),
-      image: logoImageSchema.optional(),
-      text: z.string().optional(),
-    })
-    .strict(),
+  z.strictObject({
+    href: z.string().optional(),
+    image: logoImageSchema.optional(),
+    text: z.string().optional(),
+  }),
 ]);
 
 /** Site-wide announcement banner: a string, or text with an optional link. */
 const bannerConfigSchema = z.union([
   z.string(),
-  z
-    .object({
-      content: z.string(),
-      /** Show a dismiss button; the choice is remembered per visitor. */
-      dismissible: z.boolean().default(false),
-      /** Stable key for remembering dismissal; defaults to the content. */
-      id: z.string().optional(),
-      link: z
-        .object({ href: z.string(), text: z.string() })
-        .strict()
-        .optional(),
-    })
-    .strict(),
+  z.strictObject({
+    content: z.string(),
+    /** Show a dismiss button; the choice is remembered per visitor. */
+    dismissible: z.boolean().default(false),
+    /** Stable key for remembering dismissal; defaults to the content. */
+    id: z.string().optional(),
+    link: z.strictObject({ href: z.string(), text: z.string() }).optional(),
+  }),
 ]);
 
 /** A local filesystem content source. */
-const filesystemSourceSchema = z
-  .object({
-    exclude: z.array(z.string()).default(["**/_*", "**/.*"]),
-    include: z.array(z.string()).default(["**/*.{md,mdx}"]),
-    /** Namespaces the source's routes under `/<prefix>/`. */
-    prefix: z.string().optional(),
-    root: z.string().default("docs"),
-    type: z.literal("filesystem"),
-  })
-  .strict();
+const filesystemSourceSchema = z.strictObject({
+  exclude: z.array(z.string()).default(["**/_*", "**/.*"]),
+  include: z.array(z.string()).default([DEFAULT_CONTENT_GLOB]),
+  /** Namespaces the source's routes under `/<prefix>/`. */
+  prefix: z.string().optional(),
+  root: z.string().default("docs"),
+  type: z.literal("filesystem"),
+});
 
 /**
  * Remote Markdown/MDX fetched over HTTP. Enumerate files either explicitly
  * (`files` against a raw `url` base) or from a GitHub repo subtree (`github`).
  * The token, when needed, comes from `GITHUB_TOKEN` — never inlined here.
  */
-const mdxRemoteSourceSchema = z
-  .object({
-    /** Explicit list of source-relative file paths to fetch from `url`. */
-    files: z.array(z.string()).optional(),
-    /** Enumerate a GitHub repo subtree via the git-trees API. */
-    github: z
-      .object({
-        owner: z.string(),
-        path: z.string().default(""),
-        ref: z.string().default("main"),
-        repo: z.string(),
-      })
-      .strict()
-      .optional(),
-    /** Glob patterns applied to enumerated refs. */
-    include: z.array(z.string()).default(["**/*.{md,mdx}"]),
-    /** Opt-in dev polling interval (seconds); omit to freeze for the session. */
-    pollInterval: z.number().positive().optional(),
-    /** Namespaces the source's routes under `/<prefix>/`. */
-    prefix: z.string().optional(),
-    type: z.literal("mdx-remote"),
-    /** Raw base URL, e.g. `https://raw.githubusercontent.com/acme/sdk/main/docs`. */
-    url: z.string().optional(),
-  })
-  .strict();
+const mdxRemoteSourceSchema = z.strictObject({
+  /** Explicit list of source-relative file paths to fetch from `url`. */
+  files: z.array(z.string()).optional(),
+  /** Enumerate a GitHub repo subtree via the git-trees API. */
+  github: z
+    .strictObject({
+      owner: z.string(),
+      path: z.string().default(""),
+      ref: z.string().default("main"),
+      repo: z.string(),
+    })
+    .optional(),
+  /** Glob patterns applied to enumerated refs. */
+  include: z.array(z.string()).default([DEFAULT_CONTENT_GLOB]),
+  /** Opt-in dev polling interval (seconds); omit to freeze for the session. */
+  pollInterval: z.number().positive().optional(),
+  /** Namespaces the source's routes under `/<prefix>/`. */
+  prefix: z.string().optional(),
+  type: z.literal("mdx-remote"),
+  /** Raw base URL, e.g. `https://raw.githubusercontent.com/acme/sdk/main/docs`. */
+  url: z.string().optional(),
+});
 
 /** A Sanity dataset queried with GROQ; Portable Text bodies become Markdown. */
 const sanitySourceSchema = z.object({
@@ -248,14 +228,13 @@ const sanitySourceSchema = z.object({
   dataset: z.string(),
   /** Field paths mapping a document onto Blume meta + body. */
   fields: z
-    .object({
+    .strictObject({
       body: z.string().optional(),
       description: z.string().optional(),
       lastModified: z.string().optional(),
       slug: z.string().optional(),
       title: z.string().optional(),
     })
-    .strict()
     .optional(),
   /** Opt-in dev polling interval (seconds); omit to freeze for the session. */
   pollInterval: z.number().positive().optional(),
@@ -274,14 +253,13 @@ const notionSourceSchema = z.object({
   prefix: z.string().optional(),
   /** Notion property names mapped onto Blume meta. */
   properties: z
-    .object({
+    .strictObject({
       description: z.string().optional(),
       order: z.string().optional(),
       slug: z.string().optional(),
       status: z.string().optional(),
       title: z.string().optional(),
     })
-    .strict()
     .optional(),
   /** Status value treated as published; others map to `draft`. Default `Published`. */
   publishedValue: z.string().optional(),
@@ -293,25 +271,23 @@ const notionSourceSchema = z.object({
  * notes become the changelog with no files to maintain. A private repo reads a
  * token from `GITHUB_TOKEN`; it is never inlined here.
  */
-const githubReleasesSourceSchema = z
-  .object({
-    /** Include draft releases (needs a token with repo write access). */
-    drafts: z.boolean().optional(),
-    /** Cap the number of releases materialized, newest-first. Default 100. */
-    limit: z.number().positive().optional(),
-    /** Repository owner (user or org). */
-    owner: z.string(),
-    /** Opt-in dev polling interval (seconds); omit to freeze for the session. */
-    pollInterval: z.number().positive().optional(),
-    /** Namespaces the source's routes under `/<prefix>/`; e.g. `changelog`. */
-    prefix: z.string().optional(),
-    /** Include prereleases. */
-    prereleases: z.boolean().optional(),
-    /** Repository name. */
-    repo: z.string(),
-    type: z.literal("github-releases"),
-  })
-  .strict();
+const githubReleasesSourceSchema = z.strictObject({
+  /** Include draft releases (needs a token with repo write access). */
+  drafts: z.boolean().optional(),
+  /** Cap the number of releases materialized, newest-first. Default 100. */
+  limit: z.number().positive().optional(),
+  /** Repository owner (user or org). */
+  owner: z.string(),
+  /** Opt-in dev polling interval (seconds); omit to freeze for the session. */
+  pollInterval: z.number().positive().optional(),
+  /** Namespaces the source's routes under `/<prefix>/`; e.g. `changelog`. */
+  prefix: z.string().optional(),
+  /** Include prereleases. */
+  prereleases: z.boolean().optional(),
+  /** Repository name. */
+  repo: z.string(),
+  type: z.literal("github-releases"),
+});
 
 /**
  * A user-provided `ContentSource` instance, passed straight through from
@@ -343,60 +319,50 @@ const contentSourceSchema = z.discriminatedUnion("type", [
 /** A resolved content-source config entry (post-defaults). */
 export type ContentSourceConfig = z.infer<typeof contentSourceSchema>;
 
-const contentConfigSchema = z
-  .object({
-    defaultType: z.string().default("doc"),
-    exclude: z.array(z.string()).default(["**/_*", "**/.*"]),
-    include: z.array(z.string()).default(["**/*.{md,mdx}"]),
-    pages: z.string().default("pages"),
-    root: z.string().default("docs"),
-    /**
-     * Pluggable content sources. When omitted, the top-level
-     * `root`/`include`/`exclude` desugar to one implicit filesystem source, so
-     * existing projects are unchanged.
-     */
-    sources: z.array(contentSourceSchema).optional(),
-  })
-  .strict();
+const contentConfigSchema = z.strictObject({
+  defaultType: z.string().default("doc"),
+  exclude: z.array(z.string()).default(["**/_*", "**/.*"]),
+  include: z.array(z.string()).default([DEFAULT_CONTENT_GLOB]),
+  pages: z.string().default("pages"),
+  root: z.string().default("docs"),
+  /**
+   * Pluggable content sources. When omitted, the top-level
+   * `root`/`include`/`exclude` desugar to one implicit filesystem source, so
+   * existing projects are unchanged.
+   */
+  sources: z.array(contentSourceSchema).optional(),
+});
 
-const navTabSchema = z
-  .object({
-    icon: iconName.optional(),
-    items: z
-      .array(
-        z
-          .object({
-            description: z.string().optional(),
-            icon: iconName.optional(),
-            label: z.string(),
-            path: z.string(),
-            tag: z.string().optional(),
-          })
-          .strict()
-      )
-      .optional(),
-    label: z.string(),
-    path: z.string(),
-  })
-  .strict();
+const navTabSchema = z.strictObject({
+  icon: iconName.optional(),
+  items: z
+    .array(
+      z.strictObject({
+        description: z.string().optional(),
+        icon: iconName.optional(),
+        label: z.string(),
+        path: z.string(),
+        tag: z.string().optional(),
+      })
+    )
+    .optional(),
+  label: z.string(),
+  path: z.string(),
+});
 
-const navSelectorItemSchema = z
-  .object({
-    description: z.string().optional(),
-    icon: iconName.optional(),
-    label: z.string(),
-    path: z.string(),
-    tag: z.string().optional(),
-  })
-  .strict();
+const navSelectorItemSchema = z.strictObject({
+  description: z.string().optional(),
+  icon: iconName.optional(),
+  label: z.string(),
+  path: z.string(),
+  tag: z.string().optional(),
+});
 
-const navSelectorSchema = z
-  .object({
-    items: z.array(navSelectorItemSchema).default([]),
-    kind: z.enum(["dropdown", "language", "product", "version"]),
-    label: z.string(),
-  })
-  .strict();
+const navSelectorSchema = z.strictObject({
+  items: z.array(navSelectorItemSchema).default([]),
+  kind: z.enum(["dropdown", "language", "product", "version"]),
+  label: z.string(),
+});
 
 const directoryModeSchema = z.enum(["accordion", "card", "none"]);
 export type DirectoryMode = z.infer<typeof directoryModeSchema>;
@@ -419,26 +385,29 @@ export type SidebarItemConfig =
 const sidebarItemSchema: z.ZodType<SidebarItemConfig> = z.lazy(() =>
   z.union([
     z.string(),
-    z
-      .object({
-        badge: z.string().optional(),
-        collapsed: z.boolean().optional(),
-        directory: directoryModeSchema.optional(),
-        display: sidebarDisplaySchema.optional(),
-        href: z.string().optional(),
-        icon: iconName.optional(),
-        items: z.array(sidebarItemSchema).optional(),
-        label: z.string(),
-        root: z.string().optional(),
-      })
-      .strict(),
+    z.strictObject({
+      badge: z.string().optional(),
+      collapsed: z.boolean().optional(),
+      directory: directoryModeSchema.optional(),
+      display: sidebarDisplaySchema.optional(),
+      href: z.string().optional(),
+      icon: iconName.optional(),
+      items: z.array(sidebarItemSchema).optional(),
+      label: z.string(),
+      root: z.string().optional(),
+    }),
   ])
 );
 
 /** A curated Google Font slug (see `theme/fonts.ts`). */
-const fontSlug = z.string().refine(isFontSlug, (value) => ({
-  message: `Unknown font "${value}". Supported fonts: ${FONT_SLUGS.join(", ")}.`,
-}));
+const fontSlug = z.string().superRefine((value, ctx) => {
+  if (!isFontSlug(value)) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: `Unknown font "${value}". Supported fonts: ${FONT_SLUGS.join(", ")}.`,
+    });
+  }
+});
 
 /**
  * An optional per-mode theme value: a string applies to both color modes; a
@@ -448,79 +417,69 @@ const fontSlug = z.string().refine(isFontSlug, (value) => ({
 const perModeValueSchema = z
   .union([
     z.string(),
-    z
-      .object({ dark: z.string().optional(), light: z.string().optional() })
-      .strict(),
+    z.strictObject({
+      dark: z.string().optional(),
+      light: z.string().optional(),
+    }),
   ])
   .optional()
   .transform((value) =>
     typeof value === "string" ? { dark: value, light: value } : value
   );
 
-const themeConfigSchema = z
-  .object({
-    accent: z
-      .union([
-        z.string(),
-        z.object({ dark: z.string(), light: z.string() }).strict(),
-      ])
-      .default("blue")
-      .transform((value) =>
-        typeof value === "string" ? { dark: value, light: value } : value
-      ),
-    action: z.string().optional(),
-    background: perModeValueSchema,
-    backgroundImage: perModeValueSchema,
-    fonts: z
-      .object({
-        body: fontSlug.default("inter"),
-        display: fontSlug.default("inter-tight"),
-        mono: fontSlug.default("ibm-plex-mono"),
-      })
-      .strict()
-      .default({}),
-    layout: z.enum(["sidebar"]).default("sidebar"),
-    mode: z.enum(["system", "light", "dark"]).default("system"),
-    radius: z.enum(["none", "sm", "md", "lg"]).default("md"),
-  })
-  .strict();
+const themeConfigSchema = z.strictObject({
+  accent: z
+    .union([
+      z.string(),
+      z.strictObject({ dark: z.string(), light: z.string() }),
+    ])
+    .default("blue")
+    .transform((value) =>
+      typeof value === "string" ? { dark: value, light: value } : value
+    ),
+  action: z.string().optional(),
+  background: perModeValueSchema,
+  backgroundImage: perModeValueSchema,
+  fonts: z
+    .strictObject({
+      body: fontSlug.default("inter"),
+      display: fontSlug.default("inter-tight"),
+      mono: fontSlug.default("ibm-plex-mono"),
+    })
+    .default({}),
+  layout: z.enum(["sidebar"]).default("sidebar"),
+  mode: z.enum(["system", "light", "dark"]).default("system"),
+  radius: z.enum(["none", "sm", "md", "lg"]).default("md"),
+});
 
 /** Public credentials for the Algolia search backend (sync key is an env var). */
-const algoliaSearchSchema = z
-  .object({
-    appId: z.string(),
-    indexName: z.string(),
-    searchApiKey: z.string(),
-  })
-  .strict();
+const algoliaSearchSchema = z.strictObject({
+  appId: z.string(),
+  indexName: z.string(),
+  searchApiKey: z.string(),
+});
 
 /** Public credentials for the Orama Cloud search backend. */
-const oramaCloudSearchSchema = z
-  .object({
-    apiKey: z.string(),
-    endpoint: z.string(),
-    /** Index id used by the build-time sync (with `ORAMA_PRIVATE_API_KEY`). */
-    indexId: z.string().optional(),
-  })
-  .strict();
+const oramaCloudSearchSchema = z.strictObject({
+  apiKey: z.string(),
+  endpoint: z.string(),
+  /** Index id used by the build-time sync (with `ORAMA_PRIVATE_API_KEY`). */
+  indexId: z.string().optional(),
+});
 
 /** Public credentials for a (self-hosted or cloud) Typesense backend. */
-const typesenseSearchSchema = z
-  .object({
-    collection: z.string(),
-    host: z.string(),
-    port: z.number().int().positive().optional(),
-    protocol: z.enum(["http", "https"]).optional(),
-    searchApiKey: z.string(),
-  })
-  .strict();
+const typesenseSearchSchema = z.strictObject({
+  collection: z.string(),
+  host: z.string(),
+  port: z.number().int().positive().optional(),
+  protocol: z.enum(["http", "https"]).optional(),
+  searchApiKey: z.string(),
+});
 
 /** Mixedbread semantic search: the store the server endpoint queries. */
-const mixedbreadSearchSchema = z
-  .object({
-    storeId: z.string(),
-  })
-  .strict();
+const mixedbreadSearchSchema = z.strictObject({
+  storeId: z.string(),
+});
 
 export const searchProviders = [
   "orama",
@@ -542,20 +501,18 @@ const PROVIDER_CONFIG_KEY = {
 } as const;
 
 const searchConfigSchema = z
-  .object({
+  .strictObject({
     algolia: algoliaSearchSchema.optional(),
     indexing: z
-      .object({
+      .strictObject({
         includeHiddenPages: z.boolean().default(false),
       })
-      .strict()
       .default({}),
     mixedbread: mixedbreadSearchSchema.optional(),
     oramaCloud: oramaCloudSearchSchema.optional(),
     provider: z.enum(searchProviders).default("orama"),
     typesense: typesenseSearchSchema.optional(),
   })
-  .strict()
   .superRefine((value, ctx) => {
     // Hosted providers can't work without their credentials; flag a missing
     // block with a path so the diagnostic points at `search.<provider>`.
@@ -579,95 +536,84 @@ export const askAiProviders = [
   "openai-compatible",
 ] as const;
 
-const aiConfigSchema = z
-  .object({
-    ask: z
-      .object({
-        // Name of the env var holding the provider's API key; each provider has
-        // a sensible default, so this only needs setting to override it.
-        apiKeyEnv: z.string().optional(),
-        // Base URL of the backend. Required for `openai-compatible`; for the
-        // named providers it overrides the built-in preset.
-        baseUrl: z.string().url().optional(),
-        enabled: z.boolean().default(false),
-        model: z.string().default("openai/gpt-5.5"),
-        provider: z.enum(askAiProviders).default("gateway"),
-        // Empty-state prompts shown before the first question. Each renders as a
-        // clickable suggestion; `icon` is an optional Lucide name beside it.
-        suggestions: z
-          .array(
-            z
-              .object({
-                icon: iconName.optional(),
-                label: z.string().min(1),
-              })
-              .strict()
-          )
-          .default([]),
-      })
-      .strict()
-      .superRefine((value, ctx) => {
-        // A generic OpenAI-compatible backend has no preset URL, so the user
-        // must supply one; the named providers fall back to their preset.
-        if (value.provider === "openai-compatible" && !value.baseUrl) {
-          ctx.addIssue({
-            code: z.ZodIssueCode.custom,
-            message:
-              'ai.ask.baseUrl is required when provider is "openai-compatible".',
-            path: ["baseUrl"],
-          });
-        }
-      })
-      .optional(),
-    llmsTxt: z.boolean().default(true),
-  })
-  .strict();
+const aiConfigSchema = z.strictObject({
+  ask: z
+    .strictObject({
+      // Name of the env var holding the provider's API key; each provider has
+      // a sensible default, so this only needs setting to override it.
+      apiKeyEnv: z.string().optional(),
+      // Base URL of the backend. Required for `openai-compatible`; for the
+      // named providers it overrides the built-in preset.
+      // blume bundles Zod 3; top-level `z.url()` is undefined at runtime.
+      // oxlint-disable-next-line react-doctor/zod-v4-prefer-top-level-string-formats
+      baseUrl: z.string().url().optional(),
+      enabled: z.boolean().default(false),
+      model: z.string().default("openai/gpt-5.5"),
+      provider: z.enum(askAiProviders).default("gateway"),
+      // Empty-state prompts shown before the first question. Each renders as a
+      // clickable suggestion; `icon` is an optional Lucide name beside it.
+      suggestions: z
+        .array(
+          z.strictObject({
+            icon: iconName.optional(),
+            label: z.string().min(1),
+          })
+        )
+        .default([]),
+    })
+    .superRefine((value, ctx) => {
+      // A generic OpenAI-compatible backend has no preset URL, so the user
+      // must supply one; the named providers fall back to their preset.
+      if (value.provider === "openai-compatible" && !value.baseUrl) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message:
+            'ai.ask.baseUrl is required when provider is "openai-compatible".',
+          path: ["baseUrl"],
+        });
+      }
+    })
+    .optional(),
+  llmsTxt: z.boolean().default(true),
+});
 
 /**
  * A pinned link rendered above the sidebar sections — a blog, changelog, or
  * contact page that should always be reachable, regardless of the active tab.
  * `href` may be an external URL or an internal route.
  */
-const featuredLinkSchema = z
-  .object({
-    href: z.string(),
-    icon: iconName.optional(),
-    label: z.string(),
-  })
-  .strict();
+const featuredLinkSchema = z.strictObject({
+  href: z.string(),
+  icon: iconName.optional(),
+  label: z.string(),
+});
 
-const navigationConfigSchema = z
-  .object({
-    /** Pinned links shown above the generated sidebar sections. */
-    featured: z.array(featuredLinkSchema).default([]),
-    /** Show a GitHub repo link in the header (requires `github` configured). */
-    repo: z.boolean().default(true),
-    selectors: z.array(navSelectorSchema).default([]),
-    /**
-     * Sidebar behavior. `display` sets how every group renders (a group in an
-     * explicit `items` config may still override it); `items` is an explicit
-     * sidebar — when omitted the sidebar is generated from the content tree.
-     * A bare array is shorthand for `{ items }`.
-     */
-    sidebar: z
-      .union([
-        z.array(sidebarItemSchema),
-        z
-          .object({
-            display: sidebarDisplaySchema.default("flat"),
-            items: z.array(sidebarItemSchema).optional(),
-          })
-          .strict(),
-      ])
-      .default({})
-      .transform((value) =>
-        Array.isArray(value)
-          ? { display: "flat" as const, items: value }
-          : value
-      ),
-    tabs: z.array(navTabSchema).optional(),
-  })
-  .strict();
+const navigationConfigSchema = z.strictObject({
+  /** Pinned links shown above the generated sidebar sections. */
+  featured: z.array(featuredLinkSchema).default([]),
+  /** Show a GitHub repo link in the header (requires `github` configured). */
+  repo: z.boolean().default(true),
+  selectors: z.array(navSelectorSchema).default([]),
+  /**
+   * Sidebar behavior. `display` sets how every group renders (a group in an
+   * explicit `items` config may still override it); `items` is an explicit
+   * sidebar — when omitted the sidebar is generated from the content tree.
+   * A bare array is shorthand for `{ items }`.
+   */
+  sidebar: z
+    .union([
+      z.array(sidebarItemSchema),
+      z.strictObject({
+        display: sidebarDisplaySchema.default("flat"),
+        items: z.array(sidebarItemSchema).optional(),
+      }),
+    ])
+    .default({})
+    .transform((value) =>
+      Array.isArray(value) ? { display: "flat" as const, items: value } : value
+    ),
+  tabs: z.array(navTabSchema).optional(),
+});
 
 export type AskAiProvider = (typeof askAiProviders)[number];
 export type AskAiConfig = NonNullable<z.infer<typeof aiConfigSchema>["ask"]>;
@@ -679,37 +625,31 @@ export type AskAiConfig = NonNullable<z.infer<typeof aiConfigSchema>["ask"]>;
 const exportConfigSchema = z
   .union([
     z.boolean(),
-    z
-      .object({
-        epub: z.boolean().default(false),
-        pdf: z.boolean().default(false),
-      })
-      .strict(),
+    z.strictObject({
+      epub: z.boolean().default(false),
+      pdf: z.boolean().default(false),
+    }),
   ])
   .transform((value) =>
     typeof value === "boolean" ? { epub: value, pdf: value } : value
   );
 
-const mcpConfigSchema = z
-  .object({
-    enabled: z.boolean().default(false),
-    /** Optional system hint passed to connecting agents. */
-    instructions: z.string().optional(),
-    /** Server name shown to clients; defaults to the site title. */
-    name: z.string().optional(),
-    route: z.string().default("/mcp"),
-  })
-  .strict();
+const mcpConfigSchema = z.strictObject({
+  enabled: z.boolean().default(false),
+  /** Optional system hint passed to connecting agents. */
+  instructions: z.string().optional(),
+  /** Server name shown to clients; defaults to the site title. */
+  name: z.string().optional(),
+  route: z.string().default("/mcp"),
+});
 
 /** A configured locale: ISO-ish code plus display metadata for the switcher. */
-const localeSchema = z
-  .object({
-    code: z.string().min(1),
-    /** Text direction; drives `<html dir>` and a future RTL pass. */
-    dir: z.enum(["ltr", "rtl"]).default("ltr"),
-    label: z.string(),
-  })
-  .strict();
+const localeSchema = z.strictObject({
+  code: z.string().min(1),
+  /** Text direction; drives `<html dir>` and a future RTL pass. */
+  dir: z.enum(["ltr", "rtl"]).default("ltr"),
+  label: z.string(),
+});
 
 /**
  * Internationalization. Opt-in: when absent, Blume is single-locale and behaves
@@ -717,7 +657,7 @@ const localeSchema = z
  * are top-level directories named by `code` (the `dir` parser).
  */
 const i18nConfigSchema = z
-  .object({
+  .strictObject({
     defaultLocale: z.string().default("en"),
     /** Locale rendered for a missing translation; `null` disables fallback. */
     fallbackLocale: z.string().nullable().optional(),
@@ -729,7 +669,6 @@ const i18nConfigSchema = z
     /** Per-locale UI string overrides: `{ fr: { search: { button: "…" } } }`. */
     ui: uiLocaleOverridesSchema.optional(),
   })
-  .strict()
   .superRefine((value, ctx) => {
     const codes = new Set(value.locales.map((locale) => locale.code));
     if (!codes.has(value.defaultLocale)) {
@@ -753,7 +692,7 @@ const i18nConfigSchema = z
   });
 
 const analyticsScriptSchema = z
-  .object({
+  .strictObject({
     // Extra attributes (e.g. `data-domain`, `id`) spread onto the <script>.
     attributes: z.record(z.string(), z.string()).optional(),
     // Inline script body, mutually exclusive with `src`.
@@ -763,69 +702,59 @@ const analyticsScriptSchema = z
     // Load strategy for an external script.
     strategy: z.enum(["async", "defer"]).optional(),
   })
-  .strict()
   .refine((value) => Boolean(value.src) !== Boolean(value.content), {
     message: "An analytics script must set exactly one of `src` or `content`.",
   });
 
-const analyticsConfigSchema = z
-  .object({
-    posthog: z
-      .object({
-        host: z.string().optional(),
-        key: z.string(),
-      })
-      .strict()
-      .optional(),
-    // Escape hatch for any other provider (Plausible, Fathom, GA, Umami, …).
-    scripts: z.array(analyticsScriptSchema).optional(),
-    vercel: z.boolean().optional(),
-  })
-  .strict();
+const analyticsConfigSchema = z.strictObject({
+  posthog: z
+    .strictObject({
+      host: z.string().optional(),
+      key: z.string(),
+    })
+    .optional(),
+  // Escape hatch for any other provider (Plausible, Fathom, GA, Umami, …).
+  scripts: z.array(analyticsScriptSchema).optional(),
+  vercel: z.boolean().optional(),
+});
 
-const deploymentConfigSchema = z
-  .object({
-    adapter: z
-      .enum(["vercel", "node", "netlify", "cloudflare"])
-      .nullable()
-      .default(null),
-    base: z.string().optional(),
-    output: z.enum(["static", "server"]).default("static"),
-    site: z.string().url().optional(),
-  })
-  .strict();
+const deploymentConfigSchema = z.strictObject({
+  adapter: z
+    .enum(["vercel", "node", "netlify", "cloudflare"])
+    .nullable()
+    .default(null),
+  base: z.string().optional(),
+  output: z.enum(["static", "server"]).default("static"),
+  // blume bundles Zod 3; top-level `z.url()` is undefined at runtime.
+  // oxlint-disable-next-line react-doctor/zod-v4-prefer-top-level-string-formats
+  site: z.string().url().optional(),
+});
 
-const redirectSchema = z
-  .object({
-    from: z.string(),
-    status: z
-      .union([z.literal(301), z.literal(302), z.literal(307), z.literal(308)])
-      .default(301),
-    to: z.string(),
-  })
-  .strict();
+const redirectSchema = z.strictObject({
+  from: z.string(),
+  status: z
+    .union([z.literal(301), z.literal(302), z.literal(307), z.literal(308)])
+    .default(301),
+  to: z.string(),
+});
 
-const ogConfigSchema = z
-  .object({
-    /**
-     * Generate a per-page Open Graph image. Defaults to on once a deployment
-     * site URL is known (set or auto-detected) and off otherwise, since
-     * `og:image` must be absolute to be useful to crawlers — resolved in
-     * `loadConfig`. An explicit value here always wins.
-     */
-    enabled: z.boolean().optional(),
-  })
-  .strict();
+const ogConfigSchema = z.strictObject({
+  /**
+   * Generate a per-page Open Graph image. Defaults to on once a deployment
+   * site URL is known (set or auto-detected) and off otherwise, since
+   * `og:image` must be absolute to be useful to crawlers — resolved in
+   * `loadConfig`. An explicit value here always wins.
+   */
+  enabled: z.boolean().optional(),
+});
 
-const rssConfigSchema = z
-  .object({
-    enabled: z.boolean().default(true),
-    /** Max items per feed, newest first. */
-    limit: z.number().int().positive().default(50),
-    /** Content types that each get a feed at `/<type>/rss.xml`. */
-    types: z.array(z.string()).default(["blog", "changelog"]),
-  })
-  .strict();
+const rssConfigSchema = z.strictObject({
+  enabled: z.boolean().default(true),
+  /** Max items per feed, newest first. */
+  limit: z.number().int().positive().default(50),
+  /** Content types that each get a feed at `/<type>/rss.xml`. */
+  types: z.array(z.string()).default(["blog", "changelog"]),
+});
 
 /**
  * robots.txt `Content-Signal` preferences — the emerging content-usage
@@ -835,13 +764,11 @@ const rssConfigSchema = z
  * - `aiInput` → `ai-input` (grounding / RAG use at answer time)
  * - `aiTrain` → `ai-train` (model training)
  */
-const contentSignalsObjectSchema = z
-  .object({
-    aiInput: z.boolean().default(true),
-    aiTrain: z.boolean().default(true),
-    search: z.boolean().default(true),
-  })
-  .strict();
+const contentSignalsObjectSchema = z.strictObject({
+  aiInput: z.boolean().default(true),
+  aiTrain: z.boolean().default(true),
+  search: z.boolean().default(true),
+});
 
 /**
  * Content signals accept a boolean shorthand or a per-signal object, and
@@ -863,49 +790,41 @@ const contentSignalsSchema = z
   });
 
 /** Discoverability features: OG images, feeds, sitemap, structured data. */
-const seoConfigSchema = z
-  .object({
-    /**
-     * Emit `agent-readability.json` at the site root: a manifest that indexes
-     * the agent-facing surface (llms.txt, Markdown mirrors, MCP server, feeds)
-     * so agents can discover it without scraping HTML.
-     */
-    agentReadability: z.boolean().default(true),
-    /** robots.txt `Content-Signal` usage declaration (on by default). */
-    contentSignals: contentSignalsSchema.default(true),
-    og: ogConfigSchema.default({}),
-    /** Generate robots.txt (with a Sitemap reference when available). */
-    robots: z.boolean().default(true),
-    rss: rssConfigSchema.default({}),
-    /** Generate sitemap.xml (requires deployment.site). */
-    sitemap: z.boolean().default(true),
-    /** Emit schema.org JSON-LD in each page's <head>. */
-    structuredData: z.boolean().default(true),
-  })
-  .strict();
+const seoConfigSchema = z.strictObject({
+  /**
+   * Emit `agent-readability.json` at the site root: a manifest that indexes
+   * the agent-facing surface (llms.txt, Markdown mirrors, MCP server, feeds)
+   * so agents can discover it without scraping HTML.
+   */
+  agentReadability: z.boolean().default(true),
+  /** robots.txt `Content-Signal` usage declaration (on by default). */
+  contentSignals: contentSignalsSchema.default(true),
+  og: ogConfigSchema.default({}),
+  /** Generate robots.txt (with a Sitemap reference when available). */
+  robots: z.boolean().default(true),
+  rss: rssConfigSchema.default({}),
+  /** Generate sitemap.xml (requires deployment.site). */
+  sitemap: z.boolean().default(true),
+  /** Emit schema.org JSON-LD in each page's <head>. */
+  structuredData: z.boolean().default(true),
+});
 
-const githubConfigSchema = z
-  .object({
-    branch: z.string().default("main"),
-    /** Path from the repo root to the project root (for monorepos). */
-    dir: z.string().optional(),
-    owner: z.string(),
-    repo: z.string(),
-  })
-  .strict();
+const githubConfigSchema = z.strictObject({
+  branch: z.string().default("main"),
+  /** Path from the repo root to the project root (for monorepos). */
+  dir: z.string().optional(),
+  owner: z.string(),
+  repo: z.string(),
+});
 
-const codeBlockThemeSchema = z
-  .object({
-    dark: z.string().default("github-dark"),
-    light: z.string().default("github-light"),
-  })
-  .strict();
+const codeBlockThemeSchema = z.strictObject({
+  dark: z.string().default("github-dark"),
+  light: z.string().default("github-light"),
+});
 
-const codeBlocksConfigSchema = z
-  .object({
-    theme: codeBlockThemeSchema.default({}),
-  })
-  .strict();
+const codeBlocksConfigSchema = z.strictObject({
+  theme: codeBlockThemeSchema.default({}),
+});
 
 /**
  * "Last updated" timestamps for content pages. `false` (default) disables the
@@ -914,58 +833,52 @@ const codeBlocksConfigSchema = z
  */
 const lastModifiedConfigSchema = z.union([
   z.boolean(),
-  z.object({ type: z.enum(["git", "frontmatter"]).default("git") }).strict(),
+  z.strictObject({ type: z.enum(["git", "frontmatter"]).default("git") }),
 ]);
 
 /** Code-block rendering options (`markdown.code`). */
-const codeConfigSchema = z
-  .object({
-    /**
-     * Show a brand language icon in the code-block header (TypeScript, Python,
-     * …). On by default; recognized languages only.
-     */
-    icons: z.boolean().default(true),
-    /**
-     * Wrap long lines instead of scrolling horizontally. Off by default, so
-     * code keeps its original line breaks and overflows into a scroll area.
-     */
-    wrap: z.boolean().default(false),
-  })
-  .strict();
+const codeConfigSchema = z.strictObject({
+  /**
+   * Show a brand language icon in the code-block header (TypeScript, Python,
+   * …). On by default; recognized languages only.
+   */
+  icons: z.boolean().default(true),
+  /**
+   * Wrap long lines instead of scrolling horizontally. Off by default, so
+   * code keeps its original line breaks and overflows into a scroll area.
+   */
+  wrap: z.boolean().default(false),
+});
 
-const markdownConfigSchema = z
-  .object({
-    /** Code-block rendering: language icons and line wrapping. */
-    code: codeConfigSchema.default({}),
-    codeBlocks: codeBlocksConfigSchema.default({}),
-    /**
-     * Wrap each `##`–`######` heading in a link to its own anchor so readers can
-     * click to copy, bookmark, or share a permalink to that section. On by
-     * default; set to `false` to render plain headings.
-     */
-    headingAnchors: z.boolean().default(true),
-    /**
-     * Make content images click-to-zoom (open in a lightbox). On by default;
-     * opt a single image out with `data-no-zoom`.
-     */
-    imageZoom: z.boolean().default(true),
-  })
-  .strict();
+const markdownConfigSchema = z.strictObject({
+  /** Code-block rendering: language icons and line wrapping. */
+  code: codeConfigSchema.default({}),
+  codeBlocks: codeBlocksConfigSchema.default({}),
+  /**
+   * Wrap each `##`–`######` heading in a link to its own anchor so readers can
+   * click to copy, bookmark, or share a permalink to that section. On by
+   * default; set to `false` to render plain headings.
+   */
+  headingAnchors: z.boolean().default(true),
+  /**
+   * Make content images click-to-zoom (open in a lightbox). On by default;
+   * opt a single image out with `data-no-zoom`.
+   */
+  imageZoom: z.boolean().default(true),
+});
 
 /**
  * A single spec rendered by the API reference. `spec` is a local path or an
  * `http(s)` URL (OpenAPI for the Blume renderer; OpenAPI or AsyncAPI for Scalar).
  */
-const openapiSourceSchema = z
-  .object({
-    /** Nav/section label for this source. */
-    label: z.string().optional(),
-    /** Per-source route; defaults to the block's `route` (or a derived path). */
-    route: z.string().optional(),
-    /** Local path or `http(s)` URL to the spec. */
-    spec: z.string(),
-  })
-  .strict();
+const openapiSourceSchema = z.strictObject({
+  /** Nav/section label for this source. */
+  label: z.string().optional(),
+  /** Per-source route; defaults to the block's `route` (or a derived path). */
+  route: z.string().optional(),
+  /** Local path or `http(s)` URL to the spec. */
+  spec: z.string(),
+});
 
 export type OpenApiSource = z.infer<typeof openapiSourceSchema>;
 
@@ -976,39 +889,35 @@ export type OpenApiSource = z.infer<typeof openapiSourceSchema>;
  * `renderer: "scalar"` to fall back to the embedded Scalar SPA (a single
  * self-contained route that doesn't weave into the sidebar or search).
  */
-const openapiConfigSchema = z
-  .object({
-    /** Code-sample languages shown per operation (Blume renderer). */
-    codeSamples: z.array(z.string()).default(["curl", "js", "python"]),
-    enabled: z.boolean().default(false),
-    /** Start nested schema rows expanded rather than collapsed (Blume renderer). */
-    expandSchemas: z.boolean().default(false),
-    /** Who renders the reference: Blume's own UI, or the embedded Scalar SPA. */
-    renderer: z.enum(["blume", "scalar"]).default("blume"),
-    /** Where the reference mounts. */
-    route: z.string().default("/reference"),
-    /** One or more specs; each renders on its own route by default. */
-    sources: z.array(openapiSourceSchema).default([]),
-    /** Shorthand for a single source: `sources: [{ spec }]`. */
-    spec: z.string().optional(),
-    /** Scalar theme name (Scalar renderer only). */
-    theme: z.string().optional(),
-  })
-  .strict();
+const openapiConfigSchema = z.strictObject({
+  /** Code-sample languages shown per operation (Blume renderer). */
+  codeSamples: z.array(z.string()).default(["curl", "js", "python"]),
+  enabled: z.boolean().default(false),
+  /** Start nested schema rows expanded rather than collapsed (Blume renderer). */
+  expandSchemas: z.boolean().default(false),
+  /** Who renders the reference: Blume's own UI, or the embedded Scalar SPA. */
+  renderer: z.enum(["blume", "scalar"]).default("blume"),
+  /** Where the reference mounts. */
+  route: z.string().default("/reference"),
+  /** One or more specs; each renders on its own route by default. */
+  sources: z.array(openapiSourceSchema).default([]),
+  /** Shorthand for a single source: `sources: [{ spec }]`. */
+  spec: z.string().optional(),
+  /** Scalar theme name (Scalar renderer only). */
+  theme: z.string().optional(),
+});
 
 /**
  * AsyncAPI reference. Same shape and Scalar pipeline as {@link openapiConfigSchema}
  * (Scalar auto-detects the document type); only the default `route` differs.
  */
-const asyncapiConfigSchema = z
-  .object({
-    enabled: z.boolean().default(false),
-    route: z.string().default("/events"),
-    sources: z.array(openapiSourceSchema).default([]),
-    spec: z.string().optional(),
-    theme: z.string().optional(),
-  })
-  .strict();
+const asyncapiConfigSchema = z.strictObject({
+  enabled: z.boolean().default(false),
+  route: z.string().default("/events"),
+  sources: z.array(openapiSourceSchema).default([]),
+  spec: z.string().optional(),
+  theme: z.string().optional(),
+});
 
 /** Full user-facing config schema. All fields optional with defaults. */
 /**
@@ -1019,12 +928,10 @@ const asyncapiConfigSchema = z
 const tocConfigSchema = z
   .union([
     z.boolean(),
-    z
-      .object({
-        maxHeadingLevel: z.number().int().min(1).max(6).optional(),
-        minHeadingLevel: z.number().int().min(1).max(6).optional(),
-      })
-      .strict(),
+    z.strictObject({
+      maxHeadingLevel: z.number().int().min(1).max(6).optional(),
+      minHeadingLevel: z.number().int().min(1).max(6).optional(),
+    }),
   ])
   .default(true)
   .transform((value) => {
@@ -1038,47 +945,45 @@ const tocConfigSchema = z
     };
   });
 
-export const blumeConfigSchema = z
-  .object({
-    ai: aiConfigSchema.default({}),
-    analytics: analyticsConfigSchema.optional(),
-    asyncapi: asyncapiConfigSchema.default({}),
-    banner: bannerConfigSchema.optional(),
-    content: contentConfigSchema.default({}),
-    deployment: deploymentConfigSchema.default({}),
-    description: z.string().optional(),
-    /**
-     * Where `<Component path>` resolves live previews and their source from,
-     * relative to the project root. Defaults to the `examples` directory; point
-     * it elsewhere when examples live outside a top-level `examples/`.
-     *
-     * May be a glob (anything with `*`/`?`/`[]`/`{}`/`!`), in which case only
-     * matching files are discovered and a `<Component path>` key is relative to
-     * the glob's static prefix. Use this for a registry layout that colocates
-     * component sources with their examples — `registry/<pkg>/**\/examples/*`
-     * targets just the examples, leaving the sources (which have no default
-     * export to wrap) out, so the registry needn't be forked into its own
-     * examples directory.
-     */
-    examples: z.string().default("examples"),
-    export: exportConfigSchema.default(false),
-    feedback: z.boolean().default(true),
-    github: githubConfigSchema.optional(),
-    i18n: i18nConfigSchema.optional(),
-    lastModified: lastModifiedConfigSchema.default(false),
-    logo: logoConfigSchema.optional(),
-    markdown: markdownConfigSchema.default({}),
-    mcp: mcpConfigSchema.default({}),
-    navigation: navigationConfigSchema.default({}),
-    openapi: openapiConfigSchema.default({}),
-    redirects: z.array(redirectSchema).default([]),
-    search: searchConfigSchema.default({}),
-    seo: seoConfigSchema.default({}),
-    theme: themeConfigSchema.default({}),
-    title: z.string().default("Documentation"),
-    toc: tocConfigSchema,
-  })
-  .strict();
+export const blumeConfigSchema = z.strictObject({
+  ai: aiConfigSchema.default({}),
+  analytics: analyticsConfigSchema.optional(),
+  asyncapi: asyncapiConfigSchema.default({}),
+  banner: bannerConfigSchema.optional(),
+  content: contentConfigSchema.default({}),
+  deployment: deploymentConfigSchema.default({}),
+  description: z.string().optional(),
+  /**
+   * Where `<Component path>` resolves live previews and their source from,
+   * relative to the project root. Defaults to the `examples` directory; point
+   * it elsewhere when examples live outside a top-level `examples/`.
+   *
+   * May be a glob (anything with `*`/`?`/`[]`/`{}`/`!`), in which case only
+   * matching files are discovered and a `<Component path>` key is relative to
+   * the glob's static prefix. Use this for a registry layout that colocates
+   * component sources with their examples — `registry/<pkg>/**\/examples/*`
+   * targets just the examples, leaving the sources (which have no default
+   * export to wrap) out, so the registry needn't be forked into its own
+   * examples directory.
+   */
+  examples: z.string().default("examples"),
+  export: exportConfigSchema.default(false),
+  feedback: z.boolean().default(true),
+  github: githubConfigSchema.optional(),
+  i18n: i18nConfigSchema.optional(),
+  lastModified: lastModifiedConfigSchema.default(false),
+  logo: logoConfigSchema.optional(),
+  markdown: markdownConfigSchema.default({}),
+  mcp: mcpConfigSchema.default({}),
+  navigation: navigationConfigSchema.default({}),
+  openapi: openapiConfigSchema.default({}),
+  redirects: z.array(redirectSchema).default([]),
+  search: searchConfigSchema.default({}),
+  seo: seoConfigSchema.default({}),
+  theme: themeConfigSchema.default({}),
+  title: z.string().default("Documentation"),
+  toc: tocConfigSchema,
+});
 
 /** Resolved config: every field present after defaults are applied. */
 export type ResolvedConfig = z.infer<typeof blumeConfigSchema>;

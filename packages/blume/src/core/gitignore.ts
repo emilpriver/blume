@@ -18,7 +18,10 @@ export const ensureGitignore = async (
   const path = join(root, ".gitignore");
   const existing = existsSync(path) ? await readFile(path, "utf-8") : "";
   const present = new Set(
-    existing.split("\n").map(gitignoreKey).filter(Boolean)
+    existing.split("\n").flatMap((line) => {
+      const key = gitignoreKey(line);
+      return key ? [key] : [];
+    })
   );
   const added = entries.filter((entry) => !present.has(gitignoreKey(entry)));
   if (added.length === 0) {

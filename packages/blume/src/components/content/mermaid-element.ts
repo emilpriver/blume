@@ -55,6 +55,9 @@ class BlumeMermaid extends HTMLElement {
         // A newer render (rapid theme toggles) superseded this one — dropping
         // the stale result keeps the diagram in the latest theme.
         if (token === this.#renderToken) {
+          // Mermaid's own render output is SVG markup; it must be injected as
+          // HTML, not text. securityLevel "strict" (see initialize) sanitizes it.
+          // oxlint-disable-next-line github/no-inner-html -- Mermaid-generated SVG must be injected as HTML
           output.innerHTML = svg;
         }
       } catch {

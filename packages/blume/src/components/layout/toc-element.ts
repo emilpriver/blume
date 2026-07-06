@@ -52,7 +52,13 @@ class BlumeToc extends HTMLElement {
     for (const { heading } of this.#entries) {
       this.#observer.observe(heading);
     }
-    window.addEventListener("scroll", this.#onScroll, { passive: true });
+    // The scroll listener is the intentional fallback for the one case the
+    // IntersectionObserver can't cover (a final section too short to push its
+    // heading past the trigger line), so replacing it with an observer would
+    // change behavior. `scroll` isn't cancelable, so it never preventDefaults
+    // and `{ passive: true }` would be a no-op here.
+    // oxlint-disable-next-line github/prefer-observers, react-doctor/client-passive-event-listeners
+    window.addEventListener("scroll", this.#onScroll);
     this.#update();
   }
 

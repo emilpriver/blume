@@ -80,20 +80,25 @@ export const customOgRoutes = (
 ): OgCustomRoute[] => {
   const seen = new Set<string>();
   const routes: OgCustomRoute[] = [];
-  for (const { pattern } of pages) {
+  // Extracted so the skip paths become early `return`s (one `continue` budget
+  // per loop under the lint rule) instead of `continue` statements.
+  const collectRoute = (pattern: string): void => {
     const segments = pattern.split("/").filter(Boolean);
     if (
       segments.some((part) => PRIVATE_SEGMENT.test(part) || part.includes("["))
     ) {
-      continue;
+      return;
     }
     const slug = segments.length === 0 ? "index" : segments.join("/");
     if (seen.has(slug)) {
-      continue;
+      return;
     }
     seen.add(slug);
     const last = segments.at(-1);
     routes.push({ slug, title: last ? humanizeSegment(last) : siteTitle });
+  };
+  for (const { pattern } of pages) {
+    collectRoute(pattern);
   }
   return routes;
 };

@@ -119,10 +119,14 @@ const sectionChildren = (nodes: NavNode[], base: string): NavNode[] | null => {
 };
 
 /** Whether a group maps to a header tab (matched on its path or link route). */
-const isTabSection = (node: NavNode, tabPaths: Set<string>): boolean =>
-  node.kind === "group" &&
-  ((node.path !== undefined && tabPaths.has(node.path)) ||
-    (node.route !== undefined && tabPaths.has(node.route)));
+const isTabSection = (node: NavNode, tabPaths: Set<string>): boolean => {
+  if (node.kind !== "group") {
+    return false;
+  }
+  const byPath = node.path !== undefined && tabPaths.has(node.path);
+  const byRoute = node.route !== undefined && tabPaths.has(node.route);
+  return byPath || byRoute;
+};
 
 /**
  * Drop the groups that already own a header tab from the tree, at any depth —
@@ -132,9 +136,12 @@ const isTabSection = (node: NavNode, tabPaths: Set<string>): boolean =>
  * (`/`) spans everything, so it never removes anything.
  */
 const withoutTabSections = (nodes: NavNode[], tabs: NavTab[]): NavNode[] => {
-  const tabPaths = new Set(
-    tabs.filter((tab) => tab.path !== "/").map((tab) => tab.path)
-  );
+  const tabPaths = new Set<string>();
+  for (const tab of tabs) {
+    if (tab.path !== "/") {
+      tabPaths.add(tab.path);
+    }
+  }
   if (tabPaths.size === 0) {
     return nodes;
   }
@@ -145,11 +152,12 @@ const withoutTabSections = (nodes: NavNode[], tabs: NavTab[]): NavNode[] => {
         continue;
       }
       if (item.kind === "group") {
+        // A container left empty by pruning is dropped, so no bare heading is
+        // stranded.
         const children = prune(item.children);
-        if (children.length === 0) {
-          continue;
+        if (children.length > 0) {
+          kept.push({ ...item, children });
         }
-        kept.push({ ...item, children });
       } else {
         kept.push(item);
       }

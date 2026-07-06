@@ -209,6 +209,9 @@ export const createMcpFetchHandler = (
     const server = buildServer(data, index);
     const transport = new WebStandardStreamableHTTPServerTransport({
       enableJsonResponse: true,
+      // The SDK enables stateless mode only when this is `undefined`; `null` is
+      // not an accepted value for the `(() => string) | undefined` option.
+      // oxlint-disable-next-line sonarjs/no-undefined-assignment
       sessionIdGenerator: undefined,
     });
     await server.connect(transport);

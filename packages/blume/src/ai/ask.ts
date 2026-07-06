@@ -30,20 +30,25 @@ interface AskPreset {
  * dedicated AI SDK provider; LLMGateway and Inkeep are OpenAI-compatible
  * endpoints with no dedicated provider, so they reuse `@ai-sdk/openai-compatible`.
  */
+/** The discriminant/name shared by the OpenAI-compatible providers. */
+const OPENAI_COMPATIBLE = "openai-compatible";
+/** The AI SDK provider package the OpenAI-compatible providers install. */
+const OPENAI_COMPATIBLE_DEP = "@ai-sdk/openai-compatible";
+
 const ASK_PRESETS: Record<string, AskPreset> = {
   inkeep: {
     apiKeyEnv: "INKEEP_API_KEY",
     baseUrl: "https://api.inkeep.com/v1",
-    kind: "openai-compatible",
+    kind: OPENAI_COMPATIBLE,
     name: "inkeep",
-    runtimeDep: "@ai-sdk/openai-compatible",
+    runtimeDep: OPENAI_COMPATIBLE_DEP,
   },
   llmgateway: {
     apiKeyEnv: "LLMGATEWAY_API_KEY",
     baseUrl: "https://api.llmgateway.io/v1",
-    kind: "openai-compatible",
+    kind: OPENAI_COMPATIBLE,
     name: "llmgateway",
-    runtimeDep: "@ai-sdk/openai-compatible",
+    runtimeDep: OPENAI_COMPATIBLE_DEP,
   },
   openrouter: {
     apiKeyEnv: "OPENROUTER_API_KEY",
@@ -73,9 +78,9 @@ export const resolveAskBackend = (ask?: AskAiConfig): AskBackend => {
   return {
     apiKeyEnv,
     baseUrl: ask?.baseUrl ?? preset?.baseUrl ?? "",
-    kind: "openai-compatible",
+    kind: OPENAI_COMPATIBLE,
     model,
-    name: preset?.name ?? "openai-compatible",
+    name: preset?.name ?? OPENAI_COMPATIBLE,
   };
 };
 
@@ -89,5 +94,5 @@ export const askBackendRuntimeDep = (ask?: AskAiConfig): string | undefined => {
   if (provider === "gateway") {
     return undefined;
   }
-  return ASK_PRESETS[provider]?.runtimeDep ?? "@ai-sdk/openai-compatible";
+  return ASK_PRESETS[provider]?.runtimeDep ?? OPENAI_COMPATIBLE_DEP;
 };

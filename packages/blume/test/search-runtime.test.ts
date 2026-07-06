@@ -79,18 +79,19 @@ mock.module("@oramacloud/client", () => ({
     search: (query: { limit: number; term: string }) => oramaCloudSearch(query),
   })),
 }));
+// Hoisted out of the mock factory so its inner methods don't nest past the
+// four-level depth limit (mock.module → constructor → collections → documents).
+const typesenseDocuments = () => ({
+  import: (docs: Record<string, unknown>[], options: { action: string }) =>
+    typesenseImport(docs, options),
+  search: (params: TypesenseSearchParams) => typesenseSearch(params),
+});
 mock.module("typesense", () => ({
   Client: asConstructor(() => ({
     collections: (_name?: string) => ({
       create: (schema: unknown) => typesenseCreate(schema),
       delete: () => typesenseDelete(),
-      documents: () => ({
-        import: (
-          docs: Record<string, unknown>[],
-          options: { action: string }
-        ) => typesenseImport(docs, options),
-        search: (params: TypesenseSearchParams) => typesenseSearch(params),
-      }),
+      documents: typesenseDocuments,
       retrieve: () => typesenseRetrieve(),
     }),
   })),

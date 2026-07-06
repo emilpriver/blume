@@ -266,6 +266,7 @@ export const SourceCode = ({ fontSize = 15 }: { fontSize?: number }) => {
         }}
       >
         {LINES.map((segs, i) => (
+          // oxlint-disable-next-line react-doctor/no-array-index-as-key -- static source listing with repeated blank lines; index is the only stable key
           <div key={i} style={{ display: "flex", minHeight: lineHeight }}>
             <span
               style={{

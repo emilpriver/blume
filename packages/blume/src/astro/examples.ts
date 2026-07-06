@@ -109,6 +109,9 @@ export const discoverExamples = async (
   const warnings: string[] = [];
   const seen = new Map<string, string>();
 
+  // Two independent skip conditions read most clearly as `continue`s here;
+  // extracting the body into an early-returning helper regressed coverage.
+  // oxlint-disable-next-line sonarjs/too-many-break-or-continue-in-loop
   for (const [index, file] of files.entries()) {
     const ext = file.match(EXAMPLE_FILE)?.groups?.ext;
     const framework = ext ? FRAMEWORK_BY_EXT[ext] : undefined;

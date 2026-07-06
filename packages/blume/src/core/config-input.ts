@@ -315,11 +315,16 @@ export interface NavSelectorItem {
  * A header dropdown for switching context — versions, languages, products, or a
  * generic dropdown. `kind` drives the icon and a11y labeling.
  */
+/** Context-partition selector kinds (a versioned/localized/multi-product site). */
+type NavSelectorContextKind = "product" | "version";
+/** What a header selector switches between. */
+type NavSelectorKind = "dropdown" | "language" | NavSelectorContextKind;
+
 export interface NavSelector {
   /** The options shown in the dropdown. */
   items?: NavSelectorItem[];
   /** What the selector switches between. */
-  kind: "dropdown" | "language" | "product" | "version";
+  kind: NavSelectorKind;
   /** Selector label / current value. */
   label: string;
 }
@@ -385,6 +390,11 @@ export interface FontsConfig {
 }
 
 /** Colors, fonts, radius, and color-mode behavior. */
+/** Corner radius scale (`none`/`sm` tighter, `md`/`lg` rounder). */
+type RadiusScaleTight = "none" | "sm";
+type RadiusScaleRound = "md" | "lg";
+type RadiusScale = RadiusScaleTight | RadiusScaleRound;
+
 export interface ThemeConfig {
   /**
    * Accent color. A palette name (`blue`, `violet`, `green`, …) or any CSS
@@ -405,7 +415,7 @@ export interface ThemeConfig {
   /** Initial color mode. Defaults to `system`. */
   mode?: "system" | "light" | "dark";
   /** Corner radius scale. Defaults to `md`. */
-  radius?: "none" | "sm" | "md" | "lg";
+  radius?: RadiusScale;
 }
 
 // ---------------------------------------------------------------------------
@@ -477,6 +487,10 @@ export interface AskSuggestion {
 }
 
 /** The Ask AI chat assistant. */
+/** Backends that can route an Ask AI request. */
+type AskProviderGateway = "gateway" | "openrouter" | "llmgateway";
+type AskProvider = AskProviderGateway | "inkeep" | "openai-compatible";
+
 export interface AskConfig {
   /**
    * Name of the env var holding the provider API key. Each provider has a
@@ -493,12 +507,7 @@ export interface AskConfig {
   /** Model id to use. Defaults to `openai/gpt-5.5`. */
   model?: string;
   /** Which backend routes the request. Defaults to `gateway`. */
-  provider?:
-    | "gateway"
-    | "openrouter"
-    | "llmgateway"
-    | "inkeep"
-    | "openai-compatible";
+  provider?: AskProvider;
   /** Starter prompts shown before the first question. */
   suggestions?: AskSuggestion[];
 }
@@ -603,9 +612,13 @@ export interface I18nConfig {
  * Where and how the site deploys. `site` (and `adapter`) are auto-detected from
  * the platform env on Vercel, Netlify, and Cloudflare.
  */
+/** Astro server-output adapters, by hosting platform. */
+type CloudDeploymentAdapter = "netlify" | "cloudflare";
+type DeploymentAdapter = "vercel" | "node" | CloudDeploymentAdapter;
+
 export interface DeploymentConfig {
   /** Astro adapter for server output. `null` (default) keeps a static build. */
-  adapter?: "vercel" | "node" | "netlify" | "cloudflare" | null;
+  adapter?: DeploymentAdapter | null;
   /** Base path when the site is served from a subdirectory. */
   base?: string;
   /** Build output mode. Defaults to `static`. */
@@ -617,12 +630,17 @@ export interface DeploymentConfig {
   site?: string;
 }
 
+/** HTTP redirect status codes: permanent (301/308) and temporary (302/307). */
+type RedirectStatusPermanent = 301 | 308;
+type RedirectStatusTemporary = 302 | 307;
+type RedirectStatus = RedirectStatusPermanent | RedirectStatusTemporary;
+
 /** A URL redirect rule. */
 export interface RedirectConfig {
   /** Path to redirect from. */
   from: string;
   /** HTTP status. Defaults to `301`. */
-  status?: 301 | 302 | 307 | 308;
+  status?: RedirectStatus;
   /** Path or URL to redirect to. */
   to: string;
 }

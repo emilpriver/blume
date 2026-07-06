@@ -45,16 +45,20 @@ export const buildMcpData = async (project: BlumeProject): Promise<McpData> => {
     graph.pages.map((page) => [page.id, page.description])
   );
 
-  const routes: McpRoute[] = manifest.routes
-    .filter((route) => !route.hidden)
-    .map((route) => ({
+  const routes: McpRoute[] = [];
+  for (const route of manifest.routes) {
+    if (route.hidden) {
+      continue;
+    }
+    routes.push({
       contentType: route.contentType,
       description: descriptionById.get(route.id),
       indexable: route.indexable,
       lastModified: route.lastModified ?? null,
       route: route.path,
       title: route.title,
-    }));
+    });
+  }
 
   return {
     documents: documents.map((doc) => ({

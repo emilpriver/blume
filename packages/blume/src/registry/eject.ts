@@ -49,7 +49,7 @@ import { tailwindEntryTemplate } from "../theme/entry.ts";
 import { buildThemeCss } from "../theme/palette.ts";
 import { twoslashCss } from "../theme/twoslash.ts";
 
-const POSIX = (path: string): string => path.split("\\").join("/");
+const toPosix = (path: string): string => path.split("\\").join("/");
 
 /** The `blume:openapi` payload for the ejected app (`{}` when none). */
 const ejectOpenApiData = (project: BlumeProject): unknown => {
@@ -135,16 +135,16 @@ export const eject = async (root: string): Promise<string[]> => {
   // A project-relative context so generated files use portable paths.
   const relContext: ProjectContext = {
     ...context,
-    contentRoot: POSIX(relative(root, context.contentRoot)),
+    contentRoot: toPosix(relative(root, context.contentRoot)),
     outDir: ".",
     root: ".",
   };
 
   const componentsImport = context.componentsFile
-    ? `../../${POSIX(relative(root, context.componentsFile))}`
+    ? `../../${toPosix(relative(root, context.componentsFile))}`
     : null;
   const relPages = pages.map((page) => ({
-    entrypoint: POSIX(relative(root, page.entrypoint)),
+    entrypoint: toPosix(relative(root, page.entrypoint)),
     pattern: page.pattern,
   }));
 

@@ -26,6 +26,63 @@ export const contentIndexable = (
   !page.meta.search.exclude &&
   (!page.meta.sidebar.hidden || config.search.indexing.includeHiddenPages);
 
+/**
+ * Fallback materialization: render the fallback locale's content at the
+ * localized URL for any translation a non-default locale is missing, so static
+ * output is fully prerendered (render-fallback, no client redirect). Fallback
+ * routes are not indexed and carry no `hreflang` of their own.
+ */
+const buildFallbackRoutes = (
+  graph: ContentGraph,
+  i18n: NonNullable<ResolvedConfig["i18n"]>,
+  alternatesByKey: Map<string, RouteAlternate[]>
+): RouteManifestEntry[] => {
+  const fallback = resolveFallbackLocale(i18n);
+  if (!fallback) {
+    return [];
+  }
+  const fallbackPages = new Map(
+    graph.pages.flatMap((page) =>
+      page.locale === fallback ? [[page.translationKey, page] as const] : []
+    )
+  );
+  const routes: RouteManifestEntry[] = [];
+  for (const { code } of i18n.locales) {
+    if (code === fallback) {
+      continue;
+    }
+    const present = new Set(
+      graph.pages.flatMap((page) =>
+        page.locale === code ? [page.translationKey] : []
+      )
+    );
+    for (const [key, source] of fallbackPages) {
+      if (present.has(key)) {
+        continue;
+      }
+      routes.push({
+        alternates: alternatesByKey.get(key) ?? [],
+        collection: source.collection ?? "docs",
+        contentType: source.contentType,
+        draft: source.meta.draft,
+        editUrl: source.editUrl,
+        entryId: source.entryId ?? source.source.ref,
+        fallback: true,
+        hidden: source.meta.sidebar.hidden,
+        id: source.id,
+        indexable: false,
+        lastModified: source.lastModified,
+        locale: code,
+        path: localizeRoute(key, code, i18n),
+        source: source.source,
+        sourcePath: source.sourcePath,
+        title: source.title,
+      });
+    }
+  }
+  return routes;
+};
+
 /** Build the runtime manifest that bridges core and the generated Astro app. */
 export const buildManifest = (options: {
   context: ProjectContext;
@@ -65,52 +122,8 @@ export const buildManifest = (options: {
     title: page.title,
   }));
 
-  // Fallback materialization: render the fallback locale's content at the
-  // localized URL for any translation a non-default locale is missing, so static
-  // output is fully prerendered (render-fallback, no client redirect). Fallback
-  // routes are not indexed and carry no `hreflang` of their own.
   if (i18n) {
-    const fallback = resolveFallbackLocale(i18n);
-    if (fallback) {
-      const fallbackPages = new Map(
-        graph.pages
-          .filter((page) => page.locale === fallback)
-          .map((page) => [page.translationKey, page] as const)
-      );
-      for (const { code } of i18n.locales) {
-        if (code === fallback) {
-          continue;
-        }
-        const present = new Set(
-          graph.pages
-            .filter((page) => page.locale === code)
-            .map((page) => page.translationKey)
-        );
-        for (const [key, source] of fallbackPages) {
-          if (present.has(key)) {
-            continue;
-          }
-          routes.push({
-            alternates: alternatesByKey.get(key) ?? [],
-            collection: source.collection ?? "docs",
-            contentType: source.contentType,
-            draft: source.meta.draft,
-            editUrl: source.editUrl,
-            entryId: source.entryId ?? source.source.ref,
-            fallback: true,
-            hidden: source.meta.sidebar.hidden,
-            id: source.id,
-            indexable: false,
-            lastModified: source.lastModified,
-            locale: code,
-            path: localizeRoute(key, code, i18n),
-            source: source.source,
-            sourcePath: source.sourcePath,
-            title: source.title,
-          });
-        }
-      }
-    }
+    routes.push(...buildFallbackRoutes(graph, i18n, alternatesByKey));
   }
 
   routes.sort((a, b) => a.path.localeCompare(b.path));

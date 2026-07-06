@@ -18,7 +18,7 @@ const parseAccept = (accept: string): AcceptEntry[] =>
       .slice(1)
       .map((segment) => segment.trim())
       .find((segment) => segment.startsWith("q="));
-    const q = qSegment ? Number.parseFloat(qSegment.slice(2)) : 1;
+    const q = qSegment ? Number(qSegment.slice(2)) : 1;
     return { q: Number.isNaN(q) ? 1 : q, type };
   });
 

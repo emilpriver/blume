@@ -41,6 +41,8 @@ export const layoutOverrides = {};
 const attributeValue = (value: string): string =>
   value.replaceAll(/["\n\r]/gu, " ").trim();
 
+const CLIENT_LOAD = "client:load";
+
 /** Astro client directive for a hydrated override. */
 const directiveFor = (override: NormalizedOverride): string => {
   const framework = override.source?.framework;
@@ -54,15 +56,15 @@ const directiveFor = (override: NormalizedOverride): string => {
     case "media": {
       return override.media
         ? `client:media="${attributeValue(override.media)}"`
-        : "client:load";
+        : CLIENT_LOAD;
     }
     case "only": {
       return framework
         ? `client:only="${attributeValue(framework)}"`
-        : "client:load";
+        : CLIENT_LOAD;
     }
     default: {
-      return "client:load";
+      return CLIENT_LOAD;
     }
   }
 };

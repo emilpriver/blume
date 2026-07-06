@@ -50,6 +50,10 @@ const readClientData = (): BlumeClientData | null => {
  */
 const useClientData = (): BlumeClientData | null => {
   const [data, setData] = useState<BlumeClientData | null>(null);
+  // Intentional post-mount hydration guard: `null` on the server and first
+  // client render so hydration matches, then the snapshot once mounted. The
+  // extra render is required; do not seed the initial value from the DOM.
+  // oxlint-disable-next-line react/react-compiler, react-doctor/no-initialize-state -- deliberate SSR hydration guard
   useEffect(() => setData(readClientData()), []);
   return data;
 };
@@ -86,6 +90,10 @@ export const useSearch = (): UseSearch => {
   const [loading, setLoading] = useState(false);
   const searchFn = useRef<SearchFn | null>(null);
 
+  // React Compiler is not enabled (Astro's react() ships no compiler plugin),
+  // so this useCallback still does real work: it keeps a stable identity for
+  // consumers that use `search` as an effect/memo dependency.
+  // oxlint-disable-next-line react-doctor/react-compiler-no-manual-memoization -- React Compiler is not enabled here
   const search = useCallback<UseSearch["search"]>(async (query, options) => {
     if (!searchFn.current) {
       const { createSearch } = await import("blume:search-client");
@@ -132,6 +140,9 @@ export const useAskAI = (): UseAskAI => {
   const [messages, setMessages] = useState<AskMessage[]>([]);
   const [loading, setLoading] = useState(false);
 
+  // React Compiler is not enabled here, so this useCallback preserves a stable
+  // `ask` identity for consumers that depend on it.
+  // oxlint-disable-next-line react-doctor/react-compiler-no-manual-memoization -- React Compiler is not enabled here
   const ask = useCallback<UseAskAI["ask"]>(
     async (question) => {
       const trimmed = question.trim();
@@ -167,7 +178,7 @@ export const useAskAI = (): UseAskAI => {
         if (reader) {
           let done = false;
           while (!done) {
-            // oxlint-disable-next-line no-await-in-loop -- sequential stream reads
+            // oxlint-disable-next-line no-await-in-loop, react-doctor/async-await-in-loop -- sequential stream consumption; iterations are not independent
             const chunk = await reader.read();
             ({ done } = chunk);
             if (chunk.value) {
@@ -190,6 +201,8 @@ export const useAskAI = (): UseAskAI => {
     [loading, messages]
   );
 
+  // React Compiler is not enabled here; keep the stable `reset` identity.
+  // oxlint-disable-next-line react-doctor/react-compiler-no-manual-memoization -- React Compiler is not enabled here
   const reset = useCallback(() => setMessages([]), []);
 
   return { ask, loading, messages, reset };

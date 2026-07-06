@@ -119,17 +119,22 @@ export const overviewMdx = (spec: ApiSpecData): RenderedPage => {
       });
     }
   }
-  const tagSections = sections
-    .filter((tag) =>
-      operations.some((operation) => operation.tagSlug === tag.slug)
-    )
-    .map((tag) =>
+  const tagSections: string[] = [];
+  for (const tag of sections) {
+    if (!operations.some((operation) => operation.tagSlug === tag.slug)) {
+      continue;
+    }
+    const description = tag.description.trim()
+      ? [mdxSafe(tag.description.trim())]
+      : [];
+    tagSections.push(
       [
         `## ${mdxSafe(tag.name)}`,
-        ...(tag.description.trim() ? [mdxSafe(tag.description.trim())] : []),
+        ...description,
         `<ApiTagOperations source="${spec.slug}" tag="${tag.slug}" />`,
       ].join("\n\n")
     );
+  }
   return {
     body: [
       withDescription(

@@ -197,11 +197,12 @@ export const loadConfig = async (
     };
     // Surface every issue in one failing run — reporting only the first turns
     // a three-mistake config into three fix-rerun-fail loops.
+    const moreIssues = rest.map((d) => `  - ${d.message}`).join("\n");
     throw new BlumeError(
       rest.length > 0
         ? {
             ...primary,
-            message: `${primary.message}\n${rest.length} more config issue(s):\n${rest.map((d) => `  - ${d.message}`).join("\n")}`,
+            message: `${primary.message}\n${rest.length} more config issue(s):\n${moreIssues}`,
           }
         : primary
     );

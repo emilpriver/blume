@@ -153,7 +153,7 @@ const withNotionRetry = async <T>(call: () => Promise<T>): Promise<T> => {
   let lastError: unknown;
   for (let attempt = 0; attempt <= MAX_RETRIES; attempt += 1) {
     try {
-      // oxlint-disable-next-line no-await-in-loop -- sequential retry attempts
+      // oxlint-disable-next-line no-await-in-loop, react-doctor/async-await-in-loop -- sequential retry attempts, not independent
       return await call();
     } catch (error) {
       lastError = error;
@@ -372,9 +372,10 @@ export const notionSource = (
     );
     // Join with a blank line, except between consecutive list items, which stay
     // tight so they render as a single list rather than separate loose ones.
-    const pairs = blocks
-      .map((block, i) => ({ block, text: parts[i] ?? "" }))
-      .filter((pair) => pair.text);
+    const pairs = blocks.flatMap((block, i) => {
+      const text = parts[i] ?? "";
+      return text ? [{ block, text }] : [];
+    });
     return pairs
       .map((pair, i) => {
         if (i === 0) {
@@ -460,6 +461,19 @@ export const notionSource = (
     };
   };
 
+  // Hoisted out of `load` so the retry closure doesn't nest past the linter's
+  // 4-level limit (source factory → queryDatabase → withNotionRetry callback).
+  const queryDatabase = (
+    client: NotionClientLike,
+    cursor?: string
+  ): Promise<NotionList<NotionPage>> =>
+    withNotionRetry(() =>
+      client.databases.query({
+        database_id: options.database,
+        start_cursor: cursor,
+      })
+    );
+
   const load = async (
     refresh = ctx?.refresh ?? true
   ): Promise<SourceLoadResult> => {
@@ -470,12 +484,7 @@ export const notionSource = (
       async () => {
         const client = await resolveClient();
         const pages = await collectAll((cursor) =>
-          withNotionRetry(() =>
-            client.databases.query({
-              database_id: options.database,
-              start_cursor: cursor,
-            })
-          )
+          queryDatabase(client, cursor)
         );
         const built = await Promise.all(
           pages.map((page) => toEntry(client, page))

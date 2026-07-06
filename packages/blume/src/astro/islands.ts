@@ -97,12 +97,14 @@ export const discoverIslands = async (
   const warnings: string[] = [];
   const seen = new Map<string, string>();
 
-  for (const [index, file] of files.entries()) {
+  // Extracted so the skip paths become early `return`s (one `continue` budget
+  // per loop under the lint rule) instead of `continue` statements.
+  const collectIsland = (file: string, source: string): void => {
     const base = basename(file);
     const ext = base.match(ISLAND_FILE)?.groups?.ext;
     const framework = ext ? FRAMEWORK_BY_EXT[ext] : undefined;
     if (!framework) {
-      continue;
+      return;
     }
     const name = base.replace(ISLAND_FILE, "");
     // The name is used verbatim as both an MDX tag and an unquoted object key
@@ -113,22 +115,26 @@ export const discoverIslands = async (
       warnings.push(
         `Island "${file}" must have a PascalCase identifier filename to be used in MDX (letters, digits, and underscores only, e.g. Counter.tsx → <Counter />); skipping it.`
       );
-      continue;
+      return;
     }
     const existing = seen.get(name);
     if (existing) {
       warnings.push(
         `Two islands both resolve to <${name}> ("${existing}" and "${file}"); ignoring the second. Give them distinct filenames.`
       );
-      continue;
+      return;
     }
     seen.set(name, file);
     islands.push({
-      client: readClientMode(sources[index] ?? "", file, warnings),
+      client: readClientMode(source, file, warnings),
       file,
       framework,
       name,
     });
+  };
+
+  for (const [index, file] of files.entries()) {
+    collectIsland(file, sources[index] ?? "");
   }
 
   return { islands, warnings };

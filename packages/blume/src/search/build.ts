@@ -15,6 +15,9 @@ export const buildSearchIndex = async (outDir: string): Promise<number> => {
     throw new Error("Failed to create Pagefind index.");
   }
 
+  // These awaits are strictly ordered, not independent: the directory must be
+  // indexed before its files are written, and the index closed only after.
+  // oxlint-disable-next-line react-doctor/async-parallel
   const result = await index.addDirectory({ path: outDir });
   await index.writeFiles({ outputPath: join(outDir, "pagefind") });
   await pagefind.close();

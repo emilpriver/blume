@@ -455,6 +455,8 @@ describe("scanProject: git last-modified branch", () => {
     );
     await writeFile(join(root, "docs", "index.md"), "# Home\n");
     const git = (args: string[]): void => {
+      // Test fixture drives a real git repo; `git` is expected on PATH in CI/dev.
+      // oxlint-disable-next-line sonarjs/no-os-command-from-path
       execFileSync("git", ["-C", root, ...args], { stdio: "ignore" });
     };
     git(["init"]);

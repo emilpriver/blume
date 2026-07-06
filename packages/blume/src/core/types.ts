@@ -173,10 +173,15 @@ export interface NavSelectorItem {
   tag?: string;
 }
 
+/** Context-partition selector kinds (a versioned/localized/multi-product site). */
+type NavSelectorContextKind = "product" | "version";
+/** What a top-level partition selector switches between. */
+type NavSelectorKind = "dropdown" | "language" | NavSelectorContextKind;
+
 /** Top-level partition selectors (products, versions, languages). */
 export interface NavSelector {
   label: string;
-  kind: "dropdown" | "language" | "product" | "version";
+  kind: NavSelectorKind;
   items: NavSelectorItem[];
 }
 
