@@ -315,7 +315,7 @@ export const astroConfigTemplate = (options: {
   const svelteImport = needsSvelte
     ? `import svelte from "@astrojs/svelte";\n`
     : "";
-  const blumeImport = `import { blumeIntegration, prerenderDepsPlugin } from "blume/astro";\n`;
+  const blumeImport = `import { blumeIntegration, prerenderDepsPlugin, serverAppResolvePlugin } from "blume/astro";\n`;
 
   // Twoslash runs first, before the always-on transformers, but only on fences
   // with the `twoslash` meta (explicitTrigger) — so it's opt-in per block with
@@ -384,7 +384,7 @@ export default defineConfig({
   },
   devToolbar: { enabled: false },
   vite: {
-    plugins: [tailwindcss(), prerenderDepsPlugin()],
+    plugins: [tailwindcss(), prerenderDepsPlugin(), serverAppResolvePlugin()],
     // Blume's render-time deps are forced external on both build environments so
     // native bindings resolve at runtime and isolated linkers don't bundle
     // symlinked store copies (which would surface their children as unresolvable

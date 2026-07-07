@@ -406,7 +406,7 @@ describe("astroConfigTemplate", () => {
   it("emits a static config with fonts and no framework renderers by default", () => {
     const out = astroConfigTemplate({
       config,
-      contentRoutes: ["/"],
+      contentRoutes: [],
       context: context(),
       dataPath: DATA_PATH,
       examplesPath: EXAMPLES_PATH,
@@ -424,11 +424,14 @@ describe("astroConfigTemplate", () => {
     expect(out).not.toContain('import react from "@astrojs/react"');
     expect(out).toContain("blumeIntegration(");
     // The prerender dep-link plugin is wired into the Vite config so isolated
-    // linkers can resolve externalized deps when generating static pages.
+    // linkers can resolve externalized deps when generating static pages, and the
+    // server-app resolve shim keeps dev full reloads (route renames) from
+    // corrupting Astro's SSR module runner.
     expect(out).toContain(
-      'import { blumeIntegration, prerenderDepsPlugin } from "blume/astro"'
+      'import { blumeIntegration, prerenderDepsPlugin, serverAppResolvePlugin } from "blume/astro"'
     );
     expect(out).toContain("prerenderDepsPlugin()");
+    expect(out).toContain("serverAppResolvePlugin()");
     // Blume's render-time deps are forced external on both build environments so
     // native bindings load at runtime and isolated linkers don't bundle (and
     // strand the children of) symlinked store copies.
@@ -582,7 +585,7 @@ describe("astroConfigTemplate", () => {
     const out = astroConfigTemplate({
       aliases: { "@": "/proj/src", "@ui": "/proj/src/components/ui" },
       config,
-      contentRoutes: ["/"],
+      contentRoutes: [],
       context: context(),
       dataPath: DATA_PATH,
       examplesPath: EXAMPLES_PATH,

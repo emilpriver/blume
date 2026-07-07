@@ -18,6 +18,20 @@ import {
 import { logger } from "../log.ts";
 import { prepareProject } from "../prepare.ts";
 
+/**
+ * A fingerprint of the route set: the sorted `path entryId` pairs. It changes
+ * when a page is added, removed, or renamed (a folder rename shifts many at
+ * once) but stays equal across pure body edits — so the dev loop can tell a
+ * "structural" change (needs a cold restart) from a hot-reloadable one.
+ */
+const routeSignature = (
+  routes: readonly { entryId: string; path: string }[]
+): string =>
+  routes
+    .map((route) => `${route.path} ${route.entryId}`)
+    .toSorted()
+    .join("\n");
+
 export const devCommand = defineCommand({
   args: {
     "content-dir": {
@@ -84,15 +98,18 @@ export const devCommand = defineCommand({
       strict: args.strict,
     });
 
-    const server = await dev({
-      logLevel: args.debug ? "debug" : "info",
-      root: project.context.outDir,
-      server: {
-        host: args.host ?? false,
-        open: args.open ?? false,
-        port: explicitPort,
-      },
-    });
+    // A factory so `runRegenerate` can recreate the server on a structural
+    // (route-set) change: only a cold container re-globs Astro's content store,
+    // which its in-place config restart doesn't. `open` is honoured on first
+    // boot only — a restart must not reopen the browser.
+    const createServer = (listenPort: number | undefined, open: boolean) =>
+      dev({
+        logLevel: args.debug ? "debug" : "info",
+        root: project.context.outDir,
+        server: { host: args.host ?? false, open, port: listenPort },
+      });
+
+    let server = await createServer(explicitPort, args.open ?? false);
 
     // Vite bumps to the next free port when the default is taken, so record
     // the port the server actually bound — the lock's URL is what a refused
@@ -109,11 +126,18 @@ export const devCommand = defineCommand({
     // (and its HMR channel) is up.
     showBlumeErrorOverlay(project.diagnostics);
 
-    // Watch user inputs and regenerate the runtime data on change. Astro/Vite
-    // hot-reloads the generated data module so nav and routes stay in sync.
-    // `coalescedRunner` single-flights the scan so a burst of watch events can
-    // never stack overlapping regenerations (a large project's scan can outlast
-    // the debounce; piled-up scans exhaust the heap).
+    let lastSignature = routeSignature(project.manifest.routes);
+
+    // Watch user inputs and regenerate the runtime data on change. A body edit
+    // hot-reloads via Vite (fast path). A route-set change instead forces a cold
+    // server restart: Astro's in-place content sync never re-globs on a Blume
+    // route change (it strips `integrations` from its cache digest) and its glob
+    // watcher misses directory renames, so a renamed page 404s (`getEntry` reads
+    // a stale in-memory store) until the server is restarted. We restart it
+    // ourselves — stop, regenerate while down (no watcher races), then bring up
+    // a fresh container whose cold sync re-globs everything. `coalescedRunner`
+    // single-flights the scan so a burst of watch events can never stack
+    // overlapping regenerations (piled-up scans exhaust the heap).
     const runRegenerate = coalescedRunner(async () => {
       try {
         const next = await scanProject(root, {
@@ -122,7 +146,16 @@ export const devCommand = defineCommand({
           overrides,
           preview,
         });
-        await generateRuntime(next);
+        const nextSignature = routeSignature(next.manifest.routes);
+        const structural = nextSignature !== lastSignature;
+        lastSignature = nextSignature;
+        if (structural) {
+          await server.stop();
+          await generateRuntime(next);
+          server = await createServer(boundPort, false);
+        } else {
+          await generateRuntime(next);
+        }
         // Surface any content/config errors in the browser overlay too.
         showBlumeErrorOverlay(next.diagnostics);
       } catch (error) {
