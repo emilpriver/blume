@@ -1,29 +1,54 @@
 ---
 import { glyph } from "./shared.ts";
 
-// Customer spotlight — a single full-bleed card: a decorative photo covers the
-// whole container with a dark scrim over it (heavier on the left), the copy
-// (logo, two-tone headline, two stats, and a CTA pill) sits on the left, and a
-// screenshot of the customer's docs site floats on the right. Highlights
-// Quiver's migration from Mintlify to Blume.
-
-// Everything bespoke to this card lives up top so it's trivial to swap. Both
-// files are static assets under `docs/public/` (served at the site root).
-//
-// The decorative backdrop behind the scrim.
-const photoSrc = "/quiver.jpg";
-// The docs-site screenshot floated on the right.
-const docsSrc = "/quiver-docs.png";
-const docsAlt = "The Quiver documentation site, built with Blume";
-
-// The customer's external link (per request, points at their docs).
-const ctaHref = "https://docs.quiver.ai";
-const ctaLabel = "Visit Quiver";
+// Customer spotlight — two full-bleed cards side by side, one per customer. Each
+// card carries a dark backdrop (a decorative photo or a brand-tinted gradient)
+// with a scrim over it, and the copy (logo, two-tone headline, and a CTA pill)
+// pinned top-and-bottom on the left. Highlights Quiver's migration from Mintlify
+// to Blume and Neon shipping their Postgres docs on Blume.
 
 // Quiver's mark — fills its box and inherits the panel's foreground via
-// `currentColor`, so it tracks the accent text colour.
+// `currentColor`, so it tracks the card's text colour.
 const quiverLogo =
   '<svg class="size-full" viewBox="0 0 325 325" fill="none" xmlns="http://www.w3.org/2000/svg"><path fill-rule="evenodd" clip-rule="evenodd" d="M162.184 0C251.755 0.000255644 324.366 72.6125 324.366 162.184V324.366H162.184C72.6125 324.366 0.00025571 251.755 0 162.184C0 72.6123 72.6123 0 162.184 0ZM86.7959 77.1211C80.8505 75.1287 75.191 80.7986 77.1943 86.7402L143.065 282.081C145.811 290.223 157.844 288.249 157.844 279.656V157.267H279.43C288.03 157.266 289.995 145.217 281.84 142.484L86.7959 77.1211Z" fill="currentColor"/></svg>';
+
+// Neon's "N" logomark, coloured with its brand green via `currentColor`.
+const neonLogo =
+  '<svg class="size-full" viewBox="0 0 28 28" fill="none" xmlns="http://www.w3.org/2000/svg"><path fill="currentColor" d="M27.542.008V28l-10.747-9.508v9.323H0V0zM3.376 24.439H13.42V11.084l10.747 9.508V3.382l-20.79-.005z"/></svg>';
+
+// The two featured cards. `headline` is a list of segments; `em` segments render
+// at full strength (the brand names), the rest at 70% opacity — the two-tone
+// rhythm Mintlify uses to make the key words pop. Each card paints a decorative
+// `photo` (a static asset under `docs/public/`, served at the site root) behind
+// its scrim, falling back to a plain black panel if one is ever omitted.
+const cards = [
+  {
+    cta: { href: "https://docs.quiver.ai", label: "Visit Quiver" },
+    headline: [
+      { t: "See how " },
+      { em: true, t: "Quiver" },
+      { t: " migrated from Mintlify to " },
+      { em: true, t: "Blume" },
+    ],
+    logo: quiverLogo,
+    logoClass: "text-white",
+    name: "Quiver",
+    photo: "/quiver.jpg",
+  },
+  {
+    cta: { href: "https://add-mcp.com/docs", label: "Visit Neon" },
+    headline: [
+      { t: "See how " },
+      { em: true, t: "Neon" },
+      { t: " ship their add-mcp docs on " },
+      { em: true, t: "Blume" },
+    ],
+    logo: neonLogo,
+    logoClass: "text-[#34d59a]",
+    name: "Neon",
+    photo: "/neon.jpg",
+  },
+];
 
 // Customer wordmarks shown in a row beneath the card, each linking to that
 // customer's site. Every path fills via `currentColor`, so the strip tracks the
@@ -54,7 +79,7 @@ const customerLogos = [
 ];
 ---
 
-<!-- Customer spotlight: Quiver's Mintlify → Blume migration as a split card. -->
+<!-- Customer spotlight: Quiver's and Neon's moves to Blume as two cards. -->
 <section>
   <div class="mx-auto max-w-2xl text-center">
     <h2 class="text-balance font-medium text-3xl tracking-tight sm:text-4xl">
@@ -65,83 +90,66 @@ const customerLogos = [
     </p>
   </div>
 
-  <div
-    class="relative isolate mx-auto mt-12 max-w-5xl overflow-hidden rounded-[2rem] border border-border text-white"
-  >
-    <!-- Full-bleed decorative backdrop covering the whole card. `bg-muted` shows
-         through until the asset is added. -->
-    <img
-      alt=""
-      class="-z-20 absolute inset-0 size-full bg-muted object-cover"
-      loading="lazy"
-      src={photoSrc}
-    />
-    <!-- Dark scrim for legibility — heaviest on the left, where the copy sits,
-         fading toward the right so more of the photo shows through. -->
-    <div
-      aria-hidden="true"
-      class="-z-10 absolute inset-0 bg-gradient-to-r from-black/85 via-black/55 to-black/10"
-    >
-    </div>
-
-    <!-- Copy, pinned to the top (logo + headline) and bottom (stats + CTA). -->
-    <div
-      class="flex min-h-[440px] max-w-xl flex-col justify-between gap-12 p-8 sm:p-12"
-    >
-      <div>
-        <span
-          aria-label="Quiver"
-          class="inline-flex size-8"
-          role="img"
-          set:html={quiverLogo}
-        />
-        <!-- Two-tone headline: base copy at 70% opacity, brand names at full
-             strength — the rhythm Mintlify uses to make the key words pop. -->
-        <h3
-          class="mt-6 text-balance font-medium text-3xl text-white/70 leading-tight tracking-tight sm:text-4xl"
-        >
-          See how <span class="text-white">Quiver</span> migrated from Mintlify
-          to <span class="text-white">Blume</span>
-        </h3>
-      </div>
-
-      <div>
-        <a
-          class="mt-8 inline-flex items-center gap-1.5 rounded-blume bg-white/10 px-5 py-3 font-medium text-white text-sm transition-colors hover:bg-white hover:text-black"
-          href={ctaHref}
-          rel="noopener noreferrer"
-          target="_blank"
-        >
-          {ctaLabel}
-          <svg
-            class="size-4"
-            fill="none"
-            height="16"
-            stroke="currentColor"
-            stroke-linecap="round"
-            stroke-linejoin="round"
-            stroke-width="2"
-            viewBox="0 0 24 24"
-            width="16"
-            set:html={glyph("chevron-right")}
+  <div class="mx-auto mt-12 grid max-w-5xl gap-6 lg:grid-cols-2">
+    {
+      cards.map((card) => (
+        <div class="relative isolate flex min-h-[380px] flex-col justify-between gap-12 overflow-hidden rounded-[2rem] border border-border p-8 text-white sm:p-10">
+          {card.photo ? (
+            <img
+              alt=""
+              class="-z-20 absolute inset-0 size-full bg-muted object-cover"
+              loading="lazy"
+              src={card.photo}
+            />
+          ) : (
+            <div aria-hidden="true" class="-z-20 absolute inset-0 bg-black" />
+          )}
+          {/* Dark scrim for legibility — heaviest on the left, where the copy
+              sits, fading toward the right so more of the backdrop shows. */}
+          <div
+            aria-hidden="true"
+            class="-z-10 absolute inset-0 bg-gradient-to-r from-black/85 via-black/55 to-black/20"
           />
-        </a>
-      </div>
-    </div>
 
-    <!-- Docs-site screenshot on the right, sized larger than the card and
-         anchored to the top-left so it reads as a zoomed crop of a bigger
-         graphic: it overflows the card's right and bottom edges (clipped by
-         `overflow-hidden`), leaving its rounded top-left corner in view. Hidden
-         on small screens, where the copy takes the whole card width. -->
-    <div class="pointer-events-none absolute top-8 left-1/2 hidden lg:block">
-      <img
-        alt={docsAlt}
-        class="w-[52rem] max-w-none rounded-xl border border-white/15 shadow-2xl shadow-black/40"
-        loading="lazy"
-        src={docsSrc}
-      />
-    </div>
+          <div>
+            <span
+              aria-label={card.name}
+              class:list={["inline-flex size-8", card.logoClass]}
+              role="img"
+              set:html={card.logo}
+            />
+            {/* Two-tone headline: base copy at 70% opacity, brand names at full
+                strength — the rhythm Mintlify uses to make the key words pop. */}
+            <h3 class="mt-6 text-balance font-medium text-3xl text-white/70 leading-tight tracking-tight">
+              {card.headline.map((seg) =>
+                seg.em ? <span class="text-white">{seg.t}</span> : seg.t
+              )}
+            </h3>
+          </div>
+
+          <a
+            class="inline-flex items-center gap-1.5 self-start rounded-blume bg-white/10 px-5 py-3 font-medium text-sm text-white transition-colors hover:bg-white hover:text-black"
+            href={card.cta.href}
+            rel="noopener noreferrer"
+            target="_blank"
+          >
+            {card.cta.label}
+            <svg
+              class="size-4"
+              fill="none"
+              height="16"
+              stroke="currentColor"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              stroke-width="2"
+              viewBox="0 0 24 24"
+              width="16"
+              set:html={glyph("chevron-right")}
+            />
+          </a>
+        </div>
+      ))
+    }
   </div>
 
   <!-- Customer wordmarks, in a single row beneath the card. -->
