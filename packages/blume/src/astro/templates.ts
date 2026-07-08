@@ -1,4 +1,5 @@
 import { existsSync, readFileSync } from "node:fs";
+import { pathToFileURL } from "node:url";
 
 import { dirname, isAbsolute, join, relative } from "pathe";
 
@@ -433,6 +434,17 @@ export default defineConfig({
 export const stagedContentDir = (outDir: string): string =>
   join(outDir, "content");
 
+/**
+ * Astro's glob loader resolves `base` with `new URL(base, config.root)`. On
+ * Windows an absolute path like `C:\\docs\\content` makes `new URL` parse the
+ * drive letter as a URL scheme, so the result isn't a `file:` URL and Astro's
+ * subsequent `fileURLToPath` throws "The URL must be of scheme file". Emit an
+ * absolute base as a proper `file://` URL so the drive letter can't be mistaken
+ * for a scheme; relative bases resolve against `config.root` unchanged.
+ */
+const astroGlobBase = (base: string): string =>
+  isAbsolute(base) ? pathToFileURL(base).href : base;
+
 /** Generate `.blume/src/content.config.ts`. */
 export const contentConfigTemplate = (options: {
   context: ProjectContext;
@@ -505,7 +517,7 @@ export const contentConfigTemplate = (options: {
 const staged = defineCollection({
   loader: glob({
     pattern: ["**/*.{md,mdx}"],
-    base: ${JSON.stringify(stagedBase)},
+    base: ${JSON.stringify(astroGlobBase(stagedBase))},
     generateId: ({ entry }) => entry,
   }),
 });
@@ -519,7 +531,7 @@ import { glob } from "astro/loaders";
 const docs = defineCollection({
   loader: glob({
     pattern: ${JSON.stringify(docsPattern)},
-    base: ${JSON.stringify(collectionBase)},
+    base: ${JSON.stringify(astroGlobBase(collectionBase))},
     generateId: ({ entry }) => entry,
   }),
 });

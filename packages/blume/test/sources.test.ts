@@ -1,6 +1,7 @@
 import { afterAll, describe, expect, it } from "bun:test";
 import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
+import { pathToFileURL } from "node:url";
 
 import { dirname, join, relative } from "pathe";
 
@@ -645,8 +646,10 @@ describe("scanProject composition", () => {
       join(root, ".blume/src/content.config.ts"),
       "utf-8"
     );
+    // The absolute collection base is emitted as a `file://` URL so Astro's
+    // glob loader doesn't parse a Windows drive letter as a URL scheme.
     expect(contentConfig).toContain(
-      `base: ${JSON.stringify(join(root, "docs"))}`
+      `base: ${JSON.stringify(pathToFileURL(join(root, "docs")).href)}`
     );
     for (const route of project.manifest.routes) {
       const expected = relative(join(root, "docs"), route.sourcePath ?? "");

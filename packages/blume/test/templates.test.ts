@@ -1,6 +1,7 @@
 import { afterAll, describe, expect, it } from "bun:test";
 import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
+import { pathToFileURL } from "node:url";
 
 import { join } from "pathe";
 
@@ -681,7 +682,8 @@ describe("contentConfigTemplate", () => {
       staged: true,
       stagedBase: "/custom/base",
     });
-    expect(out).toContain('"/custom/base"');
+    // Absolute bases are emitted as `file://` URLs (Windows drive-letter safety).
+    expect(out).toContain(JSON.stringify(pathToFileURL("/custom/base").href));
   });
 
   it("excludes dependency, output, and cache trees from the docs glob", () => {
