@@ -38,25 +38,29 @@ Blume works with any package manager and never requires you to set up Astro or T
 - **Components, no imports** — cards, columns, steps, tabs, accordions, badges, code groups, frames, file trees, type tables, live component previews, diffs, and more, usable in any MDX page.
 - **Local search** — Orama runs in dev and production with no hosted service; FlexSearch, Pagefind, Algolia, Typesense, Orama Cloud, and Mixedbread are one setting away.
 - **AI-ready** — `llms.txt` / `llms-full.txt`, raw Markdown at any `.md` URL, Copy as Markdown, Open in chat, an optional Ask AI assistant, and a hosted MCP server so coding agents can search and read your docs directly.
+- **Agent skills** — Blume ships [agent skills](https://useblume.dev/docs/advanced/skills) that teach a coding agent to scaffold, write, and maintain your docs site.
 - **Content sources** — mix local files with remote MDX, GitHub Releases, Notion, Sanity, or any custom backend into a single site.
+- **Internationalization** — drop translated files into place for locale-aware routing, per-language navigation, translated UI, and SEO.
 - **SEO** — metadata, Open Graph images (rendered at build with Takumi), sitemap, `robots.txt`, RSS feeds, and JSON-LD, built in.
 - **API reference** — render an OpenAPI or AsyncAPI spec as an interactive reference (schemas, auth, request playground) via Scalar.
+- **Export** — let readers download any page as a PDF or EPUB, entirely client-side, so static builds stay static.
 - **Customization** — component overrides, React islands, custom pages, Tailwind v4 theme tokens and `theme.css`, and a source-component registry (`blume add`).
 - **Eject** — `blume eject` produces a standalone Astro project that still uses the `blume` package.
 
 ## CLI
 
-| Command            | Description                                      |
-| ------------------ | ------------------------------------------------ |
-| `blume init`       | Scaffold a minimal project.                      |
-| `blume dev`        | Start the dev server with hot reload.            |
-| `blume build`      | Build the static (or server) site.               |
-| `blume preview`    | Preview the last build.                          |
-| `blume add <item>` | Install a source component from the registry.    |
-| `blume sync`       | Re-fetch remote content sources and regenerate.  |
-| `blume eject`      | Promote the runtime into a standalone Astro app. |
-| `blume validate`   | Validate links across your content.              |
-| `blume doctor`     | Diagnose config and content problems.            |
+| Command            | Description                                           |
+| ------------------ | ----------------------------------------------------- |
+| `blume init`       | Scaffold a minimal project.                           |
+| `blume dev`        | Start the dev server with hot reload.                 |
+| `blume build`      | Build the static (or server) site.                    |
+| `blume preview`    | Preview the last build.                               |
+| `blume add <item>` | Install a source component from the registry.         |
+| `blume sync`       | Re-fetch remote content sources and regenerate.       |
+| `blume eject`      | Promote the runtime into a standalone Astro app.      |
+| `blume check`      | Type-check the docs site with `astro check`.          |
+| `blume validate`   | Validate internal, anchor, asset, and external links. |
+| `blume doctor`     | Diagnose config and content problems.                 |
 
 See the [CLI reference](https://useblume.dev/docs/reference/cli) for every flag.
 
@@ -96,7 +100,7 @@ bun run typecheck
 bun run test
 ```
 
-See [CONTRIBUTING.md](./CONTRIBUTING.md) for architecture and conventions.
+See [CONTRIBUTING.md](./.github/CONTRIBUTING.md) for architecture and conventions.
 
 ## License
 
