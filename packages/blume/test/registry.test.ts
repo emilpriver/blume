@@ -6,12 +6,7 @@ import { tmpdir } from "node:os";
 import { dirname, join } from "pathe";
 
 import { eject } from "../src/registry/eject.ts";
-import {
-  findItem,
-  itemsRoot,
-  packageSrc,
-  registry,
-} from "../src/registry/registry.ts";
+import { findItem, packageSrc, registry } from "../src/registry/registry.ts";
 import { rewriteImports } from "../src/registry/rewrite-imports.ts";
 
 const BLUME_SPEC = /["']blume\/(?<path>[^"']+)["']/gu;
@@ -43,17 +38,22 @@ describe("eject", () => {
     ejectDirs.push(root);
 
     // A config that turns on every feature-gated eject branch: Ask AI, OG
-    // images (via deployment.site), an OpenAPI reference, and mixedbread search.
+    // images (via deployment.site), an OpenAPI reference, mixedbread search,
+    // and the hosted MCP server.
     await writeFiles(root, {
       "blume.config.ts": `export default {
         ai: { ask: { enabled: true } },
         deployment: { site: "https://example.com" },
+        mcp: { enabled: true },
         openapi: { enabled: true, renderer: "scalar", spec: "openapi.json" },
         search: { mixedbread: { storeId: "store-1" }, provider: "mixedbread" },
       };\n`,
       // A blog post so an RSS feed is produced (alongside the home page).
       "docs/blog/hello.md":
         "---\ntitle: Hello\ntype: blog\ndate: 2024-01-01\n---\n# Hello\n",
+      // A changelog entry so the `/changelog` index page is generated.
+      "docs/changelog/v1.md":
+        "---\ntitle: v1\ntype: changelog\ndate: 2024-02-01\n---\n# v1\n",
       "docs/index.md": "---\ntitle: Home\n---\n# Home\n",
       // An island and an example so eject materializes their wrappers + maps.
       "examples/demo.tsx": "export default function Demo() { return null; }\n",
@@ -93,13 +93,25 @@ describe("eject", () => {
     // The default 404 ships unless a custom page owns the route.
     expect(has("src/pages/404.astro")).toBe(true);
 
+    // The hosted MCP server: data snapshot, endpoint, and both `.well-known`
+    // discovery documents, wired into the generated Astro config.
+    expect(has("src/generated/mcp-data.json")).toBe(true);
+    expect(has("src/pages/mcp.ts")).toBe(true);
+    expect(has("src/blume-mcp/discovery.ts")).toBe(true);
+    expect(has("src/blume-mcp/server-card.ts")).toBe(true);
+    // The changelog index renders the `type: changelog` entry.
+    expect(has("src/pages/changelog.astro")).toBe(true);
+
     // Materialized assets copied across; the hidden runtime is removed.
     expect(has("public/blume-assets/img.png")).toBe(true);
     expect(has(".blume")).toBe(false);
 
-    // The custom page is wired into the generated Astro config.
+    // The custom page and the MCP discovery routes are wired into the
+    // generated Astro config.
     const astroConfig = readFileSync(join(root, "astro.config.mjs"), "utf-8");
     expect(astroConfig).toContain("pages/custom.astro");
+    expect(astroConfig).toContain("/.well-known/mcp.json");
+    expect(astroConfig).toContain("/.well-known/mcp/server-card.json");
 
     // The local OpenAPI spec is inlined into the reference page.
     const reference = readFileSync(
@@ -150,6 +162,39 @@ describe("eject", () => {
     expect(files.some((file) => file.endsWith("tsconfig.json"))).toBe(false);
   });
 
+  it("emits the /changelog page for a release-backed changelog source", async () => {
+    const root = await mkdtemp(join(tmpdir(), "blume-eject-"));
+    ejectDirs.push(root);
+    await writeFiles(root, {
+      "blume.config.ts": `export default {
+  content: {
+    sources: [
+      { root: "docs", type: "filesystem" },
+      { owner: "acme", prefix: "changelog", repo: "sdk", type: "github-releases" },
+    ],
+  },
+};\n`,
+      "docs/index.md": "---\ntitle: Home\n---\n# Home\n",
+    });
+
+    // The releases API returns no releases: the changelog index must still be
+    // ejected so its route (and any nav tab pointing at it) does not 404.
+    const originalFetch = globalThis.fetch;
+    globalThis.fetch = (() =>
+      Promise.resolve({
+        json: () => Promise.resolve([]),
+        ok: true,
+        status: 200,
+      } as unknown as Response)) as unknown as typeof fetch;
+    try {
+      await eject(root);
+    } finally {
+      globalThis.fetch = originalFetch;
+    }
+
+    expect(existsSync(join(root, "src/pages/changelog.astro"))).toBe(true);
+  });
+
   it("keeps a custom pages/404.astro instead of the default", async () => {
     const root = await mkdtemp(join(tmpdir(), "blume-eject-"));
     ejectDirs.push(root);
@@ -179,9 +224,8 @@ describe("registry", () => {
     expect(findItem("does-not-exist")).toBeUndefined();
   });
 
-  it("exposes a non-empty registry and an items root path", () => {
+  it("exposes a non-empty registry", () => {
     expect(registry.length).toBeGreaterThan(0);
-    expect(itemsRoot.endsWith("items")).toBe(true);
   });
 
   it("offers the overridable layout slots as editable source", () => {

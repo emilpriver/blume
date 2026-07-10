@@ -79,26 +79,26 @@ Once the opening `:::note` fence is joined to the prose, it's no longer a direct
 
 ### Why it happens
 
-This is a bug in oxfmt's Markdown formatter (inherited from Prettier's Markdown printer — see [prettier/prettier#19040](https://github.com/prettier/prettier/pull/19040)). When it wraps prose, it treats the `:::` fence lines as ordinary text and joins them with the adjacent line, breaking the directive. It affects every container directive — `:::note`, `:::tip`, `:::warning`, `:::danger`, `:::success`.
+This is a bug in oxfmt's Markdown formatter (inherited from Prettier's Markdown printer — see [prettier/prettier#19040](https://github.com/prettier/prettier/pull/19040)). When it wraps prose, it treats the `:::` fence lines as ordinary text and joins them with the adjacent line, breaking the directive. It affects every container directive type — `:::note`, `:::tip`, `:::info`, `:::warning`, `:::danger`, `:::success`.
 
 We reported it upstream in [oxc-project/oxc#24096](https://github.com/oxc-project/oxc/issues/24096); until it's fixed there, the patch below is the workaround.
 
 ### The fix
 
-Patch oxfmt so it preserves the line break that sits directly against a `:::` fence. Blume ships exactly this patch in its own repo, and you can apply the same one in any project.
+Patch oxfmt so it preserves the line break that sits directly against a `:::` fence. Blume ships the same fix in its own repo, and you can apply it in any project.
 
-1. Save the patch as `patches/oxfmt@0.57.0.patch`:
+1. Save the patch as `patches/oxfmt@0.58.0.patch`:
 
-   ```diff patches/oxfmt@0.57.0.patch
-   diff --git a/dist/markdown-B5hFVJKQ.js b/dist/markdown-B5hFVJKQ.js
-   index 58322b247b263f87975c2a97eecfe0b97d7143c4..0f39f1901603026a391c6d343cb838dfaccbfd03 100644
-   --- a/dist/markdown-B5hFVJKQ.js
-   +++ b/dist/markdown-B5hFVJKQ.js
-   @@ -1141,7 +1141,14 @@ function Yf(e, r, t) {
-    		case "sentence": return Yi(e, t);
-    		case "word": return Li(e);
+   ```diff patches/oxfmt@0.58.0.patch
+   diff --git a/dist/markdown-BjyDFyaO.js b/dist/markdown-BjyDFyaO.js
+   index 1905aa7563e612808426e26f1ed28bebbef3456f..3dcdeeeca1f809939218186889826cf55348bc49 100644
+   --- a/dist/markdown-BjyDFyaO.js
+   +++ b/dist/markdown-BjyDFyaO.js
+   @@ -4830,7 +4830,18 @@ function lu(e, t, r) {
+    		case "sentence": return Mh(e, r);
+    		case "word": return t.parser !== "mdx" ? Vh(e, t) : Gh(e);
     		case "whitespace": {
-   -			let { next: i } = e, u = i && /^>|^(?:[*+-]|#{1,6}|\d+[).])$/u.test(i.value) ? "never" : r.proseWrap;
+   -			let { next: i } = e, u = i && /^>|^(?:[*+-]|#{1,6}|\d+[).])$/.test(i.value) && !ME(e) && !(t.proseWrap === "preserve" && zE(e)) ? "never" : t.proseWrap;
    +			let { next: i, previous: oxfmtFencePrev } = e;
    +			// Preserve line breaks that sit directly against a `:::` container
    +			// directive fence, so `proseWrap: "never"` keeps the opening/closing
@@ -106,8 +106,12 @@ Patch oxfmt so it preserves the line break that sits directly against a `:::` fe
    +			// breaks the directive). Ordinary prose still wraps per proseWrap.
    +			// See prettier/prettier#19040.
    +			let oxfmtIsFence = (w) => w != null && typeof w.value === "string" && w.value.startsWith(":::");
-   +			let u = oxfmtIsFence(oxfmtFencePrev) || oxfmtIsFence(i) ? "preserve" : i && /^>|^(?:[*+-]|#{1,6}|\d+[).])$/u.test(i.value) ? "never" : r.proseWrap;
-    			return qt(e, n.value, u);
+   +			// A titled directive (`:::warning[Heads up]`) parses its `[title]` as a
+   +			// linkReference that splits the fence text node, so also look one
+   +			// sibling further back when the previous node is a (link) reference.
+   +			let oxfmtPrevIsTitledFence = oxfmtFencePrev != null && (oxfmtFencePrev.type === "linkReference" || oxfmtFencePrev.type === "link") && oxfmtIsFence(e.parent && e.parent.children[e.index - 2]);
+   +			let u = oxfmtIsFence(oxfmtFencePrev) || oxfmtPrevIsTitledFence || oxfmtIsFence(i) ? "preserve" : i && /^>|^(?:[*+-]|#{1,6}|\d+[).])$/.test(i.value) && !ME(e) && !(t.proseWrap === "preserve" && zE(e)) ? "never" : t.proseWrap;
+    			return ou(e, n.value, u, !1, t);
     		}
     		case "emphasis": {
    ```
@@ -117,7 +121,7 @@ Patch oxfmt so it preserves the line break that sits directly against a `:::` fe
    ```json package.json
    {
      "patchedDependencies": {
-       "oxfmt@0.57.0": "patches/oxfmt@0.57.0.patch"
+       "oxfmt@0.58.0": "patches/oxfmt@0.58.0.patch"
      }
    }
    ```
@@ -128,5 +132,5 @@ Patch oxfmt so it preserves the line break that sits directly against a `:::` fe
    bun install
    ```
 
-:::warning[Version-pinned] The patch targets oxfmt `0.57.0` — its diff references a file hashed to that build (`dist/markdown-B5hFVJKQ.js`). When you bump oxfmt, regenerate the patch (e.g. `bun patch oxfmt`) or check whether the upstream fix has landed and the patch is no longer needed.
+:::warning[Version-pinned] The patch targets a specific oxfmt build — its diff references a file whose name is hashed per release (`dist/markdown-*.js`). When you bump oxfmt, regenerate the patch (e.g. `bun patch oxfmt`) or check whether the upstream fix has landed and the patch is no longer needed.
 :::

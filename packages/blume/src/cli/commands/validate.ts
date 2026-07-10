@@ -62,12 +62,18 @@ export const validateCommand = defineCommand({
       }
     }
 
+    // `--strict` escalates warnings to failures; info-level notes (e.g.
+    // BLUME_ASSETS_UNCHECKED when there is no public/ dir) stay advisory.
+    const strictFailure =
+      Boolean(args.strict) &&
+      diagnostics.some((diagnostic) => diagnostic.severity !== "info");
+
     if (args.json) {
       // Drain stdout before exiting non-zero: `process.exit` would otherwise
       // truncate the JSON payload mid-write when stdout is a pipe — exactly how
       // `--json` is consumed in CI/editors.
       const hadErrors = reportDiagnosticsJson(diagnostics, root);
-      if (hadErrors || (Boolean(args.strict) && diagnostics.length > 0)) {
+      if (hadErrors || strictFailure) {
         await flushStdout();
         process.exit(1);
       }
@@ -78,7 +84,7 @@ export const validateCommand = defineCommand({
     if (diagnostics.length === 0) {
       logger.success("No broken links found.");
     }
-    if (hadErrors || (Boolean(args.strict) && diagnostics.length > 0)) {
+    if (hadErrors || strictFailure) {
       process.exit(1);
     }
   },

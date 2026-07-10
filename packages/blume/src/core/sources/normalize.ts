@@ -90,7 +90,31 @@ const mapRoute = (
   return { groups, route, segments };
 };
 
-const CODE_FENCE = /^```/u;
+// CommonMark allows backtick *and* tilde fences. The scanners track which
+// delimiter opened the current fence (`null` when outside one) so a ``` line
+// inside a ~~~ block is content, not a toggle — see `nextFenceState`.
+const CODE_FENCE = /^(?<delimiter>```|~~~)/u;
+
+/** The fence delimiter opening the current code block, or null outside one. */
+type FenceState = "```" | "~~~" | null;
+
+/**
+ * Advance the fenced-code state for one line: an opening fence records its
+ * delimiter, only the matching delimiter closes it, and any other line leaves
+ * the state untouched.
+ */
+const nextFenceState = (line: string, fence: FenceState): FenceState => {
+  const delimiter = line.trimStart().match(CODE_FENCE)?.groups?.delimiter as
+    | Exclude<FenceState, null>
+    | undefined;
+  if (delimiter === undefined) {
+    return fence;
+  }
+  if (fence === null) {
+    return delimiter;
+  }
+  return fence === delimiter ? null : fence;
+};
 // A closing hash sequence must be preceded by whitespace (CommonMark), so a
 // heading like `## What is C#` keeps its trailing `#`.
 const ATX_HEADING = /^(?<hashes>#{1,6})\s+(?<text>.+?)(?:\s+#+)?\s*$/u;
@@ -108,15 +132,14 @@ const ATX_HEADING = /^(?<hashes>#{1,6})\s+(?<text>.+?)(?:\s+#+)?\s*$/u;
 /** Scan one line for an ATX heading; returns the next fenced-block state. */
 const scanHeadingLine = (
   line: string,
-  inFence: boolean,
+  fence: FenceState,
   slugger: GithubSlugger,
   headings: Heading[]
-): boolean => {
-  if (CODE_FENCE.test(line.trimStart())) {
-    return !inFence;
-  }
-  if (inFence) {
-    return inFence;
+): FenceState => {
+  const next = nextFenceState(line, fence);
+  // Skip fence delimiter lines themselves and anything inside a fence.
+  if (fence !== null || next !== null) {
+    return next;
   }
   const match = line.match(ATX_HEADING);
   if (match?.groups) {
@@ -124,16 +147,16 @@ const scanHeadingLine = (
     const text = (match.groups.text ?? "").trim();
     headings.push({ depth, slug: slugger.slug(text), text });
   }
-  return inFence;
+  return next;
 };
 
 export const extractHeadings = (body: string): Heading[] => {
   const headings: Heading[] = [];
   const slugger = new GithubSlugger();
-  let inFence = false;
+  let fence: FenceState = null;
 
   for (const line of body.split("\n")) {
-    inFence = scanHeadingLine(line, inFence, slugger, headings);
+    fence = scanHeadingLine(line, fence, slugger, headings);
   }
 
   return headings;
@@ -150,14 +173,13 @@ const INLINE_CODE = /`[^`]*`/gu;
 const scanLinkLine = (
   line: string,
   lineNumber: number,
-  inFence: boolean,
+  fence: FenceState,
   links: PageLink[]
-): boolean => {
-  if (CODE_FENCE.test(line.trimStart())) {
-    return !inFence;
-  }
-  if (inFence) {
-    return inFence;
+): FenceState => {
+  const next = nextFenceState(line, fence);
+  // Skip fence delimiter lines themselves and anything inside a fence.
+  if (fence !== null || next !== null) {
+    return next;
   }
   // Blank out inline code spans (`[label](/x)` shown as syntax, not a link)
   // with same-length padding so recorded columns stay accurate.
@@ -180,17 +202,17 @@ const scanLinkLine = (
       target,
     });
   }
-  return inFence;
+  return next;
 };
 
 export const extractLinks = (body: string): PageLink[] => {
   const links: PageLink[] = [];
-  let inFence = false;
+  let fence: FenceState = null;
   let lineNumber = 0;
 
   for (const line of body.split("\n")) {
     lineNumber += 1;
-    inFence = scanLinkLine(line, lineNumber, inFence, links);
+    fence = scanLinkLine(line, lineNumber, fence, links);
   }
 
   return links;
@@ -212,14 +234,13 @@ const JSX_OPEN = /<(?<tag>[A-Z][A-Za-z0-9]*)/gu;
 /** Scan one line for JSX component tags; returns the next fenced-block state. */
 const scanTagLine = (
   line: string,
-  inFence: boolean,
+  fence: FenceState,
   tags: Set<string>
-): boolean => {
-  if (CODE_FENCE.test(line.trimStart())) {
-    return !inFence;
-  }
-  if (inFence) {
-    return inFence;
+): FenceState => {
+  const next = nextFenceState(line, fence);
+  // Skip fence delimiter lines themselves and anything inside a fence.
+  if (fence !== null || next !== null) {
+    return next;
   }
   const clean = line.replaceAll(INLINE_CODE, "").replaceAll(DOUBLE_QUOTED, "");
   for (const match of clean.matchAll(JSX_OPEN)) {
@@ -228,14 +249,14 @@ const scanTagLine = (
       tags.add(tag);
     }
   }
-  return inFence;
+  return next;
 };
 
 export const extractComponentTags = (body: string): string[] => {
   const tags = new Set<string>();
-  let inFence = false;
+  let fence: FenceState = null;
   for (const line of body.split("\n")) {
-    inFence = scanTagLine(line, inFence, tags);
+    fence = scanTagLine(line, fence, tags);
   }
   return [...tags];
 };

@@ -1,0 +1,248 @@
+import { afterAll, describe, expect, it, mock } from "bun:test";
+
+// Type-only: erased at runtime, so the module mocks below still apply when
+// hooks.ts is actually imported.
+import type { BlumeClientData } from "../src/components/islands/hooks.ts";
+
+/**
+ * Tests for the `blume/hooks` island hooks (`src/components/islands/hooks.ts`).
+ *
+ * React hooks need a renderer, but pulling one in just for this would drag a
+ * DOM into the suite; instead `react` is module-mocked with a minimal hook
+ * runtime (state cells persisting across renders, effects run after each
+ * render) so the hooks execute as plain functions. `blume:search-client` is a
+ * generated virtual module, mocked the same way.
+ */
+
+// hooks.ts resolves the Ask AI endpoint from `import.meta.env.BASE_URL` at
+// module scope (Bun aliases `import.meta.env` to `process.env`).
+process.env.BASE_URL = "/";
+
+// --- minimal hook runtime -------------------------------------------------
+
+let cells: unknown[] = [];
+let cursor = 0;
+let effects: (() => void)[] = [];
+
+mock.module("react", () => ({
+  useCallback: (fn: unknown) => fn,
+  useEffect: (effect: () => void) => {
+    effects.push(effect);
+  },
+  useRef: (value: unknown) => ({ current: value }),
+  useState: (initial: unknown) => {
+    const index = cursor;
+    cursor += 1;
+    if (!(index in cells)) {
+      cells[index] = initial;
+    }
+    const set = (next: unknown) => {
+      cells[index] =
+        typeof next === "function"
+          ? (next as (current: unknown) => unknown)(cells[index])
+          : next;
+    };
+    return [cells[index], set];
+  },
+}));
+
+// Both call sites in `useSearch` await their results, so plain returns work.
+mock.module("blume:search-client", () => ({
+  createSearch: () => (query: string) => ({
+    hits: [{ excerpt: "", title: query, url: "/hit" }],
+    sections: [],
+  }),
+}));
+
+/** Run one "render": reset the cell cursor, call the hook, flush effects. */
+const render = <T>(hook: () => T): T => {
+  cursor = 0;
+  effects = [];
+  const value = hook();
+  for (const effect of effects) {
+    effect();
+  }
+  return value;
+};
+
+/** First render of a fresh component (empty state cells). */
+const freshRender = <T>(hook: () => T): T => {
+  cells = [];
+  return render(hook);
+};
+
+// `currentPath()` reads window.location; give the hooks a page to ground on.
+(globalThis as { window?: unknown }).window = {
+  location: { pathname: "/guide" },
+};
+
+const originalFetch = globalThis.fetch;
+
+afterAll(() => {
+  globalThis.fetch = originalFetch;
+  delete (globalThis as { window?: unknown }).window;
+  delete (globalThis as { document?: unknown }).document;
+});
+
+const hooks = await import("../src/components/islands/hooks.ts");
+const { useAskAI, useBlume, usePage, useSearch } = hooks;
+
+/** A streaming 200 response delivering `chunks` through a ReadableStream. */
+const streamResponse = (chunks: string[]): Response => {
+  const encoder = new TextEncoder();
+  return new Response(
+    new ReadableStream({
+      start(controller) {
+        for (const chunk of chunks) {
+          controller.enqueue(encoder.encode(chunk));
+        }
+        controller.close();
+      },
+    }),
+    { status: 200 }
+  );
+};
+
+const setFetch = (
+  handler: (url: string, init?: RequestInit) => Promise<Response>
+) => {
+  globalThis.fetch = handler as typeof fetch;
+};
+
+describe("useBlume / usePage", () => {
+  it("returns null without the injected snapshot", () => {
+    // No `document` in this runtime yet — the SSR guard path.
+    freshRender(useBlume);
+    expect(render(useBlume)).toBeNull();
+  });
+
+  it("returns null when the snapshot script is missing", () => {
+    (globalThis as { document?: unknown }).document = {
+      querySelector: () => null,
+    };
+    freshRender(useBlume);
+    expect(render(useBlume)).toBeNull();
+  });
+
+  it("returns null when the snapshot is not valid JSON", () => {
+    (globalThis as { document?: unknown }).document = {
+      querySelector: () => ({ textContent: "not json" }),
+    };
+    freshRender(usePage);
+    expect(render(usePage)).toBeNull();
+  });
+
+  it("reads config, navigation, and page from the snapshot", () => {
+    const snapshot = {
+      config: { title: "Docs" },
+      navigation: { sidebar: [] },
+      page: { route: "/guide", title: "Guide" },
+    } as unknown as BlumeClientData;
+    (globalThis as { document?: unknown }).document = {
+      querySelector: () => ({ textContent: JSON.stringify(snapshot) }),
+    };
+    freshRender(useBlume);
+    expect(render(useBlume)).toStrictEqual({
+      config: snapshot.config,
+      navigation: snapshot.navigation,
+    });
+    // The parsed snapshot is memoized; a second hook reads the cache.
+    freshRender(usePage);
+    expect(render(usePage)).toStrictEqual(snapshot.page);
+  });
+});
+
+describe("useSearch", () => {
+  it("lazily creates the provider client and stores results", async () => {
+    const first = freshRender(useSearch);
+    const result = await first.search("astro", { locale: "en" });
+    expect(result).toStrictEqual({
+      hits: [{ excerpt: "", title: "astro", url: "/hit" }],
+      sections: [],
+    });
+    const next = render(useSearch);
+    expect(next.loading).toBe(false);
+    expect(next.results).toStrictEqual(result);
+    // Second search reuses the created client.
+    await next.search("blume");
+    expect(render(useSearch).results).toStrictEqual({
+      hits: [{ excerpt: "", title: "blume", url: "/hit" }],
+      sections: [],
+    });
+  });
+});
+
+describe("useAskAI", () => {
+  const ERROR_MESSAGE =
+    "Something went wrong answering that. Please try again.";
+
+  it("streams the answer into the assistant message", async () => {
+    const requests: { init?: RequestInit; url: string }[] = [];
+    setFetch((url, init) => {
+      requests.push({ init, url });
+      return Promise.resolve(streamResponse(["Hello ", "world"]));
+    });
+    const { ask } = freshRender(useAskAI);
+    await ask("What is Blume?");
+    expect(requests[0]?.url).toBe("/api/ask");
+    const body = JSON.parse(String(requests[0]?.init?.body));
+    expect(body.page).toStrictEqual({ path: "/guide" });
+    expect(body.messages).toStrictEqual([
+      { content: "What is Blume?", role: "user" },
+    ]);
+    const { loading, messages } = render(useAskAI);
+    expect(loading).toBe(false);
+    expect(messages).toStrictEqual([
+      { content: "What is Blume?", role: "user" },
+      { content: "Hello world", role: "assistant" },
+    ]);
+  });
+
+  it("replaces the placeholder with an error notice on a non-OK response", async () => {
+    setFetch(() => Promise.resolve(new Response("boom", { status: 500 })));
+    const { ask } = freshRender(useAskAI);
+    await ask("broken?");
+    const { loading, messages } = render(useAskAI);
+    expect(loading).toBe(false);
+    expect(messages).toStrictEqual([
+      { content: "broken?", role: "user" },
+      { content: ERROR_MESSAGE, role: "assistant" },
+    ]);
+  });
+
+  it("recovers when fetch itself throws (offline)", async () => {
+    setFetch(() => Promise.reject(new TypeError("Failed to fetch")));
+    const { ask } = freshRender(useAskAI);
+    // The promise must resolve — a rejection would leave the pre-appended
+    // empty assistant message stuck as a placeholder forever.
+    await expect(ask("offline?")).resolves.toBeUndefined();
+    const { loading, messages } = render(useAskAI);
+    expect(loading).toBe(false);
+    expect(messages).toStrictEqual([
+      { content: "offline?", role: "user" },
+      { content: ERROR_MESSAGE, role: "assistant" },
+    ]);
+  });
+
+  it("ignores empty questions", async () => {
+    let called = false;
+    setFetch(() => {
+      called = true;
+      return Promise.resolve(streamResponse([]));
+    });
+    const { ask } = freshRender(useAskAI);
+    await ask("   ");
+    expect(called).toBe(false);
+    expect(render(useAskAI).messages).toStrictEqual([]);
+  });
+
+  it("resets the conversation", async () => {
+    setFetch(() => Promise.resolve(streamResponse(["ok"])));
+    const { ask } = freshRender(useAskAI);
+    await ask("hi");
+    const { messages, reset } = render(useAskAI);
+    expect(messages).toHaveLength(2);
+    reset();
+    expect(render(useAskAI).messages).toStrictEqual([]);
+  });
+});

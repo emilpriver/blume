@@ -1,7 +1,10 @@
+import { withBasePath } from "../../core/base-path.ts";
 import { MCP_TOOLS } from "./tools.ts";
 
 /** Inputs needed to describe the MCP server in discovery documents. */
 export interface McpDiscoveryInput {
+  /** Normalized `deployment.base` (`""` or `/seg`); the route is base-less. */
+  base: string;
   name: string;
   route: string;
   site: string | null;
@@ -9,10 +12,14 @@ export interface McpDiscoveryInput {
 }
 
 /** The MCP server's address — absolute when a site is configured. */
-const serverUrl = (input: McpDiscoveryInput): string =>
-  // Concatenate rather than `new URL(route, site)` — a root-absolute route
+const serverUrl = (input: McpDiscoveryInput): string => {
+  // The endpoint is a generated Astro page, so it's served under
+  // `deployment.base` like every other route (the sitemap/llms.txt convention).
+  const path = withBasePath(input.base, input.route);
+  // Concatenate rather than `new URL(path, site)` — a root-absolute path
   // would drop the base path of a subpath deployment (`acme.com/docs`).
-  input.site ? `${input.site.replace(/\/+$/u, "")}${input.route}` : input.route;
+  return input.site ? `${input.site.replace(/\/+$/u, "")}${path}` : path;
+};
 
 /**
  * The `/.well-known/mcp.json` discovery document: the minimal pointer agents use

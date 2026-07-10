@@ -217,17 +217,29 @@ export interface BlumeMarkdownOptions {
    * links as if mounted at root.
    */
   basePath?: string;
+  /**
+   * Astro's `deployment.base` subdirectory (`""` or `/seg`), layered on top of
+   * `basePath` when links are rewritten. Kept separate so a hand-written
+   * `basePath` link isn't double-prefixed (see `withComposedBasePath`).
+   */
+  deployBase?: string;
 }
 
 /**
  * MDAST plugins that apply to both `.md` and `.mdx`. Currently just the
- * base-path link rewrite, added only when a `basePath` is configured.
+ * base-path link rewrite, added only when a `basePath` or `deployBase` is
+ * configured.
  */
 const blumeSharedMdastPlugins = (
   options: BlumeMarkdownOptions
 ): MdastPlugin[] =>
-  options.basePath
-    ? [baseLinksPlugin(options.basePath) as unknown as MdastPlugin]
+  options.basePath || options.deployBase
+    ? [
+        baseLinksPlugin(
+          options.deployBase ?? "",
+          options.basePath ?? ""
+        ) as unknown as MdastPlugin,
+      ]
     : [];
 
 /** Sätteri processor for plain `.md`, with Blume's curated feature set. */

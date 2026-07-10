@@ -189,6 +189,24 @@ content: {
 
 Static assets live in `public/` — a file at `public/logo.png` is served at `/logo.png`, so a reference like `![](/images/create.png)` resolves against `public/images/create.png`.
 
+## GitHub
+
+Point Blume at your repository with `github`. It powers the header [repository link](/docs/content/navigation#repository-link) and the **Edit this page on GitHub** and **Give feedback** [page actions](/docs/content/navigation#page-actions):
+
+```ts blume.config.ts lineNumbers
+github: {
+  owner: "acme",
+  repo: "docs",
+}
+```
+
+| Option | Default | Description |
+| --- | --- | --- |
+| `owner` | — | GitHub account or organization that owns the repository. |
+| `repo` | — | Repository name. |
+| `branch` | `"main"` | Branch that edit links point at. |
+| `dir` | — | Path from the repo root to the project root (for monorepos). |
+
 ## Last modified
 
 Show a "Last updated on …" line at the bottom of each page. Off by default; set `lastModified` to `true` to derive each page's date from its git history:
@@ -248,7 +266,13 @@ The on-this-page outline is on by default and lists `H2`–`H3` headings. Turn i
 ```ts blume.config.ts
 export default defineConfig({
   toc: false, // hide it everywhere
-  // …or narrow the range:
+});
+```
+
+Or narrow the heading range instead:
+
+```ts blume.config.ts
+export default defineConfig({
   toc: { minHeadingLevel: 2, maxHeadingLevel: 4 },
 });
 ```
@@ -262,7 +286,7 @@ Each of these has its own guide. The config field is the entry point:
 | `theme` | Accent color, corner radius, fonts, light/dark mode | [Theming](/docs/configuration/theming) |
 | `navigation` | Explicit sidebar and header tabs | [Navigation](/docs/content/navigation) |
 | `search` | Provider (Orama or Pagefind) and indexing | [Search](/docs/configuration/search) |
-| `markdown` | Opt-in Markdown features like math | [Syntax](/docs/content/syntax) |
+| `markdown` | Markdown rendering options — code blocks, heading anchors, image zoom | [Syntax](/docs/content/syntax) |
 | `ai` | `llms.txt`, Ask AI, and the MCP server | [AI](/docs/configuration/ai) |
 | `mcp` | Hosted MCP server for coding agents | [AI](/docs/configuration/ai#mcp-server) |
 | `analytics` | Vercel, PostHog, and custom scripts | [Analytics](/docs/configuration/analytics) |

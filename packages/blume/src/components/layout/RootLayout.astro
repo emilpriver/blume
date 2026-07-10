@@ -206,6 +206,12 @@ const PageFooterSlot = resolveSlot(layout.PageFooter, Empty);
 const FeedbackSlot = resolveSlot(layout.Feedback, PageFeedback);
 
 const strings = ui ?? EN_UI;
+// Merge the groups this layout reads directly over the English defaults so a
+// key missing from a translation (or from a not-yet-regenerated snapshot)
+// still renders instead of coming out blank — the PageActions pattern.
+const navStrings = { ...EN_UI.nav, ...strings.nav };
+const actionStrings = { ...EN_UI.actions, ...strings.actions };
+const contentStrings = { ...EN_UI.content, ...strings.content };
 // Filter search to the active language only when the site is multi-locale.
 const searchLocale =
   localeSwitch && localeSwitch.length > 1 ? locale : undefined;
@@ -345,6 +351,8 @@ const bannerScript = banner?.dismissible
     class="bg-background font-sans text-foreground antialiased"
     data-blume-code-wrap={codeWrap ? "" : undefined}
     data-blume-image-zoom={imageZoom ? "" : undefined}
+    data-i18n-copy-code={actionStrings.copyCode}
+    data-i18n-diagram-error={contentStrings.diagramError}
   >
     <a
       class="absolute start-[-999px] top-0 z-[100] bg-accent px-4 py-2 text-accent-foreground focus:start-0"
@@ -360,6 +368,7 @@ const bannerScript = banner?.dismissible
       route={page.route}
       searchEnabled={searchEnabled}
       searchLocale={searchLocale}
+      navStrings={navStrings}
       searchStrings={strings.search}
       site={site}
       switcherStrings={strings.languageSwitcher}
@@ -371,7 +380,8 @@ const bannerScript = banner?.dismissible
       data-blume-doc-grid
     >
       <aside
-        aria-label="Primary"
+        aria-label={navStrings.primary}
+        data-blume-nav-drawer
         class:list={[
           "fixed top-[var(--blume-drawer-top,4rem)] start-0 z-[35] h-[calc(100dvh-var(--blume-drawer-top,4rem))] w-64 max-w-[80vw] -translate-x-[105%] overflow-y-auto border-border border-e bg-background px-5 pt-4 pb-6 transition-transform rtl:translate-x-[105%] [:where([data-blume-nav-open])_&]:translate-x-0! lg:sticky lg:top-16 lg:z-auto lg:h-[calc(100dvh-4rem)] lg:w-auto lg:max-w-none lg:translate-x-0! lg:border-e-0 lg:bg-transparent lg:px-4",
           // A "bare" landing (the changelog index) has no sidebar column on
@@ -385,7 +395,10 @@ const bannerScript = banner?.dismissible
           // all breakpoints, outside the tab-scoped sidebar so they never change
           // with the active tab. External hrefs open in a new tab.
           navigation.featured.length > 0 && (
-            <nav aria-label="Featured" class="mb-4 border-border border-b pb-4">
+            <nav
+              aria-label={navStrings.featured}
+              class="mb-4 border-border border-b pb-4"
+            >
               <ul class="m-0 list-none p-0">
                 {navigation.featured.map((link) => {
                   const external = /^https?:\/\//u.test(link.href);
@@ -431,7 +444,7 @@ const bannerScript = banner?.dismissible
           // from opening blank.
           navigation.tabs.length > 0 && (
             <nav
-              aria-label="Sections"
+              aria-label={navStrings.sections}
               class:list={[
                 "mb-4 border-border border-b pb-4",
                 sidebar.length > 0 && "md:hidden",
@@ -463,14 +476,26 @@ const bannerScript = banner?.dismissible
             MobileNavSlot ? (
               <>
                 <div class="lg:hidden">
-                  <MobileNavSlot currentRoute={page.route} items={sidebar} />
+                  <MobileNavSlot
+                    currentRoute={page.route}
+                    items={sidebar}
+                    strings={navStrings}
+                  />
                 </div>
                 <div class="hidden lg:block">
-                  <SidebarSlot currentRoute={page.route} items={sidebar} />
+                  <SidebarSlot
+                    currentRoute={page.route}
+                    items={sidebar}
+                    strings={navStrings}
+                  />
                 </div>
               </>
             ) : (
-              <SidebarSlot currentRoute={page.route} items={sidebar} />
+              <SidebarSlot
+                currentRoute={page.route}
+                items={sidebar}
+                strings={navStrings}
+              />
             )
           }
         </nav>
@@ -542,7 +567,7 @@ const bannerScript = banner?.dismissible
       )
     }
     <button
-      aria-label="Close navigation"
+      aria-label={navStrings.closeNavigation}
       class="fixed inset-0 z-[30] hidden cursor-pointer border-0 bg-black/40 [:where([data-blume-nav-open])_&]:block lg:hidden"
       data-blume-nav-toggle
       type="button"
@@ -559,11 +584,44 @@ const bannerScript = banner?.dismissible
       // Tree-shaken out of production builds.
       import "./hydration-hint.ts";
 
+      // The closed mobile drawer is only translated off-canvas, so its links
+      // would stay in the tab order on every page. Mirror the header's
+      // `data-blume-nav-open` toggle into `inert`/`aria-hidden` — but only
+      // below `lg` (64rem), where the same element isn't the static sidebar.
+      const drawer = document.querySelector<HTMLElement>(
+        "[data-blume-nav-drawer]"
+      );
+      if (drawer) {
+        const desktop = window.matchMedia("(min-width: 64rem)");
+        const syncDrawer = () => {
+          const hidden =
+            !desktop.matches &&
+            !document.documentElement.hasAttribute("data-blume-nav-open");
+          drawer.inert = hidden;
+          if (hidden) {
+            drawer.setAttribute("aria-hidden", "true");
+          } else {
+            drawer.removeAttribute("aria-hidden");
+          }
+        };
+        syncDrawer();
+        desktop.addEventListener("change", syncDrawer);
+        new MutationObserver(syncDrawer).observe(document.documentElement, {
+          attributeFilter: ["data-blume-nav-open"],
+        });
+      }
+
       const svg = (name: string) =>
         `<svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${icons[name]}</svg>`;
 
       const buttonClass =
         "absolute right-3 inline-flex size-7 items-center justify-center rounded-full bg-transparent text-muted-foreground opacity-70 transition hover:bg-muted hover:text-foreground hover:opacity-100 focus-visible:opacity-100";
+
+      // Localized copy-button label, stamped on <body> by the layout markup
+      // (the Search.astro data-attribute channel) since this bundled script
+      // can't interpolate server values directly.
+      const copyCodeLabel =
+        document.body.getAttribute("data-i18n-copy-code") || "Copy code";
 
       const languageLabels: Record<string, string> = {
         astro: "Astro",
@@ -612,7 +670,7 @@ const bannerScript = banner?.dismissible
           : "top-2";
         button.className = `${buttonClass} ${topClass}`;
         button.setAttribute("data-blume-copy", "");
-        button.setAttribute("aria-label", "Copy code");
+        button.setAttribute("aria-label", copyCodeLabel);
         button.innerHTML = svg("copy");
         button.addEventListener("click", async () => {
           const code = pre.querySelector("code");

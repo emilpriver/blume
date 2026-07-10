@@ -477,6 +477,25 @@ describe("UI dictionaries", () => {
     expect(EN_UI.page.skipToContent).toBe("Skip to content");
   });
 
+  it("includes English defaults for the chrome strings added post-launch", () => {
+    // Formerly hardcoded in components; now dictionary-driven with English
+    // fallback (packs may omit them and still merge cleanly).
+    expect(EN_UI.actions.export).toBe("Export");
+    expect(EN_UI.actions.generating).toBe("Generating…");
+    expect(EN_UI.nav.sections).toBe("Sections");
+    expect(EN_UI.nav.toggleTheme).toBe("Toggle color theme");
+    expect(EN_UI.search.results).toBe("Results");
+    expect(EN_UI.search.error).toBe("Something went wrong. Please try again.");
+    // Parameterized: `{version}` is replaced with the major line at render time.
+    expect(EN_UI.changelog.showReleases).toContain("{version}");
+    expect(EN_UI.content.diagramError).toBe("Could not render this diagram.");
+    expect(EN_UI.ask.you).toBe("You");
+    // A pack shipped before these keys existed still resolves them to English.
+    const dict = resolveUIStrings("de", { defaultLocale: "en" });
+    expect(dict.nav.back).toBe("Back");
+    expect(dict.search.popular).toBe("Popular");
+  });
+
   it("applies a shipped pack for a translated locale", () => {
     const dict = resolveUIStrings("fr", { defaultLocale: "en" });
     expect(dict.search.button).toBe("Rechercher");

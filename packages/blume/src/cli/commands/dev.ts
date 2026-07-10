@@ -148,7 +148,6 @@ export const devCommand = defineCommand({
         });
         const nextSignature = routeSignature(next.manifest.routes);
         const structural = nextSignature !== lastSignature;
-        lastSignature = nextSignature;
         if (structural) {
           await server.stop();
           await generateRuntime(next);
@@ -156,6 +155,11 @@ export const devCommand = defineCommand({
         } else {
           await generateRuntime(next);
         }
+        // Commit the signature only after the (re)generation succeeded. If the
+        // restart above throws mid-sequence, the signature stays stale so the
+        // next watch event retries the structural path — committing early would
+        // route it to the non-structural branch with the server still down.
+        lastSignature = nextSignature;
         // Surface any content/config errors in the browser overlay too.
         showBlumeErrorOverlay(next.diagnostics);
       } catch (error) {

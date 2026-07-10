@@ -343,6 +343,33 @@ describe("mdxRemoteSource (files mode)", () => {
     expect(diagnostics.map((d) => d.code)).toContain("BLUME_SOURCE_OFFLINE");
   });
 
+  it("surfaces a misconfiguration even when a cache snapshot exists", async () => {
+    const cacheDir = join(await makeProject({}), ".cache");
+    const opts = {
+      files: ["intro.mdx", "guide.md"],
+      include: ["**/*.{md,mdx}"],
+      name: "sdk",
+      url: "https://example.com/docs",
+    };
+
+    // Prime the cache so a fetch-time failure would fall back to it.
+    await mdxRemoteSource(
+      { ...opts, fetchImpl: fetchOk },
+      ctxFor(cacheDir)
+    ).load();
+
+    // Dropping `url` misconfigures the source. Thrown from inside the cached
+    // fetch it would be downgraded to a BLUME_SOURCE_OFFLINE warning serving
+    // stale entries — it must stay a hard BLUME_SOURCE_MISCONFIGURED error.
+    const misconfigured = mdxRemoteSource(
+      { files: opts.files, include: opts.include, name: "sdk" },
+      ctxFor(cacheDir)
+    );
+    await expect(misconfigured.load()).rejects.toMatchObject({
+      diagnostic: { code: "BLUME_SOURCE_MISCONFIGURED" },
+    });
+  });
+
   it("only sends GITHUB_TOKEN to GitHub hosts, never a custom url base", async () => {
     const original = process.env.GITHUB_TOKEN;
     process.env.GITHUB_TOKEN = "t0ken";

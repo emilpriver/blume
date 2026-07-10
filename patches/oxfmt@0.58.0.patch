@@ -1,8 +1,11 @@
+diff --git a/node_modules/oxfmt/.bun-tag-ca147c7dea06d01a b/.bun-tag-ca147c7dea06d01a
+new file mode 100644
+index 0000000000000000000000000000000000000000..e69de29bb2d1d6434b8b29ae775ad8c2e48c5391
 diff --git a/dist/markdown-BjyDFyaO.js b/dist/markdown-BjyDFyaO.js
-index 1905aa7563e612808426e26f1ed28bebbef3456f..0771fc23dbfd3043aa1b7c739d8a1ff8cc46a8b2 100644
+index 1905aa7563e612808426e26f1ed28bebbef3456f..3dcdeeeca1f809939218186889826cf55348bc49 100644
 --- a/dist/markdown-BjyDFyaO.js
 +++ b/dist/markdown-BjyDFyaO.js
-@@ -4830,7 +4830,14 @@ function lu(e, t, r) {
+@@ -4830,7 +4830,18 @@ function lu(e, t, r) {
  		case "sentence": return Mh(e, r);
  		case "word": return t.parser !== "mdx" ? Vh(e, t) : Gh(e);
  		case "whitespace": {
@@ -14,7 +17,11 @@ index 1905aa7563e612808426e26f1ed28bebbef3456f..0771fc23dbfd3043aa1b7c739d8a1ff8
 +			// breaks the directive). Ordinary prose still wraps per proseWrap.
 +			// See prettier/prettier#19040.
 +			let oxfmtIsFence = (w) => w != null && typeof w.value === "string" && w.value.startsWith(":::");
-+			let u = oxfmtIsFence(oxfmtFencePrev) || oxfmtIsFence(i) ? "preserve" : i && /^>|^(?:[*+-]|#{1,6}|\d+[).])$/.test(i.value) && !ME(e) && !(t.proseWrap === "preserve" && zE(e)) ? "never" : t.proseWrap;
++			// A titled directive (`:::warning[Heads up]`) parses its `[title]` as a
++			// linkReference that splits the fence text node, so also look one
++			// sibling further back when the previous node is a (link) reference.
++			let oxfmtPrevIsTitledFence = oxfmtFencePrev != null && (oxfmtFencePrev.type === "linkReference" || oxfmtFencePrev.type === "link") && oxfmtIsFence(e.parent && e.parent.children[e.index - 2]);
++			let u = oxfmtIsFence(oxfmtFencePrev) || oxfmtPrevIsTitledFence || oxfmtIsFence(i) ? "preserve" : i && /^>|^(?:[*+-]|#{1,6}|\d+[).])$/.test(i.value) && !ME(e) && !(t.proseWrap === "preserve" && zE(e)) ? "never" : t.proseWrap;
  			return ou(e, n.value, u, !1, t);
  		}
  		case "emphasis": {

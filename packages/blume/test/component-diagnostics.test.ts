@@ -25,6 +25,11 @@ describe("extractComponentTags", () => {
     ].join("\n");
     expect(extractComponentTags(body)).toEqual([]);
   });
+
+  it("ignores tags inside tilde-fenced code", () => {
+    const body = ["~~~tsx", "<InTildeFence />", "~~~", "<Real />"].join("\n");
+    expect(extractComponentTags(body)).toEqual(["Real"]);
+  });
 });
 
 describe("validateUsedComponents", () => {

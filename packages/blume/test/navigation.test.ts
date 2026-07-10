@@ -262,6 +262,23 @@ describe("buildNavigation — group route paths", () => {
     expect(asGroup(nav.sidebar[0]).path).toBe("/guides");
   });
 
+  it("treats a numeric-prefixed index (01-index) as the folder index", () => {
+    // Route mapping strips the ordering prefix before dropping `index`, so
+    // `01-index.mdx` routes to the folder — it must sort first (like `index`)
+    // and keep the group's route path, not shift it by a phantom page segment.
+    const nav = buildNavigation(
+      [
+        // Inserted first so the group's routePath comes from the index page.
+        page("guides/01-index.mdx", "/guides", "Guide Home"),
+        page("guides/02-setup.mdx", "/guides/setup", "Setup"),
+      ],
+      { folderMeta: empty }
+    );
+    const group = asGroup(nav.sidebar[0]);
+    expect(group.path).toBe("/guides");
+    expect(labels(group.children)).toStrictEqual(["Guide Home", "Setup"]);
+  });
+
   it("paths nested groups from a nested index page", () => {
     const nav = buildNavigation([page("a/b/index.mdx", "/a/b", "B Home")], {
       folderMeta: empty,

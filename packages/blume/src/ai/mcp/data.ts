@@ -1,3 +1,4 @@
+import { normalizeBasePath } from "../../core/base-path.ts";
 import type { BlumeProject } from "../../core/project-graph.ts";
 import type { Navigation } from "../../core/types.ts";
 import { buildSearchDocuments } from "../../search/documents.ts";
@@ -21,6 +22,12 @@ export interface McpRoute {
  * access at request time. Serialized to `generated/mcp-data.json`.
  */
 export interface McpData {
+  /**
+   * Normalized `deployment.base` (`""` or `/seg`), layered onto routes when
+   * emitting URLs — the site is base-less and routes are base-less manifest
+   * paths, matching the sitemap/llms.txt convention.
+   */
+  base: string;
   documents: OramaDoc[];
   instructions?: string;
   name: string;
@@ -61,6 +68,7 @@ export const buildMcpData = async (project: BlumeProject): Promise<McpData> => {
   }
 
   return {
+    base: normalizeBasePath(config.deployment.base),
     documents: documents.map((doc) => ({
       content: doc.content,
       description: doc.description,

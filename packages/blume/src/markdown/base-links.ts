@@ -1,4 +1,4 @@
-import { isInternalPath, withBasePath } from "../core/base-path.ts";
+import { isInternalPath, withComposedBasePath } from "../core/base-path.ts";
 import type { MdastNode } from "./mdast.ts";
 
 interface UrlNode extends MdastNode {
@@ -27,13 +27,15 @@ const ASSET_PATH = /\.[a-z0-9]+$/iu;
 const pathOf = (url: string): string => url.replace(/[#?].*$/u, "");
 
 /**
- * Satteri MDAST plugin that prepends the site-wide `basePath` to root-relative
- * internal page links (`[x](/guide)` -> `/docs/guide`), so authors write links
- * as if mounted at root. Idempotent (via `withBasePath`) and inert for external
- * URLs, fragments, relative paths, images, and asset links. Only constructed
- * when a base is set (see `markdown/index.ts`).
+ * Satteri MDAST plugin that prepends the served-URL base — `deployment.base`
+ * layered over the site-wide `basePath` — to root-relative internal page links
+ * (`[x](/guide)` -> `/base/docs/guide`), so authors write links as if mounted
+ * at root. Idempotent per layer (via `withComposedBasePath`, so a hand-written
+ * `/docs/x` isn't double-prefixed) and inert for external URLs, fragments,
+ * relative paths, images, and asset links. Only constructed when a base is set
+ * (see `markdown/index.ts`).
  */
-export const baseLinksPlugin = (basePath: string) => {
+export const baseLinksPlugin = (deployBase: string, basePath: string) => {
   const rebase = (node: UrlNode, ctx: MdastUrlContext): void => {
     const { url } = node;
     if (
@@ -41,7 +43,7 @@ export const baseLinksPlugin = (basePath: string) => {
       isInternalPath(url) &&
       !ASSET_PATH.test(pathOf(url))
     ) {
-      const next = withBasePath(basePath, url);
+      const next = withComposedBasePath(deployBase, basePath, url);
       if (next !== url) {
         ctx.setProperty(node, "url", next);
       }

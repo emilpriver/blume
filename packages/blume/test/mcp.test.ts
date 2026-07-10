@@ -17,6 +17,7 @@ import type { BlumeProject } from "../src/core/project-graph.ts";
 import { buildOramaIndex, queryOramaIndex } from "../src/search/orama-index.ts";
 
 const DATA: McpData = {
+  base: "",
   documents: [
     {
       content:
@@ -183,6 +184,42 @@ describe("MCP tools", () => {
     const nav = JSON.parse(text) as { tabs: unknown[] };
     expect(nav.tabs.length).toBe(1);
   });
+
+  it("layers deployment.base into tool URLs (routes are base-less)", async () => {
+    const based = createMcpFetchHandler({ ...DATA, base: "/sub" });
+    const call = async (name: string, args?: Record<string, unknown>) => {
+      const response = await based(
+        new Request("https://docs.example.com/sub/mcp", {
+          body: JSON.stringify({
+            id: 1,
+            jsonrpc: "2.0",
+            method: "tools/call",
+            params: { arguments: args, name },
+          }),
+          headers: {
+            accept: "application/json, text/event-stream",
+            "content-type": "application/json",
+          },
+          method: "POST",
+        })
+      );
+      const body = (await response.json()) as {
+        result?: { content?: { text: string }[] };
+      };
+      return body.result?.content?.[0]?.text ?? "";
+    };
+
+    const pages = JSON.parse(await call("list_pages")) as { url: string }[];
+    expect(pages.map((page) => page.url).toSorted()).toEqual([
+      "https://docs.example.com/sub/guides/config",
+      "https://docs.example.com/sub/guides/install",
+    ]);
+
+    const hits = JSON.parse(
+      await call("search_docs", { query: "install dev server" })
+    ) as { url: string }[];
+    expect(hits[0]?.url).toBe("https://docs.example.com/sub/guides/install");
+  });
 });
 
 describe("orama index helpers", () => {
@@ -219,6 +256,7 @@ describe("orama index helpers", () => {
 
 describe("discovery documents", () => {
   const input = {
+    base: "",
     name: "Test Docs",
     route: "/mcp",
     site: "https://docs.example.com",
@@ -254,6 +292,21 @@ describe("discovery documents", () => {
       servers: { url: string }[];
     };
     expect(discovery.servers[0]?.url).toBe("/mcp");
+  });
+
+  it("layers deployment.base under the advertised URL", () => {
+    // The endpoint is a generated Astro page, served under the base.
+    const discovery = buildMcpDiscovery({ ...input, base: "/sub" }) as {
+      servers: { url: string }[];
+    };
+    expect(discovery.servers[0]?.url).toBe("https://docs.example.com/sub/mcp");
+
+    const card = buildMcpServerCard({
+      ...input,
+      base: "/sub",
+      site: null,
+    }) as { url: string };
+    expect(card.url).toBe("/sub/mcp");
   });
 });
 
@@ -292,7 +345,7 @@ describe("buildMcpData", () => {
   it("builds a snapshot, honoring config and filtering hidden routes", async () => {
     const project = await scanFixture({
       "blume.config.ts":
-        'export default { deployment: { site: "https://docs.example.com" }, mcp: { enabled: true, instructions: "Be concise.", name: "Custom MCP" }, title: "Project Title" };',
+        'export default { deployment: { base: "sub/", site: "https://docs.example.com" }, mcp: { enabled: true, instructions: "Be concise.", name: "Custom MCP" }, title: "Project Title" };',
       "docs/guides/install.md":
         "---\ntitle: Installation\ndescription: How to install\n---\n# Installation\n\nInstall it now.\n",
       "docs/index.md":
@@ -307,6 +360,8 @@ describe("buildMcpData", () => {
     expect(data.name).toBe("Custom MCP");
     expect(data.instructions).toBe("Be concise.");
     expect(data.site).toBe("https://docs.example.com");
+    // `deployment.base` is normalized for layering onto base-less routes.
+    expect(data.base).toBe("/sub");
     expect(typeof data.version).toBe("string");
     expect(data.version).toBe(project.manifest.blumeVersion);
 
@@ -363,5 +418,6 @@ describe("buildMcpData", () => {
     expect(data.name).toBe("Fallback Title");
     expect(data.instructions).toBeUndefined();
     expect(data.site).toBeNull();
+    expect(data.base).toBe("");
   });
 });

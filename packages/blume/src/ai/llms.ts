@@ -5,17 +5,22 @@ import { readEntryText } from "../core/sources/read.ts";
 import type { PageRecord } from "../core/types.ts";
 
 // Routes carry `basePath`; a `deployment.base` subdirectory is layered on top so
-// the emitted URL matches where the page is served.
+// the emitted URL matches where the page is served. Encoded like the sitemap:
+// a route with spaces or non-ASCII must still yield a valid Markdown link.
 const pageUrl = (route: string, site?: string, base = ""): string => {
   if (!site) {
-    return route;
+    return encodeURI(route);
   }
-  return `${site.replace(/\/$/u, "")}${withBasePath(base, route)}`;
+  return encodeURI(`${site.replace(/\/$/u, "")}${withBasePath(base, route)}`);
 };
 
+// Drafts, hidden, and `noindex` pages are excluded, matching the sitemap.
 const orderedPages = (project: BlumeProject): PageRecord[] =>
   [...project.graph.pages]
-    .filter((page) => !page.meta.draft)
+    .filter(
+      (page) =>
+        !(page.meta.draft || page.meta.sidebar.hidden || page.meta.seo.noindex)
+    )
     .sort((a, b) => a.route.localeCompare(b.route));
 
 /** Build the compact `llms.txt` index: title, summary, and links per page. */

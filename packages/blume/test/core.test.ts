@@ -247,6 +247,25 @@ describe(extractHeadings, () => {
     expect(headings.map((h) => h.text)).toStrictEqual(["Title", "Real"]);
   });
 
+  it("skips headings inside tilde-fenced code", () => {
+    const body = ["# Title", "~~~", "## Not a heading", "~~~", "## Real"].join(
+      "\n"
+    );
+    expect(extractHeadings(body).map((h) => h.text)).toStrictEqual([
+      "Title",
+      "Real",
+    ]);
+  });
+
+  it("keeps a ``` line inside a ~~~ fence from toggling the fence state", () => {
+    // A tilde fence showing a backtick-fenced snippet: the inner ``` lines are
+    // content, so `## Shown` stays fenced and only `## After` is a heading.
+    const body = ["~~~md", "```", "## Shown", "```", "~~~", "## After"].join(
+      "\n"
+    );
+    expect(extractHeadings(body).map((h) => h.text)).toStrictEqual(["After"]);
+  });
+
   it("keeps a trailing # that is part of the heading text", () => {
     const body = ["## What is C#", "## Setup ##"].join("\n");
     // A closing hash sequence needs preceding whitespace (CommonMark); a bare

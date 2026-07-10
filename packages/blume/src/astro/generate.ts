@@ -934,6 +934,7 @@ const writeMcpFiles = async (
   }
   const data = await buildMcpData(project);
   const discoveryInput = {
+    base: data.base,
     name: data.name,
     route: plan.route,
     site: data.site,

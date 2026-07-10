@@ -56,6 +56,24 @@ describe("parseEnv", () => {
     });
   });
 
+  it("consumes each backslash once, keeping escaped backslashes intact", () => {
+    const parsed = parseEnv(
+      [
+        // `\\` then `n` is a literal backslash + `n`, NOT a newline — a
+        // sequential `\n`-then-`\\` expansion would corrupt it.
+        'ESCAPED_N="a\\\\nb"',
+        'WIN_PATH="C:\\\\path\\\\new"',
+        // An unrecognized escape stays verbatim.
+        'UNKNOWN="a\\xb"',
+      ].join("\n")
+    );
+    expect(parsed).toStrictEqual({
+      ESCAPED_N: "a\\nb",
+      UNKNOWN: "a\\xb",
+      WIN_PATH: "C:\\path\\new",
+    });
+  });
+
   it("strips unquoted inline comments, like dotenv and Vite", () => {
     const parsed = parseEnv(
       [

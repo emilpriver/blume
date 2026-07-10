@@ -344,6 +344,15 @@ describe("changelogIndexTemplate", () => {
     expect(out).toContain('contentLayout="bare"');
   });
 
+  it("canonicalizes under the deployment base, like the catch-all", () => {
+    const out = changelogIndexTemplate({ ...exportOpts, staged: false });
+    expect(out).toContain(
+      'import { withBase } from "blume/components/islands/base-path.ts"'
+    );
+    expect(out).toContain('const basedRoute = withBase("/changelog");');
+    expect(out).toContain("const canonical = base ? base + basedRoute : null;");
+  });
+
   it("links each timeline heading to its own generated page", () => {
     const out = changelogIndexTemplate({ ...exportOpts, staged: false });
     // Route lookup keyed by the collection entry id (matches the manifest).
@@ -362,6 +371,8 @@ describe("changelogIndexTemplate", () => {
     expect(out).toContain("<blume-changelog");
     expect(out).toContain("data-changelog-major={group.major}");
     expect(out).toContain("data-changelog-more");
+    // The reveal button's label comes from the translatable UI dictionary.
+    expect(out).toContain("data-i18n-more={data.ui.changelog?.showReleases}");
     // The progressive-reveal element is loaded on the changelog page.
     expect(out).toContain(
       'import "blume/components/content/changelog-element.ts"'
@@ -385,6 +396,14 @@ describe("notFoundPageTemplate", () => {
     expect(out).toContain("{nf.title}");
     expect(out).toContain("{nf.description}");
     expect(out).toContain("{nf.home}");
+  });
+
+  it("routes the home link through withBase, like the catch-all", () => {
+    const out = notFoundPageTemplate();
+    expect(out).toContain(
+      'import { withBase } from "blume/components/islands/base-path.ts"'
+    );
+    expect(out).toContain('href={withBase("/")}');
   });
 });
 
@@ -523,6 +542,9 @@ describe("astroConfigTemplate", () => {
     expect(out).toContain('adapter: adapter({ mode: "standalone" })');
     expect(out).toContain('site: "https://x.com"');
     expect(out).toContain('base: "/docs"');
+    // The deployment base reaches the markdown processors as its own layer so
+    // content links are rewritten under the served URL.
+    expect(out).toContain('"deployBase":"/docs"');
     expect(out).toContain("redirects:");
     expect(out).toContain('"/old"');
     expect(out).toContain("i18n:");
@@ -555,8 +577,11 @@ describe("astroConfigTemplate", () => {
       themePath: THEME_PATH,
     });
     // Both processors learn the base so content links are rewritten under it.
+    // `deployBase` stays a separate layer (empty here — no deployment.base) so
+    // a hand-written basePath link isn't double-prefixed.
     expect(out).toContain('blumeMdxProcessor({"basePath":"/manual"');
     expect(out).toContain('blumeMarkdownProcessor({"basePath":"/manual"');
+    expect(out).toContain('"deployBase":""');
     // Redirect endpoints land under the base too.
     expect(out).toContain('"/manual/old"');
     expect(out).toContain('"/manual/new"');

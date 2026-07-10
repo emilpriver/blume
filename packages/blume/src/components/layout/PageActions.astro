@@ -68,6 +68,7 @@ const menuRowClass =
   class="mt-8 space-y-0.5 border-border border-t pt-4"
   data-blume-page-actions
   data-i18n-copied={a.copied}
+  data-i18n-generating={a.generating}
   data-mcp-name={mcpName ?? undefined}
   data-mcp-url={mcpUrl ?? undefined}
   data-md={mdPath}
@@ -98,7 +99,7 @@ const menuRowClass =
           class={`${rowClass} cursor-pointer list-none [&::-webkit-details-marker]:hidden`}
         >
           <Icon name="download" size={16} />
-          Export
+          {a.export}
           <Icon
             class="ms-auto transition-transform group-open:rotate-180"
             name="chevron-down"
@@ -112,14 +113,14 @@ const menuRowClass =
           {exportPdf && (
             <button class={menuRowClass} data-blume-export-pdf type="button">
               <Icon name="file" size={16} />
-              <span class="flex-1">Export to PDF</span>
+              <span class="flex-1">{a.exportPdf}</span>
             </button>
           )}
           {exportEpub && (
             <button class={menuRowClass} data-blume-export-epub type="button">
               <Icon name="book-open" size={16} />
               <span class="flex-1" data-blume-epub-label>
-                Export to EPUB
+                {a.exportEpub}
               </span>
             </button>
           )}
@@ -218,6 +219,8 @@ const menuRowClass =
 </div>
 
 <script>
+  import { prefixBase } from "../islands/base-path.ts";
+
   const CHAT_URLS: Record<string, (q: string) => string> = {
     chatgpt: (q) => `https://chatgpt.com/?hints=search&prompt=${q}`,
     claude: (q) => `https://claude.ai/new?q=${q}`,
@@ -317,8 +320,14 @@ hr { border: 0; border-top: 1px solid #ddd; margin: 2em 0; }`;
       }
     });
 
-    const md = root.getAttribute("data-md") ?? "";
+    // `data-md` is the base-less logical route; the raw-markdown endpoint is a
+    // generated page route, so it's served under the deployment base like any
+    // other page. Prefix at emit time (the Search-island pattern).
+    const mdRoute = root.getAttribute("data-md") ?? "";
+    const md = prefixBase(import.meta.env.BASE_URL, mdRoute);
     const copiedLabel = root.getAttribute("data-i18n-copied") || "Copied!";
+    const generatingLabel =
+      root.getAttribute("data-i18n-generating") || "Generating…";
     const absolute = new URL(md, location.origin).href;
     const query = encodeURIComponent(
       `Read ${absolute} so I can ask you questions about this page.`
@@ -414,6 +423,9 @@ hr { border: 0; border-top: 1px solid #ddd; margin: 2em 0; }`;
       ?.addEventListener("click", async () => {
         try {
           const response = await fetch(md);
+          if (!response.ok) {
+            throw new Error(`Fetching ${md} failed (${response.status})`);
+          }
           await navigator.clipboard.writeText(await response.text());
           if (label) {
             label.textContent = copiedLabel;
@@ -421,8 +433,9 @@ hr { border: 0; border-top: 1px solid #ddd; margin: 2em 0; }`;
               label.textContent = original;
             }, 1500);
           }
-        } catch {
-          // Clipboard or fetch unavailable; nothing to do.
+        } catch (error) {
+          // Clipboard or fetch unavailable; don't flash "Copied!" untruthfully.
+          console.error("[blume] Copy as Markdown failed", error);
         }
       });
 
@@ -439,9 +452,9 @@ hr { border: 0; border-top: 1px solid #ddd; margin: 2em 0; }`;
       }
       const heading = document.querySelector("#blume-content h1");
       const title = heading?.textContent?.trim() || document.title;
-      const reset = epubLabel?.textContent ?? "Export to EPUB";
+      const reset = epubLabel?.textContent ?? "";
       if (epubLabel) {
-        epubLabel.textContent = "Generating…";
+        epubLabel.textContent = generatingLabel;
       }
       try {
         // Browser bundle: avoids Node built-ins and returns a Blob. Lazy-loaded
@@ -461,7 +474,7 @@ hr { border: 0; border-top: 1px solid #ddd; margin: 2em 0; }`;
             ? result
             : new Blob([result], { type: "application/epub+zip" });
         const slug =
-          md
+          mdRoute
             .replace(/\.md$/u, "")
             .replace(/^\//u, "")
             .replace(/\//gu, "-") || "index";

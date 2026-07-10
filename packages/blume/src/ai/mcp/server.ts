@@ -5,6 +5,7 @@ import {
   ListToolsRequestSchema,
 } from "@modelcontextprotocol/sdk/types.js";
 
+import { withBasePath } from "../../core/base-path.ts";
 import { buildOramaIndex, queryOramaIndex } from "../../search/orama-index.ts";
 import type { OramaDoc } from "../../search/orama-index.ts";
 import type { McpData } from "./data.ts";
@@ -89,10 +90,14 @@ const normalizeRoute = (input: string): string => {
 };
 
 /** Build the absolute (or root-relative) URL for a route. */
-const urlFor = (route: string, site: string | null): string =>
-  // Concatenate rather than `new URL(route, site)` — a root-absolute route
+const urlFor = (route: string, data: McpData): string => {
+  // Routes are base-less manifest paths; layer `deployment.base` on top so the
+  // URL matches where the page is served (the sitemap/llms.txt convention).
+  const path = withBasePath(data.base, route);
+  // Concatenate rather than `new URL(path, site)` — a root-absolute path
   // would drop the base path of a subpath deployment (`acme.com/docs`).
-  site ? `${site.replace(/\/+$/u, "")}${route}` : route;
+  return data.site ? `${data.site.replace(/\/+$/u, "")}${path}` : path;
+};
 
 const text = (value: string, isError = false) => ({
   content: [{ text: value, type: "text" as const }],
@@ -130,7 +135,7 @@ const buildServer = (
         excerpt:
           doc.description || `${doc.content.slice(0, EXCERPT_LENGTH)}…`.trim(),
         title: doc.title,
-        url: urlFor(doc.route, data.site),
+        url: urlFor(doc.route, data),
       }));
       return text(JSON.stringify(results, null, 2));
     }
@@ -156,7 +161,7 @@ const buildServer = (
             lastModified: route.lastModified,
             route: route.route,
             title: route.title,
-            url: urlFor(route.route, data.site),
+            url: urlFor(route.route, data),
           })),
           null,
           2

@@ -10,6 +10,7 @@ import {
   normalizeBasePath,
   stripBasePath,
   withBasePath,
+  withComposedBasePath,
 } from "../src/core/base-path.ts";
 import { validateLinks } from "../src/core/links.ts";
 import { scanProject } from "../src/core/project-graph.ts";
@@ -69,6 +70,46 @@ describe("withBasePath", () => {
   });
 });
 
+describe("withComposedBasePath", () => {
+  it("stacks deployment.base over basePath", () => {
+    expect(withComposedBasePath("/base", "/docs", "/guide")).toBe(
+      "/base/docs/guide"
+    );
+    expect(withComposedBasePath("/base", "/docs", "/")).toBe("/base/docs");
+  });
+
+  it("adds only the deployment base to a hand-written basePath link", () => {
+    // The promise from markdown/base-links.ts: an author who writes the
+    // basePath by hand (`/docs/x`) isn't double-prefixed to `/docs/docs/x`.
+    expect(withComposedBasePath("/base", "/docs", "/docs/guide")).toBe(
+      "/base/docs/guide"
+    );
+    expect(withComposedBasePath("/base", "/docs", "/docs")).toBe("/base/docs");
+  });
+
+  it("leaves a route already under the full composite unchanged", () => {
+    expect(withComposedBasePath("/base", "/docs", "/base/docs/guide")).toBe(
+      "/base/docs/guide"
+    );
+    expect(withComposedBasePath("/base", "/docs", "/base/docs")).toBe(
+      "/base/docs"
+    );
+  });
+
+  it("degenerates to withBasePath when a layer is empty", () => {
+    expect(withComposedBasePath("", "/docs", "/guide")).toBe("/docs/guide");
+    expect(withComposedBasePath("/base", "", "/guide")).toBe("/base/guide");
+    expect(withComposedBasePath("", "", "/guide")).toBe("/guide");
+  });
+
+  it("passes non-internal targets through", () => {
+    expect(withComposedBasePath("/base", "/docs", "https://x.com")).toBe(
+      "https://x.com"
+    );
+    expect(withComposedBasePath("/base", "/docs", "#h")).toBe("#h");
+  });
+});
+
 describe("stripBasePath", () => {
   it("removes the base, inverse of withBasePath", () => {
     expect(stripBasePath("/docs", "/docs/guide")).toBe("/guide");
@@ -112,6 +153,30 @@ describe("markdown base-links plugin", () => {
     expect(html).toContain('href="/spec.pdf"');
     expect(html).toContain('src="/logo.svg"');
     expect(html).toContain('href="#section"');
+  });
+
+  it("layers deployment.base without double-prefixing a hand-written basePath", async () => {
+    const html = await renderMd(
+      blumeMarkdownProcessor({ basePath: "/docs", deployBase: "/base" }),
+      [
+        "[Guide](/guide)",
+        "[Hand-written](/docs/guide)",
+        "[Composed](/base/docs/guide)",
+      ].join("\n\n")
+    );
+    // All three authored forms resolve to the same served URL.
+    expect(html).toContain('href="/base/docs/guide">Guide');
+    expect(html).toContain('href="/base/docs/guide">Hand-written');
+    expect(html).toContain('href="/base/docs/guide">Composed');
+    expect(html).not.toContain("/base/docs/docs/");
+  });
+
+  it("rewrites under deployment.base alone when no basePath is set", async () => {
+    const html = await renderMd(
+      blumeMarkdownProcessor({ deployBase: "/base" }),
+      "[Guide](/guide)"
+    );
+    expect(html).toContain('href="/base/guide"');
   });
 
   it("is a no-op without a base, and works in the MDX processor too", async () => {

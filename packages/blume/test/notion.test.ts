@@ -345,15 +345,56 @@ describe("notionSource", () => {
     expect(entries[0]?.data.draft).toBe(true);
   });
 
-  it("imports every page as published when publishedValue is unset", async () => {
+  it("keeps a Published page published when publishedValue is unset", async () => {
     const source = notionSource(
       { client: client(), database: "db1", fetchImpl, name: "handbook" },
       await ctxFor()
     );
     const { entries } = await source.load();
-    // Status is "Published" in the fixture, but without publishedValue the
-    // adapter never infers draft — nothing is filtered.
+    // Status is "Published" in the fixture, matching the documented default
+    // publishedValue of "Published".
     expect(entries[0]?.data.draft).toBeUndefined();
+  });
+
+  it("defaults publishedValue to Published when unset", async () => {
+    const clientWith = (properties: Record<string, unknown>) =>
+      ({
+        ...client(),
+        databases: {
+          query: () =>
+            Promise.resolve({
+              has_more: false,
+              next_cursor: null,
+              results: [{ ...PAGE, properties }],
+            }),
+        },
+      }) as unknown as NotionClientLike;
+    const loadDraft = async (properties: Record<string, unknown>) => {
+      const source = notionSource(
+        {
+          client: clientWith(properties),
+          database: "db1",
+          fetchImpl,
+          name: "handbook",
+        },
+        await ctxFor()
+      );
+      const { entries } = await source.load();
+      return entries[0]?.data.draft;
+    };
+
+    // A non-Published status maps to draft even without publishedValue set —
+    // the documented default is "Published".
+    expect(
+      await loadDraft({
+        ...PAGE.properties,
+        Status: { status: { name: "Draft" }, type: "status" },
+      })
+    ).toBe(true);
+    // A page with no Status/select property at all stays published.
+    expect(
+      await loadDraft({ Name: { title: [rich("Hello World")], type: "title" } })
+    ).toBeUndefined();
   });
 });
 

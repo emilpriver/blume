@@ -170,6 +170,21 @@ export const mdxRemoteSource = (
   const cache = snapshotCache(ctx.cacheDir);
   let snapshot = new Map<string, SourceEntry>();
 
+  // Validated up front in `load`, *before* the cached-fetch path: thrown from
+  // inside `loadWithCache`'s fetch callback, a misconfiguration would be masked
+  // as BLUME_SOURCE_FETCH_FAILED (no cache) or downgraded to a stale-cache
+  // BLUME_SOURCE_OFFLINE warning (cache present).
+  const assertConfigured = (): void => {
+    if (options.github || (options.files && options.url)) {
+      return;
+    }
+    throw new BlumeError({
+      code: "BLUME_SOURCE_MISCONFIGURED",
+      message: `Source "${options.name}" needs either { github } or { url, files }.`,
+      severity: "error",
+    });
+  };
+
   const enumerate = async (): Promise<{
     refs: RemoteRef[];
     truncated: boolean;
@@ -177,20 +192,13 @@ export const mdxRemoteSource = (
     if (options.github) {
       return await enumerateGithub(options.github, options.include, doFetch);
     }
-    if (options.files && options.url) {
-      const base = options.url.replace(/\/$/u, "");
-      const refs = options.files.flatMap((ref) =>
-        matchesInclude(ref, options.include)
-          ? [{ editUrl: `${base}/${ref}`, fetchUrl: `${base}/${ref}`, ref }]
-          : []
-      );
-      return { refs, truncated: false };
-    }
-    throw new BlumeError({
-      code: "BLUME_SOURCE_MISCONFIGURED",
-      message: `Source "${options.name}" needs either { github } or { url, files }.`,
-      severity: "error",
-    });
+    const base = (options.url ?? "").replace(/\/$/u, "");
+    const refs = (options.files ?? []).flatMap((ref) =>
+      matchesInclude(ref, options.include)
+        ? [{ editUrl: `${base}/${ref}`, fetchUrl: `${base}/${ref}`, ref }]
+        : []
+    );
+    return { refs, truncated: false };
   };
 
   const fetchEntry = async (item: RemoteRef): Promise<SourceEntry> => {
@@ -216,6 +224,7 @@ export const mdxRemoteSource = (
   const load = async (
     refresh = ctx.refresh ?? true
   ): Promise<SourceLoadResult> => {
+    assertConfigured();
     const skipped: Diagnostic[] = [];
     const result = await loadWithCache(
       options.name,

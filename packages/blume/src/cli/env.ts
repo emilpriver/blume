@@ -13,15 +13,25 @@ const ENV_LINE =
 const DOUBLE_QUOTED = /^"(?<body>[\s\S]*)"$/u;
 const SINGLE_QUOTED = /^'(?<body>[\s\S]*)'$/u;
 
+const ESCAPE = /\\(?<char>[\\nt"])/gu;
+const UNESCAPED: Record<string, string> = {
+  '"': '"',
+  "\\": "\\",
+  n: "\n",
+  t: "\t",
+};
+
 /** Unquote a value, expanding `\n`/`\t`/escapes inside double quotes only. */
 const unquote = (raw: string): string => {
   const double = raw.match(DOUBLE_QUOTED)?.groups?.body;
   if (double !== undefined) {
-    return double
-      .replaceAll("\\n", "\n")
-      .replaceAll("\\t", "\t")
-      .replaceAll('\\"', '"')
-      .replaceAll("\\\\", "\\");
+    // A single pass so each backslash is consumed exactly once — sequential
+    // replaceAll calls would expand the `n` in `\\n` (an escaped backslash
+    // followed by a literal `n`) into a newline.
+    return double.replaceAll(
+      ESCAPE,
+      (match, char: string) => UNESCAPED[char] ?? match
+    );
   }
   const single = raw.match(SINGLE_QUOTED)?.groups?.body;
   if (single !== undefined) {

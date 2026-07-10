@@ -100,10 +100,9 @@ export interface NotionSourceOptions {
   token?: string;
   properties?: NotionPropertyMap;
   /**
-   * When set, the `Status` property is treated as a publish signal: any value
-   * other than this maps to `draft: true`. Omit to import every page regardless
-   * of status (the safe default for databases that use Status for an editorial
-   * workflow rather than publishing).
+   * The `Status` property is treated as a publish signal: any value other than
+   * this maps to `draft: true`. Defaults to `Published`; pages without a
+   * Status/select property are always imported as published.
    */
   publishedValue?: string;
   /** Opt-in dev polling interval (seconds); omit to freeze for the session. */
@@ -395,12 +394,13 @@ export const notionSource = (
   };
 
   const isDraft = (page: NotionPage): boolean => {
-    if (!options.publishedValue) {
-      return false;
-    }
     const prop = page.properties[props.status ?? "Status"];
     const status = prop?.status?.name ?? prop?.select?.name;
-    return Boolean(status && status !== options.publishedValue);
+    // A page without a Status/select property stays published; one with a
+    // status is a draft unless it matches the published value.
+    return Boolean(
+      status && status !== (options.publishedValue ?? "Published")
+    );
   };
 
   const orderOf = (page: NotionPage): number | undefined => {

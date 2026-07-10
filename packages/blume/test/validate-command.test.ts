@@ -1,0 +1,78 @@
+import { afterAll, describe, expect, it } from "bun:test";
+import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
+import { tmpdir } from "node:os";
+
+import { dirname, join } from "pathe";
+
+/**
+ * `blume validate` exercised end-to-end as a subprocess: the exit code is the
+ * CLI's CI contract, and `--strict` must escalate warnings — but not info-level
+ * notes like BLUME_ASSETS_UNCHECKED — to failures.
+ */
+
+const CLI = join(import.meta.dir, "..", "src", "cli", "index.ts");
+
+const dirs: string[] = [];
+
+afterAll(async () => {
+  await Promise.all(
+    dirs.map((dir) => rm(dir, { force: true, recursive: true }))
+  );
+});
+
+const fixture = async (files: Record<string, string>): Promise<string> => {
+  const root = await mkdtemp(join(tmpdir(), "blume-validate-"));
+  dirs.push(root);
+  await Promise.all(
+    Object.entries(files).map(async ([rel, content]) => {
+      const abs = join(root, rel);
+      await mkdir(dirname(abs), { recursive: true });
+      await writeFile(abs, content);
+    })
+  );
+  return root;
+};
+
+const validate = async (
+  cwd: string,
+  ...args: string[]
+): Promise<{ exitCode: number; stderr: string }> => {
+  const proc = Bun.spawn(["bun", CLI, "validate", ...args], {
+    cwd,
+    stderr: "pipe",
+    stdout: "pipe",
+  });
+  const [exitCode, stderr] = await Promise.all([
+    proc.exited,
+    new Response(proc.stderr).text(),
+  ]);
+  return { exitCode, stderr };
+};
+
+describe("blume validate --strict", () => {
+  it("does not fail on info-level diagnostics", async () => {
+    // An asset link with no public/ dir yields only the info-severity
+    // BLUME_ASSETS_UNCHECKED note — documented strict behavior is "treat
+    // warnings as errors", so this must still exit 0.
+    const root = await fixture({
+      "docs/index.md": "---\ntitle: Home\n---\n\n![logo](/logo.png)\n",
+    });
+    const { exitCode, stderr } = await validate(root, "--strict");
+    expect(stderr).toContain("BLUME_ASSETS_UNCHECKED");
+    expect(exitCode).toBe(0);
+  });
+
+  it("fails on warning-level diagnostics", async () => {
+    // A missing anchor is a warning: exit 0 without --strict, 1 with it.
+    const files = {
+      "docs/a.md": "---\ntitle: A\n---\n\n[bad](/b#nope)\n",
+      "docs/b.md": "---\ntitle: B\n---\n\n## Setup\n",
+    };
+    const lax = await validate(await fixture(files));
+    expect(lax.exitCode).toBe(0);
+
+    const strict = await validate(await fixture(files), "--strict");
+    expect(strict.stderr).toContain("BLUME_BROKEN_ANCHOR");
+    expect(strict.exitCode).toBe(1);
+  });
+});

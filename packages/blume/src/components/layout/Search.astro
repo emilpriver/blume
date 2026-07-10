@@ -33,8 +33,13 @@ const kbd = "rounded border border-border bg-muted px-1 py-0.5 font-mono";
 <blume-search
   class="contents"
   data-ask={askEnabled ? "" : undefined}
+  data-i18n-ask={s.askAi}
+  data-i18n-ask-hint={s.askAiHint}
   data-i18n-dev={s.devOnly}
   data-i18n-empty={s.noResults}
+  data-i18n-error={s.error}
+  data-i18n-popular={s.popular}
+  data-i18n-results={s.results}
   data-locale={locale || undefined}
 >
   <button
@@ -119,15 +124,17 @@ const kbd = "rounded border border-border bg-muted px-1 py-0.5 font-mono";
         <span class="flex items-center gap-1">
           <kbd class={`${kbd} text-[0.65rem]`}>↑</kbd>
           <kbd class={`${kbd} text-[0.65rem]`}>↓</kbd>
-          navigate
+          {s.navigate}
         </span>
         <span class="flex items-center gap-1">
           <kbd class={`${kbd} text-[0.65rem]`}>↵</kbd>
-          open
+          {s.open}
         </span>
         <span class="flex items-center gap-1 max-md:hidden">
-          <kbd class={`${kbd} text-[0.65rem]`}>⌘J</kbd>
-          preview
+          <kbd class={`${kbd} text-[0.65rem]`} data-blume-search-preview-kbd
+            >⌘J</kbd
+          >
+          {s.preview}
         </span>
       </div>
     </div>
@@ -198,6 +205,11 @@ const kbd = "rounded border border-border bg-muted px-1 py-0.5 font-mono";
       previewOn = true;
       devOnlyMsg = "Search is available in the production build.";
       noResultsMsg = "No results found.";
+      errorMsg = "Something went wrong. Please try again.";
+      askMsg = "Ask AI";
+      askHintMsg = "Get an instant answer from AI";
+      popularMsg = "Popular";
+      resultsMsg = "Results";
       // The active locale to filter to (null when i18n is off), and whether the
       // reader has opted to search across every language instead.
       locale: string | null = null;
@@ -208,6 +220,14 @@ const kbd = "rounded border border-border bg-muted px-1 py-0.5 font-mono";
           this.getAttribute("data-i18n-dev") || this.devOnlyMsg;
         this.noResultsMsg =
           this.getAttribute("data-i18n-empty") || this.noResultsMsg;
+        this.errorMsg = this.getAttribute("data-i18n-error") || this.errorMsg;
+        this.askMsg = this.getAttribute("data-i18n-ask") || this.askMsg;
+        this.askHintMsg =
+          this.getAttribute("data-i18n-ask-hint") || this.askHintMsg;
+        this.popularMsg =
+          this.getAttribute("data-i18n-popular") || this.popularMsg;
+        this.resultsMsg =
+          this.getAttribute("data-i18n-results") || this.resultsMsg;
         this.locale = this.getAttribute("data-locale");
         this.dialog = this.querySelector("[data-blume-search-dialog]")!;
         this.input = this.querySelector("[data-blume-search-input]")!;
@@ -250,12 +270,18 @@ const kbd = "rounded border border-border bg-muted px-1 py-0.5 font-mono";
           });
         }
 
-        // The handler accepts ⌘K and Ctrl+K; show the right one per platform.
+        // The handlers accept both ⌘ and Ctrl chords; show the right modifier
+        // per platform on the button hint and the footer's preview hint.
+        const isApple = /mac|iphone|ipad|ipod/iu.test(navigator.platform);
         const hint = this.querySelector("[data-blume-search-kbd]");
         if (hint) {
-          hint.textContent = /mac|iphone|ipad|ipod/iu.test(navigator.platform)
-            ? "⌘K"
-            : "Ctrl K";
+          hint.textContent = isApple ? "⌘K" : "Ctrl K";
+        }
+        const previewHint = this.querySelector(
+          "[data-blume-search-preview-kbd]"
+        );
+        if (previewHint) {
+          previewHint.textContent = isApple ? "⌘J" : "Ctrl J";
         }
 
         this.querySelector("[data-blume-search-open]")?.addEventListener(
@@ -322,7 +348,9 @@ const kbd = "rounded border border-border bg-muted px-1 py-0.5 font-mono";
         } else if (event.key === "ArrowUp") {
           event.preventDefault();
           this.move(-1);
-        } else if (event.key === "Enter") {
+        } else if (event.key === "Enter" && !event.isComposing) {
+          // `isComposing` guards IME input: Enter confirming a CJK conversion
+          // must commit the text, not activate the selected result.
           const item = this.selectables[this.selectedIndex];
           if (item) {
             event.preventDefault();
@@ -367,10 +395,22 @@ const kbd = "rounded border border-border bg-muted px-1 py-0.5 font-mono";
 
         const localeFilter =
           this.locale && !this.allLocales ? this.locale : undefined;
-        const result = await this.searchFn(query, {
-          locale: localeFilter,
-          section: this.activeSection ?? undefined,
-        });
+        let result: Awaited<ReturnType<SearchFn>>;
+        try {
+          result = await this.searchFn(query, {
+            locale: localeFilter,
+            section: this.activeSection ?? undefined,
+          });
+        } catch {
+          // A hosted provider can reject (network error, outage); the results
+          // list is already cleared, so show a message instead of a blank pane.
+          if (generation === this.renderGeneration) {
+            this.renderFilters([]);
+            this.clearPreview();
+            this.setMessage(this.errorMsg);
+          }
+          return;
+        }
         // Any newer render — a keystroke, a section pill, a locale toggle —
         // supersedes this one mid-await, even for the same query text;
         // appending the stale hits would duplicate rows and desync selection.
@@ -381,14 +421,14 @@ const kbd = "rounded border border-border bg-muted px-1 py-0.5 font-mono";
         this.renderFilters(result.sections);
 
         if (this.askEnabled) {
-          const group = this.addGroup("Ask AI");
+          const group = this.addGroup(this.askMsg);
           const ask = this.createAskRow(query);
           group.appendChild(ask.el);
           this.selectables.push(ask);
         }
 
         if (result.hits.length > 0) {
-          const group = this.addGroup("Results");
+          const group = this.addGroup(this.resultsMsg);
           for (const hit of result.hits) {
             const item = this.createHitRow(hit, query);
             group.appendChild(item.el);
@@ -403,13 +443,13 @@ const kbd = "rounded border border-border bg-muted px-1 py-0.5 font-mono";
 
       renderEmpty() {
         if (this.askEnabled) {
-          const group = this.addGroup("Ask AI");
+          const group = this.addGroup(this.askMsg);
           const ask = this.createAskRow("");
           group.appendChild(ask.el);
           this.selectables.push(ask);
         }
         if (this.popular.length > 0) {
-          const group = this.addGroup("Popular");
+          const group = this.addGroup(this.popularMsg);
           for (const page of this.popular) {
             const item = this.createLinkRow(page.route, page.label);
             group.appendChild(item.el);
@@ -464,13 +504,13 @@ const kbd = "rounded border border-border bg-muted px-1 py-0.5 font-mono";
         el.type = "button";
         el.className = `${ROW_CLASS} ${MARK}`;
         const title = query
-          ? `Ask AI: <span class="text-muted-foreground">“${escapeHtml(query)}”</span>`
-          : "Ask AI";
+          ? `${escapeHtml(this.askMsg)}: <span class="text-muted-foreground">“${escapeHtml(query)}”</span>`
+          : escapeHtml(this.askMsg);
         el.innerHTML = `
           <span class="mt-0.5 shrink-0 text-accent">${svg("sparkles")}</span>
           <span class="flex-1">
             <span class="block truncate font-normal text-foreground text-sm">${title}</span>
-            <span class="block truncate text-muted-foreground text-sm">Get an instant answer from AI</span>
+            <span class="block truncate text-muted-foreground text-sm">${escapeHtml(this.askHintMsg)}</span>
           </span>`;
         const item: Selectable = { el, kind: "ask" };
         this.bindRow(item);

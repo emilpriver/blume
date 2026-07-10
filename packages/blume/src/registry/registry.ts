@@ -23,9 +23,6 @@ export interface RegistryItem {
 /** Absolute path to the blume package `src` directory (the copy source root). */
 export const packageSrc = join(packageRoot(), "src");
 
-/** Absolute path to the bundled registry item sources. */
-export const itemsRoot = join(packageRoot(), "src", "registry", "items");
-
 /**
  * A built-in layout component offered as editable source. `blume add` rewrites
  * its relative imports to `blume/*`, so it renders identically to the built-in

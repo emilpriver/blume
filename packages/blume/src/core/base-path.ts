@@ -52,6 +52,30 @@ export const withBasePath = (basePath: string, route: string): string => {
 };
 
 /**
+ * {@link withBasePath} for the composed `deployment.base` + `basePath` stack
+ * (`/base` + `/docs` serves pages at `/base/docs/x`). The hand-written-base
+ * promise applies per layer: authors write `basePath` by hand (see
+ * `markdown/base-links.ts`), so a `/docs/x` link gains only the deployment base
+ * (`/base/docs/x`) rather than being double-prefixed to `/base/docs/docs/x`,
+ * and a route already under the full composite is returned unchanged.
+ */
+export const withComposedBasePath = (
+  deployBase: string,
+  basePath: string,
+  route: string
+): string => {
+  const composed = `${deployBase}${basePath}`;
+  if (
+    composed &&
+    isInternalPath(route) &&
+    (route === composed || route.startsWith(`${composed}/`))
+  ) {
+    return route;
+  }
+  return withBasePath(deployBase, withBasePath(basePath, route));
+};
+
+/**
  * Remove `basePath` from the front of a route (`/docs/guide` -> `/guide`,
  * `/docs` -> `/`). A route not under the base is returned unchanged. Inverse of
  * {@link withBasePath}; used to resolve public assets, which live at the site

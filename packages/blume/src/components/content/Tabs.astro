@@ -51,6 +51,10 @@ const hashEnabled = String(hash) !== "false";
     "w-full rounded-blume border border-border bg-background px-3 py-2 font-medium text-foreground text-sm";
   const SYNC_EVENT = "blume-tabs-change";
 
+  // Disambiguates generated trigger/panel ids when the same tab labels appear
+  // in several <Tabs> instances on one page.
+  let instanceCount = 0;
+
   const panelTitle = (panel: HTMLElement, index: number) =>
     panel.dataset.title ?? `Tab ${index + 1}`;
   const panelId = (panel: HTMLElement) => panel.dataset.tabId ?? panel.id;
@@ -119,7 +123,8 @@ const hashEnabled = String(hash) !== "false";
       if (this.dataset.dropdown === "true") {
         this.#select = document.createElement("select");
         this.#select.className = SELECT_CLASS;
-        this.#select.setAttribute("aria-label", "Select code example");
+        // Neutral default: tab sets aren't necessarily code examples.
+        this.#select.setAttribute("aria-label", "Select tab");
         panels.forEach((panel, index) => {
           const option = document.createElement("option");
           option.value = String(index);
@@ -131,6 +136,7 @@ const hashEnabled = String(hash) !== "false";
         });
         list.appendChild(this.#select);
       } else {
+        const instance = ++instanceCount;
         panels.forEach((panel, index) => {
           const trigger = document.createElement("button");
           trigger.type = "button";
@@ -138,9 +144,15 @@ const hashEnabled = String(hash) !== "false";
           trigger.className = TRIGGER_CLASS;
           appendTriggerContent(trigger, panel, index);
           trigger.tabIndex = index === 0 ? 0 : -1;
-          if (panel.id) {
-            trigger.setAttribute("aria-controls", panel.id);
+          // Wire tab and panel both ways. An author-supplied panel id is kept;
+          // otherwise derive unique ids from the label slug per instance.
+          const slug = panelId(panel) || `tab-${index + 1}`;
+          if (!panel.id) {
+            panel.id = `blume-tabpanel-${slug}-${instance}`;
           }
+          trigger.id = `blume-tab-${slug}-${instance}`;
+          trigger.setAttribute("aria-controls", panel.id);
+          panel.setAttribute("aria-labelledby", trigger.id);
           trigger.setAttribute(
             "aria-selected",
             index === 0 ? "true" : "false"

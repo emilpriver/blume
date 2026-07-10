@@ -76,6 +76,11 @@ describe(extractLinks, () => {
     expect(extractLinks(body).map((l) => l.target)).toStrictEqual(["/yes"]);
   });
 
+  it("skips links inside tilde-fenced code blocks", () => {
+    const body = ["~~~md", "[x](/nope)", "~~~", "[y](/yes)"].join("\n");
+    expect(extractLinks(body).map((l) => l.target)).toStrictEqual(["/yes"]);
+  });
+
   it("skips link syntax inside inline code spans", () => {
     // Prose that *shows* Markdown link syntax must not register a link —
     // `/nope` would otherwise fail `blume validate` as a broken link.
@@ -153,6 +158,21 @@ describe(validateLinks, () => {
     const diagnostics = await validate([
       makePage({
         id: "guides/index.mdx",
+        links: [link("./setup")],
+        route: "/guides",
+      }),
+      makePage({ id: "guides/setup.mdx", route: "/guides/setup" }),
+    ]);
+    expect(diagnostics).toHaveLength(0);
+  });
+
+  it("treats a numeric-prefixed index (01-index) as an index for relative links", async () => {
+    // Route mapping strips the ordering prefix and drops `index`, so
+    // `guides/01-index.mdx` routes to `/guides` — `./setup` must resolve to
+    // `/guides/setup` exactly as it does from a plain `index.mdx`.
+    const diagnostics = await validate([
+      makePage({
+        id: "guides/01-index.mdx",
         links: [link("./setup")],
         route: "/guides",
       }),

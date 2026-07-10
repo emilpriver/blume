@@ -110,6 +110,10 @@ const clientDataJson = clientData
   : null;
 
 const strings = ui ?? EN_UI;
+// Merge over the English defaults so a label missing from a translation (or
+// from a not-yet-regenerated snapshot) still renders instead of coming out
+// blank — the PageActions pattern.
+const navStrings = { ...EN_UI.nav, ...strings.nav };
 // Filter search to the active language only when the site is multi-locale.
 const searchLocale =
   localeSwitch && localeSwitch.length > 1 ? locale : undefined;
@@ -184,6 +188,7 @@ const bannerScript = banner?.dismissible
       hasSidebar={false}
       localeSwitch={localeSwitch}
       logo={logo}
+      navStrings={navStrings}
       navigation={navigation}
       route={route}
       searchEnabled={searchEnabled}
@@ -205,10 +210,11 @@ const bannerScript = banner?.dismissible
       navigation.tabs.length > 0 && (
         <>
           <aside
-            aria-label="Navigation"
+            aria-label={navStrings.navigation}
             class="fixed top-[var(--blume-drawer-top,4rem)] start-0 z-[35] h-[calc(100dvh-var(--blume-drawer-top,4rem))] w-64 max-w-[80vw] -translate-x-[105%] overflow-y-auto border-border border-e bg-background px-5 pt-4 pb-6 transition-transform rtl:translate-x-[105%] [:where([data-blume-nav-open])_&]:translate-x-0! lg:hidden"
+            data-blume-nav-drawer
           >
-            <nav aria-label="Sections">
+            <nav aria-label={navStrings.sections}>
               <ul class="m-0 list-none p-0">
                 {navigation.tabs.map((tab) => (
                   <li>
@@ -230,7 +236,7 @@ const bannerScript = banner?.dismissible
             </nav>
           </aside>
           <button
-            aria-label="Close navigation"
+            aria-label={navStrings.closeNavigation}
             class="fixed inset-0 z-[30] hidden cursor-pointer border-0 bg-black/40 [:where([data-blume-nav-open])_&]:block lg:hidden"
             data-blume-nav-toggle
             type="button"
@@ -252,6 +258,33 @@ const bannerScript = banner?.dismissible
       // Dev-only: friendly hint after a React island hydration mismatch;
       // tree-shaken out of production builds.
       import "./hydration-hint.ts";
+
+      // The closed tabs drawer is only translated off-canvas, so its links
+      // would stay in the tab order. Mirror the header's `data-blume-nav-open`
+      // toggle into `inert`/`aria-hidden` below `lg` (64rem), matching the
+      // breakpoint where the drawer is display-hidden anyway.
+      const drawer = document.querySelector<HTMLElement>(
+        "[data-blume-nav-drawer]"
+      );
+      if (drawer) {
+        const desktop = window.matchMedia("(min-width: 64rem)");
+        const syncDrawer = () => {
+          const hidden =
+            !desktop.matches &&
+            !document.documentElement.hasAttribute("data-blume-nav-open");
+          drawer.inert = hidden;
+          if (hidden) {
+            drawer.setAttribute("aria-hidden", "true");
+          } else {
+            drawer.removeAttribute("aria-hidden");
+          }
+        };
+        syncDrawer();
+        desktop.addEventListener("change", syncDrawer);
+        new MutationObserver(syncDrawer).observe(document.documentElement, {
+          attributeFilter: ["data-blume-nav-open"],
+        });
+      }
     </script>
   </body>
 </html>

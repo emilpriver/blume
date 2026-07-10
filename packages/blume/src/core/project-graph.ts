@@ -108,7 +108,7 @@ const entryIdDiagnostics = (
         message: `Content source "${page.source.name}" is rooted outside the docs collection base, so ${page.route} resolves entry id "${entryId}" but the collection would generate "${expected}" — the page would 404 at runtime.`,
         severity: "error",
         suggestion:
-          "Give each filesystem source a root under content.root, or use a single filesystem source so the collection can root at it.",
+          "Use a single filesystem source (the docs collection roots at it), or root every filesystem source at content.root and partition them with include globs — a root at a subdirectory of content.root still mismatches.",
       });
     }
   }

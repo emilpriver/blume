@@ -1,6 +1,7 @@
 ---
 import { withBase } from "../islands/base-path.ts";
 import type { ComponentOverride } from "../../core/define-components.ts";
+import { EN_UI } from "../../core/i18n-ui.ts";
 import type { UIStrings } from "../../core/i18n-ui.ts";
 import type { LocaleSwitchOption, Navigation } from "../../core/types.ts";
 import { GITHUB_MARK } from "../github-mark.ts";
@@ -37,6 +38,8 @@ interface Props {
   hasDrawer?: boolean;
   searchStrings?: UIStrings["search"];
   switcherStrings?: UIStrings["languageSwitcher"];
+  /** Localized chrome labels (nav toggle, sections, GitHub, theme toggle). */
+  navStrings?: UIStrings["nav"];
   localeSwitch?: LocaleSwitchOption[];
   /** Active locale for per-language search filtering. */
   searchLocale?: string;
@@ -59,10 +62,16 @@ const {
   hasDrawer = true,
   searchStrings,
   switcherStrings,
+  navStrings,
   localeSwitch,
   searchLocale,
   layout = {},
 } = Astro.props;
+
+// Merge over the English defaults so a label missing from a translation (or
+// from a not-yet-regenerated snapshot) still renders instead of coming out
+// blank — the PageActions pattern.
+const n = { ...EN_UI.nav, ...navStrings };
 
 const LogoSlot = resolveSlot(layout.Logo, Logo);
 const SearchSlot = resolveSlot(layout.Search, Search);
@@ -109,7 +118,7 @@ const clickScript = `(()=>{const dr=()=>{const h=document.querySelector("[data-b
   {
     showNavToggle && (
       <button
-        aria-label="Toggle navigation"
+        aria-label={n.toggleNavigation}
         class={`${iconButton} lg:hidden`}
         data-blume-nav-toggle
         type="button"
@@ -130,7 +139,7 @@ const clickScript = `(()=>{const dr=()=>{const h=document.querySelector("[data-b
   }
   {
     navigation.tabs.length > 0 && (
-      <nav aria-label="Sections" class={tabsNavClass}>
+      <nav aria-label={n.sections} class={tabsNavClass}>
         {navigation.tabs.map((tab) => (
           <a
             aria-current={
@@ -172,7 +181,7 @@ const clickScript = `(()=>{const dr=()=>{const h=document.querySelector("[data-b
     {
       navigation.repoUrl && (
         <a
-          aria-label="GitHub repository"
+          aria-label={n.githubRepository}
           class={iconButton}
           href={navigation.repoUrl}
           rel="noreferrer"
@@ -191,7 +200,7 @@ const clickScript = `(()=>{const dr=()=>{const h=document.querySelector("[data-b
       )
     }
     <button
-      aria-label="Toggle color theme"
+      aria-label={n.toggleTheme}
       class={iconButton}
       data-blume-theme-toggle
       type="button"

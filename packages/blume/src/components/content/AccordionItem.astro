@@ -67,6 +67,22 @@ const accordionId = id ?? slugify(title);
   if (!state.__blumeAccordionHash) {
     state.__blumeAccordionHash = true;
 
+    // Repeated titles slug to the same id (e.g. several <Expandable> blocks all
+    // defaulting to "show-more"); suffix the later ones so ids stay unique. The
+    // first keeps the plain slug, so hash deep-links stay stable.
+    const dedupeAccordionIds = () => {
+      const seen = new Map<string, number>();
+      for (const accordion of document.querySelectorAll<HTMLElement>(
+        "[data-blume-accordion][id]"
+      )) {
+        const count = seen.get(accordion.id) ?? 0;
+        seen.set(accordion.id, count + 1);
+        if (count > 0) {
+          accordion.id = `${accordion.id}-${count + 1}`;
+        }
+      }
+    };
+
     const accordionFromHash = () => {
       const id = decodeURIComponent(window.location.hash.slice(1));
       if (!id) {
@@ -106,13 +122,16 @@ const accordionId = id ?? slugify(title);
       true
     );
 
+    const init = () => {
+      dedupeAccordionIds();
+      openHashAccordion();
+    };
+
     window.addEventListener("hashchange", openHashAccordion);
     if (document.readyState === "loading") {
-      document.addEventListener("DOMContentLoaded", openHashAccordion, {
-        once: true,
-      });
+      document.addEventListener("DOMContentLoaded", init, { once: true });
     } else {
-      openHashAccordion();
+      init();
     }
   }
 </script>

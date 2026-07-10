@@ -97,10 +97,12 @@ const resolvedClass = astroClass ?? className;
 const colorClass = activeStroke
   ? strokeColorClass[colorName] ?? strokeColorClass.gray
   : filledColorClass[colorName] ?? filledColorClass.gray;
+// `color-mix` instead of appending a hex alpha byte, which breaks shorthand
+// hex (`#f00` + `20` is not a color); 12% matches the old `20` (32/255) alpha.
 const customStyle = customColor
   ? activeStroke
     ? `border-color:${customColor};color:${customColor}`
-    : `background:${customColor}20;color:${customColor}`
+    : `background:color-mix(in srgb, ${customColor} 12%, transparent);color:${customColor}`
   : undefined;
 ---
 

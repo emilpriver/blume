@@ -6,6 +6,8 @@ import { join, relative } from "pathe";
 import { buildAskData } from "../ai/ask-data.ts";
 import { resolveAskBackend } from "../ai/ask.ts";
 import { buildRawMarkdown } from "../ai/markdown.ts";
+import { buildMcpData } from "../ai/mcp/data.ts";
+import { buildMcpDiscovery, buildMcpServerCard } from "../ai/mcp/discovery.ts";
 import { planComponentSlots } from "../astro/component-slots.ts";
 import { discoverExamples } from "../astro/examples.ts";
 import {
@@ -20,6 +22,7 @@ import {
   askEndpointTemplate,
   astroConfigTemplate,
   catchAllPageTemplate,
+  changelogIndexTemplate,
   contentConfigTemplate,
   envTemplate,
   exampleMapTemplate,
@@ -28,6 +31,8 @@ import {
   exampleSlug,
   islandMapTemplate,
   islandWrapperTemplate,
+  mcpEndpointTemplate,
+  mcpPageFile,
   mixedbreadSearchEndpointTemplate,
   notFoundPageTemplate,
   ogEndpointTemplate,
@@ -36,6 +41,7 @@ import {
   runtimeTsconfigTemplate,
   searchClientTemplate,
   searchEndpointTemplate,
+  staticJsonEndpointTemplate,
 } from "../astro/templates.ts";
 import { scanProject } from "../core/project-graph.ts";
 import type { BlumeProject } from "../core/project-graph.ts";
@@ -88,6 +94,112 @@ const askFiles = async (
     });
   }
   return files;
+};
+
+/** Whether the ejected app hosts the MCP server (enabled and route free). */
+const hostsMcp = (
+  project: BlumeProject,
+  userPages: { pattern: string }[]
+): boolean =>
+  project.config.mcp.enabled &&
+  !routeIsTaken(userPages, project.graph.pages, project.config.mcp.route);
+
+/**
+ * The `.well-known` MCP discovery routes, injected as prerendered pages
+ * alongside the user's own so the ejected Astro config wires them in. Empty
+ * when the server is disabled or its route is already owned by a page.
+ */
+const mcpDiscoveryPages = (
+  project: BlumeProject,
+  userPages: { pattern: string }[]
+): { entrypoint: string; pattern: string }[] =>
+  hostsMcp(project, userPages)
+    ? [
+        {
+          entrypoint: "src/blume-mcp/discovery.ts",
+          pattern: "/.well-known/mcp.json",
+        },
+        {
+          entrypoint: "src/blume-mcp/server-card.ts",
+          pattern: "/.well-known/mcp/server-card.json",
+        },
+      ]
+    : [];
+
+/**
+ * The MCP data snapshot, server endpoint, and `.well-known` discovery
+ * documents, mirroring `writeMcpFiles` in generate.ts. Empty when the server
+ * is disabled or its route is already owned by a page.
+ */
+const mcpFiles = async (
+  project: BlumeProject,
+  userPages: { pattern: string }[],
+  srcDir: string,
+  genDir: string
+): Promise<{ content: string; path: string }[]> => {
+  if (!hostsMcp(project, userPages)) {
+    return [];
+  }
+  const { route } = project.config.mcp;
+  const data = await buildMcpData(project);
+  const discoveryInput = {
+    base: data.base,
+    name: data.name,
+    route,
+    site: data.site,
+    version: data.version,
+  };
+  return [
+    {
+      content: `${JSON.stringify(data)}\n`,
+      path: join(genDir, "mcp-data.json"),
+    },
+    {
+      content: mcpEndpointTemplate(route),
+      path: join(srcDir, "pages", mcpPageFile(route)),
+    },
+    {
+      content: staticJsonEndpointTemplate(buildMcpDiscovery(discoveryInput)),
+      path: join(srcDir, "blume-mcp", "discovery.ts"),
+    },
+    {
+      content: staticJsonEndpointTemplate(buildMcpServerCard(discoveryInput)),
+      path: join(srcDir, "blume-mcp", "server-card.ts"),
+    },
+  ];
+};
+
+/**
+ * The `/changelog` index page, mirroring `shouldGenerateChangelog` in
+ * generate.ts: emitted when `type: changelog` entries or a release-backed
+ * changelog source exist, unless a user page already owns the route.
+ */
+const changelogFiles = (
+  project: BlumeProject,
+  userPages: { pattern: string }[],
+  srcDir: string,
+  options: Parameters<typeof changelogIndexTemplate>[0]
+): { content: string; path: string }[] => {
+  const hasChangelog = project.graph.pages.some(
+    (page) =>
+      page.contentType === "changelog" &&
+      !(page.meta.draft || page.meta.sidebar.hidden)
+  );
+  const hasChangelogSource = (project.config.content.sources ?? []).some(
+    (source) => source.type === "github-releases"
+  );
+  if (
+    !(hasChangelog || hasChangelogSource) ||
+    routeIsTaken(userPages, project.graph.pages, "/changelog")
+  ) {
+    return [];
+  }
+  return [
+    {
+      content: changelogIndexTemplate(options),
+      path: join(srcDir, "pages", "changelog.astro"),
+    },
+  ];
 };
 
 /** Contents of the configured `examples.css`, or `""` when unset/absent. */
@@ -183,10 +295,13 @@ export const eject = async (root: string): Promise<string[]> => {
   const componentsImport = context.componentsFile
     ? `../../${toPosix(relative(root, context.componentsFile))}`
     : null;
-  const relPages = pages.map((page) => ({
-    entrypoint: toPosix(relative(root, page.entrypoint)),
-    pattern: page.pattern,
-  }));
+  const relPages = [
+    ...pages.map((page) => ({
+      entrypoint: toPosix(relative(root, page.entrypoint)),
+      pattern: page.pattern,
+    })),
+    ...mcpDiscoveryPages(project, pages),
+  ];
 
   // Non-filesystem sources eject their materialized MDX into `<root>/blume-staged`
   // (a dedicated dir so it never clashes with a content root literally named
@@ -314,6 +429,19 @@ export const eject = async (root: string): Promise<string[]> => {
       path: join(srcDir, "pages", "og", "[...slug].png.ts"),
     });
   }
+
+  // The hosted MCP server and the `/changelog` index, mirrored from the
+  // generated runtime (each helper returns `[]` when its feature is off).
+  files.push(
+    ...(await mcpFiles(project, pages, srcDir, genDir)),
+    ...changelogFiles(project, pages, srcDir, {
+      askEnabled,
+      exportEpub,
+      exportPdf,
+      needsReact,
+      staged: hasStaged,
+    })
+  );
 
   // Default 404 page, unless the project already owns `/404` (a custom
   // `pages/404.astro` or a `404.md` content page). The ejected project owns the

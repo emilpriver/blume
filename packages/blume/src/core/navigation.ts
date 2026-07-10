@@ -38,6 +38,14 @@ const segmentKey = (raw: string): string => {
   return (group ?? raw).replace(NUMERIC_PREFIX, "");
 };
 
+/**
+ * Whether a filename stem is a directory index, ignoring an ordering prefix:
+ * route mapping strips the prefix before dropping `index`, so `01-index` routes
+ * exactly like `index` and must be treated as one here too.
+ */
+const isIndexStem = (stem: string): boolean =>
+  stem.replace(NUMERIC_PREFIX, "") === "index";
+
 interface MutablePage {
   kind: "page";
   key: string;
@@ -106,7 +114,7 @@ const pageOrder = (page: PageRecord, filename: string): number => {
   if (page.meta.sidebar.order !== undefined) {
     return page.meta.sidebar.order;
   }
-  if (filename.replace(extname(filename), "") === "index") {
+  if (isIndexStem(filename.replace(extname(filename), ""))) {
     return Number.NEGATIVE_INFINITY;
   }
   // Changelog entries read newest-first, matching the generated timeline. Sort
@@ -277,8 +285,9 @@ const buildFileSystemSidebar = (
     // An index page's route IS its folder's route (no page segment to drop),
     // and `(group)` folders contribute no route segment at all.
     const routeSegments = page.route.split("/").filter(Boolean);
-    const folderParts =
-      stem === "index" ? routeSegments : routeSegments.slice(0, -1);
+    const folderParts = isIndexStem(stem)
+      ? routeSegments
+      : routeSegments.slice(0, -1);
     const routeDirCount = dirs.filter((dir) => !GROUP_FOLDER.test(dir)).length;
     const offset = Math.max(0, folderParts.length - routeDirCount);
 

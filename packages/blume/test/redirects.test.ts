@@ -1,6 +1,7 @@
 import { describe, expect, it } from "bun:test";
 
 import {
+  applyBaseToRedirects,
   buildNetlifyRedirects,
   buildRedirectManifest,
   buildVercelConfig,
@@ -18,14 +19,25 @@ describe("redirect emitters", () => {
     );
   });
 
-  it("maps status to Vercel's permanent flag", () => {
+  it("preserves exact status codes in vercel.json via statusCode", () => {
     const parsed = JSON.parse(buildVercelConfig(redirects));
     expect(parsed.redirects[0]).toStrictEqual({
       destination: "/new",
-      permanent: true,
       source: "/old",
+      statusCode: 301,
     });
-    expect(parsed.redirects[1].permanent).toBe(false);
+    // A 302 must ship as 302 — the boolean `permanent` would coerce it to 307.
+    expect(parsed.redirects[1].statusCode).toBe(302);
+    expect(parsed.redirects[1]).not.toHaveProperty("permanent");
+  });
+
+  it("prepends the base path to internal from/to routes", () => {
+    expect(applyBaseToRedirects(redirects, "/docs")).toStrictEqual([
+      { from: "/docs/old", status: 301, to: "/docs/new" },
+      { from: "/docs/tmp", status: 302, to: "/docs/temp" },
+    ]);
+    // No base path: the redirects pass through untouched.
+    expect(applyBaseToRedirects(redirects, "")).toBe(redirects);
   });
 
   it("emits a structured manifest", () => {

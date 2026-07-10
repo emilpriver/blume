@@ -128,6 +128,9 @@ export interface UseAskAI {
 
 const ASK_ENDPOINT = joinBase(import.meta.env.BASE_URL, "api/ask");
 
+/** Shown as the assistant's answer when the request fails or throws. */
+const ASK_ERROR = "Something went wrong answering that. Please try again.";
+
 /** The current route with the deployment base stripped, for page grounding. */
 const currentPath = (): string =>
   stripBase(import.meta.env.BASE_URL, window.location.pathname);
@@ -169,8 +172,7 @@ export const useAskAI = (): UseAskAI => {
         if (!response.ok) {
           // An error body (JSON, HTML error page) must not stream in as the
           // assistant's answer.
-          assistant.content =
-            "Something went wrong answering that. Please try again.";
+          assistant.content = ASK_ERROR;
           setMessages([...history, { ...assistant }]);
           return;
         }
@@ -195,6 +197,11 @@ export const useAskAI = (): UseAskAI => {
             }
           }
         }
+      } catch {
+        // A thrown fetch (offline, DNS failure, CORS) must not strand the
+        // pre-appended empty assistant message as a stuck placeholder.
+        assistant.content = ASK_ERROR;
+        setMessages([...history, { ...assistant }]);
       } finally {
         setLoading(false);
       }

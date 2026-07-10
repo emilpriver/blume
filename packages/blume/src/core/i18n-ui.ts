@@ -19,16 +19,22 @@ const uiStringsObject = z.object({
       connectMcp: z.string().default("Connect to MCP"),
       copied: z.string().default("Copied!"),
       copyClaudeCode: z.string().default("Copy Claude Code command"),
+      copyCode: z.string().default("Copy code"),
       copyCodex: z.string().default("Copy Codex command"),
       copyMarkdown: z.string().default("Copy as Markdown"),
       copyServerUrl: z.string().default("Copy server URL"),
       edit: z.string().default("Edit on GitHub"),
+      export: z.string().default("Export"),
+      exportEpub: z.string().default("Export to EPUB"),
+      exportPdf: z.string().default("Export to PDF"),
+      generating: z.string().default("Generating…"),
       openInChat: z.string().default("Open in chat"),
       scrollToTop: z.string().default("Scroll to top"),
     })
     .default({}),
   ask: z
     .object({
+      ai: z.string().default("AI"),
       clear: z.string().default("Clear conversation"),
       close: z.string().default("Close"),
       copy: z.string().default("Copy conversation"),
@@ -39,6 +45,18 @@ const uiStringsObject = z.object({
       send: z.string().default("Send"),
       tip: z.string().default("Tip: You can open and close chat with"),
       title: z.string().default("Ask AI"),
+      you: z.string().default("You"),
+    })
+    .default({}),
+  changelog: z
+    .object({
+      // `{version}` is replaced with the major line ("2.x") at render time.
+      showReleases: z.string().default("Show {version} releases"),
+    })
+    .default({}),
+  content: z
+    .object({
+      diagramError: z.string().default("Could not render this diagram."),
     })
     .default({}),
   feedback: z
@@ -53,6 +71,20 @@ const uiStringsObject = z.object({
     .object({
       label: z.string().default("Language"),
       untranslated: z.string().default("Not translated"),
+    })
+    .default({}),
+  nav: z
+    .object({
+      back: z.string().default("Back"),
+      closeNavigation: z.string().default("Close navigation"),
+      deprecated: z.string().default("deprecated"),
+      featured: z.string().default("Featured"),
+      githubRepository: z.string().default("GitHub repository"),
+      navigation: z.string().default("Navigation"),
+      primary: z.string().default("Primary"),
+      sections: z.string().default("Sections"),
+      toggleNavigation: z.string().default("Toggle navigation"),
+      toggleTheme: z.string().default("Toggle color theme"),
     })
     .default({}),
   notFound: z
@@ -75,13 +107,21 @@ const uiStringsObject = z.object({
   search: z
     .object({
       allLanguages: z.string().default("All languages"),
+      askAi: z.string().default("Ask AI"),
+      askAiHint: z.string().default("Get an instant answer from AI"),
       button: z.string().default("Search"),
       devOnly: z
         .string()
         .default("Search is available in the production build."),
+      error: z.string().default("Something went wrong. Please try again."),
       label: z.string().default("Search docs"),
+      navigate: z.string().default("navigate"),
       noResults: z.string().default("No results found."),
+      open: z.string().default("open"),
       placeholder: z.string().default("Search documentation…"),
+      popular: z.string().default("Popular"),
+      preview: z.string().default("preview"),
+      results: z.string().default("Results"),
     })
     .default({}),
   toc: z

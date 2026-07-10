@@ -127,6 +127,36 @@ describe("buildLlmsFiles — full", () => {
   });
 });
 
+describe("buildLlmsFiles — visibility and encoding", () => {
+  it("excludes hidden and noindex pages, matching the sitemap", async () => {
+    const { full, index } = await buildLlmsFiles(
+      makeProject([
+        makePage("a.md", "/a", "Alpha"),
+        makePage("b.md", "/b", "Beta", {
+          meta: pageMetaSchema.parse({ sidebar: { hidden: true } }),
+        }),
+        makePage("c.md", "/c", "Gamma", {
+          meta: pageMetaSchema.parse({ seo: { noindex: true } }),
+        }),
+      ])
+    );
+    expect(index).toContain("- [Alpha]");
+    expect(index).not.toContain("Beta");
+    expect(index).not.toContain("Gamma");
+    expect(full).toContain("Body A.");
+    expect(full).not.toContain("Body B.");
+    expect(full).not.toContain("Draft body.");
+  });
+
+  it("percent-encodes page URLs, matching the sitemap", async () => {
+    const { full, index } = await buildLlmsFiles(
+      makeProject([makePage("a.md", "/tips & tricks", "Tips")])
+    );
+    expect(index).toContain("(https://example.com/tips%20&%20tricks)");
+    expect(full).toContain("Source: https://example.com/tips%20&%20tricks");
+  });
+});
+
 const sitelessProject = (): BlumeProject =>
   ({
     config: blumeConfigSchema.parse({ title: "Docs" }),

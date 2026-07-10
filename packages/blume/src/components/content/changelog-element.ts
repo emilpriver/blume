@@ -24,6 +24,10 @@ class BlumeChangelog extends HTMLElement {
       return;
     }
 
+    // Localized button template from the generated page markup (the
+    // data-attribute channel); `{version}` is replaced with the major line.
+    const template = this.dataset.i18nMore || "Show {version} releases";
+
     for (const group of groups) {
       group.hidden = true;
       // Focusable only programmatically, so revealing a group can move focus to
@@ -35,7 +39,10 @@ class BlumeChangelog extends HTMLElement {
     const sync = () => {
       const next = groups[revealed];
       if (next) {
-        button.textContent = `Show ${next.dataset.changelogLabel} releases`;
+        button.textContent = template.replace(
+          "{version}",
+          next.dataset.changelogLabel ?? ""
+        );
         button.hidden = false;
       } else {
         button.hidden = true;

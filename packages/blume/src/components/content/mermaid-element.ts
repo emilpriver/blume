@@ -61,7 +61,12 @@ class BlumeMermaid extends HTMLElement {
           output.innerHTML = svg;
         }
       } catch {
-        output.textContent = "Could not render this diagram.";
+        // Localized message stamped on <body> by RootLayout's markup (the
+        // data-attribute channel); English fallback when the attribute is
+        // missing (a stale snapshot or a custom layout).
+        output.textContent =
+          document.body.dataset.i18nDiagramError ||
+          "Could not render this diagram.";
       }
       output.removeAttribute("aria-busy");
     };

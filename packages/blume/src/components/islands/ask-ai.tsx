@@ -5,7 +5,7 @@ import type { FormEvent, KeyboardEvent as ReactKeyboardEvent } from "react";
 import { createPortal } from "react-dom";
 
 import type { UIStrings } from "../../core/i18n-ui.ts";
-import { joinBase, stripBase } from "./base-path.ts";
+import { joinBase, prefixBase, stripBase } from "./base-path.ts";
 
 interface ChatMessage {
   content: string;
@@ -43,6 +43,7 @@ const EMPTY_ICONS: AskIcons = {
 
 // English fallback so the island renders even if no dictionary is passed.
 const DEFAULT_ASK: UIStrings["ask"] = {
+  ai: "AI",
   clear: "Clear conversation",
   close: "Close",
   copy: "Copy conversation",
@@ -53,6 +54,7 @@ const DEFAULT_ASK: UIStrings["ask"] = {
   send: "Send",
   tip: "Tip: You can open and close chat with",
   title: "Ask AI",
+  you: "You",
 };
 
 let idCounter = 0;
@@ -71,6 +73,17 @@ const currentPath = (): string =>
 
 // GitHub-flavored markdown with soft line breaks, matching how the docs read.
 marked.setOptions({ breaks: true, gfm: true });
+
+// The model cites pages as base-less logical routes (`[Title](/route)`); rewrite
+// link targets to served URLs so citations resolve under `deployment.base`.
+// `prefixBase` leaves external URLs and fragments untouched and is idempotent.
+marked.use({
+  walkTokens: (token) => {
+    if (token.type === "link") {
+      token.href = prefixBase(import.meta.env.BASE_URL, token.href);
+    }
+  },
+});
 
 const renderMarkdown = (content: string): string =>
   DOMPurify.sanitize(marked.parse(content, { async: false }));
@@ -97,6 +110,14 @@ const Glyph = ({ path, size = 16 }: { path: string; size?: number }) => (
 // Stable empty default so an unset `suggestions` prop doesn't re-render.
 const EMPTY_SUGGESTIONS: Suggestion[] = [];
 
+// The toggle shortcut accepts both ⌘I and Ctrl+I; show the right modifier per
+// platform (same detection Search.astro uses for its ⌘K hint). Guarded so the
+// island still server-renders, where `navigator` doesn't exist; the hint itself
+// only renders client-side, inside the portaled panel.
+const IS_APPLE =
+  typeof navigator !== "undefined" &&
+  /mac|iphone|ipad|ipod/iu.test(navigator.platform);
+
 // Ghost icon button, matching the header's theme toggle and repo link.
 const TRIGGER_CLASS =
   "inline-flex size-9 cursor-pointer items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-muted hover:text-foreground";
@@ -120,7 +141,9 @@ const AskAI = ({
   strings?: UIStrings["ask"];
   suggestions?: Suggestion[];
 }) => {
-  const t = strings ?? DEFAULT_ASK;
+  // Merge per key (not `strings ?? …`) so a dictionary from a stale snapshot
+  // that predates newer keys still resolves every label to its English default.
+  const t = { ...DEFAULT_ASK, ...strings };
   const [mounted, setMounted] = useState(false);
   const [open, setOpen] = useState(false);
   const [input, setInput] = useState("");
@@ -128,6 +151,9 @@ const AskAI = ({
   const [busy, setBusy] = useState(false);
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
+  const triggerRef = useRef<HTMLButtonElement>(null);
+  // Where focus came from when the panel opened, restored on close.
+  const returnFocusRef = useRef<HTMLElement | null>(null);
 
   // Portal target (document.body) only exists after mount; guards SSR. The
   // one-time false→true flip is deliberate, so the initial `false` is required.
@@ -164,10 +190,24 @@ const AskAI = ({
   // Drive the desktop content push from a body attribute (see AskAI.astro CSS).
   useEffect(() => {
     if (open) {
+      returnFocusRef.current =
+        document.activeElement instanceof HTMLElement
+          ? document.activeElement
+          : null;
       document.body.dataset.blumeAsk = "open";
       inputRef.current?.focus();
     } else {
       delete document.body.dataset.blumeAsk;
+      // Return focus to the element that opened the panel (or the trigger when
+      // it's gone), so closing doesn't strand keyboard focus in an inert tree.
+      // `returnFocusRef` is only set on open, so initial mount is a no-op.
+      if (returnFocusRef.current) {
+        const target = returnFocusRef.current.isConnected
+          ? returnFocusRef.current
+          : triggerRef.current;
+        returnFocusRef.current = null;
+        target?.focus();
+      }
     }
     return () => {
       delete document.body.dataset.blumeAsk;
@@ -244,7 +284,13 @@ const AskAI = ({
   };
 
   const onInputKeyDown = (event: ReactKeyboardEvent<HTMLTextAreaElement>) => {
-    if (event.key === "Enter" && !event.shiftKey) {
+    // `isComposing` guards IME input: Enter confirming a CJK conversion must
+    // commit the text, not submit the question.
+    if (
+      event.key === "Enter" &&
+      !event.shiftKey &&
+      !event.nativeEvent.isComposing
+    ) {
       event.preventDefault();
       void runQuestion(input);
     }
@@ -252,7 +298,7 @@ const AskAI = ({
 
   const copyConversation = () => {
     const text = messages
-      .map((m) => `${m.role === "user" ? "You" : "AI"}: ${m.content}`)
+      .map((m) => `${m.role === "user" ? t.you : t.ai}: ${m.content}`)
       .join("\n\n");
     void navigator.clipboard?.writeText(text);
   };
@@ -263,6 +309,9 @@ const AskAI = ({
     <aside
       aria-hidden={open ? undefined : "true"}
       aria-label={t.title}
+      // The closed panel is only translated off-screen; `inert` drops its
+      // buttons/textarea from the tab order and the accessibility tree.
+      inert={!open}
       className={`fixed inset-y-0 end-0 z-[60] flex w-[var(--blume-ask-width)] flex-col border-border border-s bg-background shadow-2xl transition-transform duration-200 ease-out ${
         open ? "translate-x-0" : "translate-x-full rtl:-translate-x-full"
       }`}
@@ -355,7 +404,7 @@ const AskAI = ({
             <p className="mt-3 flex items-center gap-1.5 px-2 text-muted-foreground text-sm">
               {t.tip}
               <kbd className="rounded border border-border bg-muted px-1.5 py-0.5 font-sans text-xs">
-                ⌘
+                {IS_APPLE ? "⌘" : "Ctrl"}
               </kbd>
               <kbd className="rounded border border-border bg-muted px-1.5 py-0.5 font-sans text-xs">
                 I
@@ -398,6 +447,7 @@ const AskAI = ({
         aria-label={t.title}
         className={TRIGGER_CLASS}
         onClick={() => setOpen((value) => !value)}
+        ref={triggerRef}
         type="button"
       >
         <Glyph path={icons.chat} size={18} />

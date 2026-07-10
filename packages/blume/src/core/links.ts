@@ -62,15 +62,22 @@ const assetIsPresent = (resolved: string, ctx: LinkContext): boolean =>
 /** Outcome of classifying one link target. */
 type LinkResult = Diagnostic | "asset-unchecked" | null;
 
+// Mirrors the ordering-prefix strip in `sources/normalize.ts`: route mapping
+// drops the prefix before recognizing `index`, so `01-index.mdx` is an index.
+const NUMERIC_PREFIX = /^\d+[-_.]/u;
+
 /**
- * Whether a page is a directory index (`…/index.md(x)`). Its route already *is*
- * its directory, so a relative link must resolve against the route itself, not
- * its parent — otherwise `./sibling` from `guides/index.mdx` (route `/guides`)
- * would resolve to `/sibling` and be falsely flagged as broken.
+ * Whether a page is a directory index (`…/index.md(x)`, ordering prefix
+ * ignored). Its route already *is* its directory, so a relative link must
+ * resolve against the route itself, not its parent — otherwise `./sibling`
+ * from `guides/index.mdx` (route `/guides`) would resolve to `/sibling` and be
+ * falsely flagged as broken.
  */
 const isIndexPage = (page: PageRecord): boolean => {
   const ref = page.source?.ref ?? page.sourcePath ?? "";
-  return /^index\.(?:md|mdx)$/iu.test(basename(ref));
+  return /^index\.(?:md|mdx)$/iu.test(
+    basename(ref).replace(NUMERIC_PREFIX, "")
+  );
 };
 
 /** Apply one relative-path segment to the accumulated route segments. */
