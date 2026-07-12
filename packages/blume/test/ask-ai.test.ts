@@ -23,6 +23,12 @@ let effects: (() => unknown)[] = [];
 let cleanups: (() => void)[] = [];
 
 mock.module("react", () => ({
+  // Not used by ask-ai.tsx, but module mocks leak across test files and the
+  // "react" namespace keeps the export names of whichever mock instantiates
+  // it first. hooks.test.ts imports useCallback from the same mock, so this
+  // mock must export it too or that import dies when this file runs first
+  // (Linux CI orders files differently than macOS).
+  useCallback: (fn: unknown) => fn,
   useEffect: (effect: () => unknown) => {
     effects.push(effect);
   },
