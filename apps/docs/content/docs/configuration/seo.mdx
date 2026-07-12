@@ -14,6 +14,7 @@ seo: {
   sitemap: true,
   robots: true,
   structuredData: true,
+  x: { handle: "@acme" },
 }
 ```
 
@@ -29,8 +30,30 @@ Every page renders the standard `<head>` tags from your config and frontmatter:
 - `<link rel="canonical">` and `og:url` — the page's absolute URL (when `deployment.site` is set).
 - `og:type` — `article` on blog posts and changelog entries, `website` elsewhere. Article pages also emit `article:published_time` and `article:modified_time` from the page's `date` and last-modified timestamp.
 - `og:image` — the [OG image](#open-graph-images) for the page. A generated card also declares its `og:image:width`, `og:image:height`, `og:image:type`, and `og:image:alt`, so a crawler can lay the card out without fetching it first; an `seo.image` you supply yourself declares none of these, since its size and format are unknown.
+- `twitter:card`, `twitter:title`, `twitter:description`, `twitter:image` — the X card. Pages with an image get the wide `summary_large_image` variant; pages without one still get the compact `summary` card rather than rendering as a bare link.
 
-Override any of these per page with `seo` frontmatter:
+### X attribution
+
+X reads everything else on the card from the `og:*` tags, so the only values it can't infer are the accounts to credit. Set them under `seo.x` and Blume emits `twitter:site` (your site's account) and `twitter:creator` (the author's). The `@` is optional — `acme` and `@acme` both work.
+
+```ts blume.config.ts lineNumbers
+seo: {
+  x: { handle: "@acme", creator: "@jane" },
+}
+```
+
+A page can claim its own author, which is what you want for a guest post:
+
+```yaml lineNumbers
+---
+title: How we shipped it
+seo:
+  x:
+    creator: "@guestauthor"
+---
+```
+
+Override any of the other tags per page with `seo` frontmatter:
 
 ```yaml lineNumbers
 ---
@@ -64,6 +87,11 @@ seo:
     "seo.noindex": {
       type: "boolean",
       description: "Emit robots noindex and skip structured data.",
+    },
+    "seo.x.creator": {
+      type: "string",
+      description:
+        "Credit this page to an X account (twitter:creator), overriding seo.x.creator from your config.",
     },
   }}
 />

@@ -2,6 +2,7 @@ import { z } from "zod";
 
 import type { ComponentMarkdown } from "../ai/component-markdown.ts";
 import { normalizeRoute } from "../openapi/references.ts";
+import { normalizeXHandle } from "../seo/x-handle.ts";
 import { FONT_SLUGS, isFontSlug } from "../theme/fonts.ts";
 import { normalizeBasePath } from "./base-path.ts";
 import { uiLocaleOverridesSchema } from "./i18n-ui.ts";
@@ -47,6 +48,14 @@ const sidebarMetaSchema = z.strictObject({
   order: z.number().optional(),
 });
 
+/**
+ * An X handle, normalized to a leading `@` — `twitter:site`/`twitter:creator`
+ * require it, and a handle configured without one is the obvious typo to absorb
+ * rather than reject. The layouts normalize again on the way out, since a page's
+ * `seo.x.creator` reaches them straight from unvalidated frontmatter.
+ */
+const xHandleSchema = z.string().transform(normalizeXHandle).optional();
+
 const seoMetaSchema = z.strictObject({
   // blume bundles Zod 3; top-level `z.url()` is undefined at runtime and
   // schemas must stay dual-compatible with consumer projects on Zod 4.
@@ -56,6 +65,8 @@ const seoMetaSchema = z.strictObject({
   image: z.string().optional(),
   noindex: z.boolean().default(false),
   title: z.string().optional(),
+  /** Per-page X attribution — a guest post credits its own author. */
+  x: z.strictObject({ creator: xHandleSchema }).optional(),
 });
 
 const searchMetaSchema = z.strictObject({
@@ -776,6 +787,19 @@ const redirectSchema = z.strictObject({
   to: z.string(),
 });
 
+/**
+ * X (Twitter) attribution. The account fields feed `twitter:site` (the site's
+ * account) and `twitter:creator` (the author's), which is the one piece of X
+ * card metadata with no Open Graph equivalent to fall back to — everything else
+ * on the card is read from `og:*`.
+ */
+const xConfigSchema = z.strictObject({
+  /** The author's account, overridable per page via `seo.x.creator`. */
+  creator: xHandleSchema,
+  /** The site's own account, e.g. `@blume`. */
+  handle: xHandleSchema,
+});
+
 const ogConfigSchema = z.strictObject({
   /**
    * Generate a per-page Open Graph image. Defaults to on once a deployment
@@ -845,6 +869,8 @@ const seoConfigSchema = z.strictObject({
   sitemap: z.boolean().default(true),
   /** Emit schema.org JSON-LD in each page's <head>. */
   structuredData: z.boolean().default(true),
+  /** X (Twitter) account attribution for share cards. */
+  x: xConfigSchema.default({}),
 });
 
 const githubConfigSchema = z.strictObject({

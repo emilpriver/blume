@@ -120,6 +120,8 @@ export interface BlumeDataConfig {
   title: string;
   /** Table-of-contents settings: whether to show it and the heading range. */
   toc: ResolvedConfig["toc"];
+  /** X (Twitter) attribution: the site's account, and a default creator. */
+  x: { creator?: string; handle?: string };
 }
 
 /**

@@ -881,6 +881,7 @@ export const buildRuntimeData = (project: BlumeProject): string => {
       theme: config.theme,
       title: config.title,
       toc: config.toc,
+      x: config.seo.x,
     },
     feeds: buildRssFeeds(project).map((feed) => ({
       href: feed.path,

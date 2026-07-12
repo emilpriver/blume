@@ -15,6 +15,7 @@ import {
   OG_IMAGE_WIDTH,
 } from "../../og/dimensions.ts";
 import { buildStructuredData, toIso } from "../../seo/jsonld.ts";
+import { normalizeXHandle } from "../../seo/x-handle.ts";
 import { withBase } from "../islands/base-path.ts";
 import Analytics from "./Analytics.astro";
 import Banner from "./Banner.astro";
@@ -91,6 +92,12 @@ interface Props {
    * 1200x630 PNG over someone's arbitrary JPEG would be a lie crawlers act on.
    */
   ogGenerated?: boolean;
+  /**
+   * X (Twitter) attribution: `handle` is the site's account (`twitter:site`),
+   * `creator` the author's (`twitter:creator`). The rest of the X card is read
+   * from `og:*`, so these are the only values X can't infer.
+   */
+  x?: { creator?: string; handle?: string };
   canonical?: string | null;
   editUrl?: string | null;
   askEnabled?: boolean;
@@ -167,6 +174,7 @@ const {
   indexable,
   ogImage,
   ogGenerated = false,
+  x,
   canonical,
   editUrl,
   askEnabled,
@@ -266,6 +274,15 @@ const ogType =
 // would be declaring properties its `og:type` doesn't define.
 const articlePublished = ogType === "article" ? toIso(published) : undefined;
 const articleModified = ogType === "article" ? toIso(lastModified) : undefined;
+// X sizes the card from `twitter:card`: a large image needs the wide variant,
+// and a page with no image still gets a card (the compact `summary`) rather
+// than rendering as a bare link.
+const twitterCard = ogImage ? "summary_large_image" : "summary";
+// Normalized here, not just in the config schema: a page's `seo.x.creator`
+// arrives as raw frontmatter (the collections carry no schema), so the schema's
+// transform never touches it — `creator: guestauthor` still needs its `@`.
+const xSite = normalizeXHandle(x?.handle);
+const xCreator = normalizeXHandle(x?.creator);
 
 // "Last updated on <date>" — formatted in UTC to match the changelog timeline.
 const lastModifiedDate = lastModified ? new Date(lastModified) : null;
@@ -366,10 +383,15 @@ const bannerScript = banner?.dismissible
             </>
           )}
           <meta name="twitter:image" content={ogImage} />
-          <meta name="twitter:card" content="summary_large_image" />
+          {ogGenerated && <meta name="twitter:image:alt" content={pageTitle} />}
         </>
       )
     }
+    <meta name="twitter:card" content={twitterCard} />
+    <meta name="twitter:title" content={pageTitle} />
+    {description && <meta name="twitter:description" content={description} />}
+    {xSite && <meta name="twitter:site" content={xSite} />}
+    {xCreator && <meta name="twitter:creator" content={xCreator} />}
     {
       feeds?.map((feed) => (
         <link

@@ -1231,6 +1231,10 @@ const ogImage =
 // \`seo.image\` could be any size or format, so it gets none.
 const ogGenerated = !seo.image && Boolean(ogPath);
 
+// X attribution: the site's account, plus a creator the page can claim for
+// itself (a guest post crediting its own author) over the configured default.
+const x = { ...data.config.x, ...(seo.x?.creator ? { creator: seo.x.creator } : {}) };
+
 const basedRoute = withBase(route);
 const canonical =
   seo.canonical ??
@@ -1327,6 +1331,7 @@ const LayoutComponent = resolveSlot(layoutOverrides.Layout, RootLayout);
   indexable={indexable}
   ogImage={ogImage}
   ogGenerated={ogGenerated}
+  x={x}
   canonical={canonical}
   editUrl={editUrl}
   feedback={data.config.feedback}
@@ -1552,6 +1557,7 @@ const LayoutComponent = resolveSlot(layoutOverrides.Layout, RootLayout);
   searchEnabled={data.config.search.enabled}
   indexable={true}
   ogImage={null}
+  x={data.config.x}
   canonical={canonical}
   askEnabled={${options.askEnabled}}
   exportPdf={${options.exportPdf}}

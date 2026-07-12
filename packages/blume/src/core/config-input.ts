@@ -736,6 +736,17 @@ export interface SeoConfig {
   sitemap?: boolean;
   /** Emit schema.org JSON-LD in each page's `<head>`. Defaults to `true`. */
   structuredData?: boolean;
+  /**
+   * X (Twitter) attribution for share cards. Handles may omit the `@`. The rest
+   * of the X card is read from the `og:*` tags, so these accounts are the only
+   * values X cannot infer.
+   */
+  x?: {
+    /** Author account (`twitter:creator`); a page can override it via `seo.x.creator` frontmatter. */
+    creator?: string;
+    /** The site's own account (`twitter:site`), e.g. `@blume`. */
+    handle?: string;
+  };
 }
 
 // ---------------------------------------------------------------------------

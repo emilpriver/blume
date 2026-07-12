@@ -26,6 +26,7 @@ import { buildSitemap } from "../src/deploy/sitemap.ts";
 import { referenceTabs, resolveReferences } from "../src/openapi/references.ts";
 import { buildReferenceFiles } from "../src/openapi/scalar.ts";
 import { buildStructuredData } from "../src/seo/jsonld.ts";
+import { normalizeXHandle } from "../src/seo/x-handle.ts";
 
 const makePage = (
   over: Pick<PageRecord, "id" | "route" | "title"> & Partial<PageRecord>
@@ -103,6 +104,21 @@ describe("config schema", () => {
     expect(
       blumeConfigSchema.safeParse({ og: { enabled: true } }).success
     ).toBeFalsy();
+  });
+
+  it("normalizes seo.x handles to a leading @", () => {
+    // `twitter:site`/`twitter:creator` require the `@`; a handle configured
+    // without one is the obvious typo to absorb rather than reject.
+    const { seo } = blumeConfigSchema.parse({
+      seo: { x: { creator: " @jane ", handle: "acme" } },
+    });
+    expect(seo.x.handle).toBe("@acme");
+    expect(seo.x.creator).toBe("@jane");
+    expect(blumeConfigSchema.parse({}).seo.x.handle).toBeUndefined();
+    // A blank handle emits no tag rather than a bare "@".
+    expect(
+      blumeConfigSchema.parse({ seo: { x: { handle: "  " } } }).seo.x.handle
+    ).toBeUndefined();
   });
 
   it("normalizes mcp.route to a leading slash, no trailing slash", () => {
@@ -770,6 +786,30 @@ describe("sitemap — custom pages and generated routes", () => {
     const xml = buildSitemap(makeProject(pages)) ?? "";
     const occurrences = xml.split("<loc>https://example.com/changelog</loc>");
     expect(occurrences).toHaveLength(2);
+  });
+});
+
+describe("x handles", () => {
+  it("adds the @ a twitter:site/creator tag needs", () => {
+    expect(normalizeXHandle("acme")).toBe("@acme");
+    expect(normalizeXHandle("@acme")).toBe("@acme");
+    expect(normalizeXHandle("  @acme  ")).toBe("@acme");
+  });
+
+  it("drops a handle with nothing in it", () => {
+    // `unset` is the unconfigured `seo.x.handle` the layouts pass through.
+    const unset: string | undefined = undefined;
+    expect(normalizeXHandle("")).toBeUndefined();
+    expect(normalizeXHandle("   ")).toBeUndefined();
+    expect(normalizeXHandle("@")).toBeUndefined();
+    expect(normalizeXHandle(unset)).toBeUndefined();
+  });
+
+  it("drops a non-string handle instead of rendering one", () => {
+    // The layouts normalize raw frontmatter (`seo.x.creator`), which Astro's
+    // collections don't type-check — `creator: 12345` reaches them as a number.
+    expect(normalizeXHandle(12_345)).toBeUndefined();
+    expect(normalizeXHandle({ handle: "@acme" })).toBeUndefined();
   });
 });
 
