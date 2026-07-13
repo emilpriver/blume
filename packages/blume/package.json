@@ -22,7 +22,7 @@
     "directory": "packages/blume"
   },
   "bin": {
-    "blume": "./bin/blume.mjs"
+    "blume": "bin/blume.mjs"
   },
   "files": [
     "dist",
