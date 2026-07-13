@@ -525,7 +525,22 @@ export interface LlmsTxtConfig {
   openapi?: boolean;
 }
 
-/** AI-facing features: the Ask AI assistant and an `llms.txt` manifest. */
+/** Expose the docs as an MCP server for connecting agents. */
+export interface McpConfig {
+  /** Turn the MCP server on. Defaults to `false`. */
+  enabled?: boolean;
+  /** Optional system hint passed to connecting agents. */
+  instructions?: string;
+  /** Server name shown to clients; defaults to the site title. */
+  name?: string;
+  /** Route the server mounts at. Defaults to `/mcp`. */
+  route?: string;
+}
+
+/**
+ * AI-facing features: the Ask AI assistant, an `llms.txt` manifest, and the
+ * hosted MCP server.
+ */
 export interface AiConfig {
   /** The Ask AI chat assistant. */
   ask?: AskConfig;
@@ -553,6 +568,8 @@ export interface AiConfig {
    * ```
    */
   markdownComponents?: Record<string, ComponentMarkdown>;
+  /** Expose the docs as an MCP server for agents. */
+  mcp?: McpConfig;
 }
 
 // ---------------------------------------------------------------------------
@@ -584,22 +601,6 @@ export interface AnalyticsConfig {
   scripts?: AnalyticsScript[];
   /** Enable Vercel Web Analytics. */
   vercel?: boolean;
-}
-
-// ---------------------------------------------------------------------------
-// MCP
-// ---------------------------------------------------------------------------
-
-/** Expose the docs as an MCP server for connecting agents. */
-export interface McpConfig {
-  /** Turn the MCP server on. Defaults to `false`. */
-  enabled?: boolean;
-  /** Optional system hint passed to connecting agents. */
-  instructions?: string;
-  /** Server name shown to clients; defaults to the site title. */
-  name?: string;
-  /** Route the server mounts at. Defaults to `/mcp`. */
-  route?: string;
 }
 
 // ---------------------------------------------------------------------------
@@ -979,8 +980,6 @@ export interface BlumeConfig {
   logo?: LogoConfig;
   /** Markdown / MDX rendering behavior. */
   markdown?: MarkdownConfig;
-  /** Expose the docs as an MCP server for agents. */
-  mcp?: McpConfig;
   /** Header, sidebar, tabs, and switchers. */
   navigation?: NavigationConfig;
   /** Native OpenAPI reference. */

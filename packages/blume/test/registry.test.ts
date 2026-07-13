@@ -43,9 +43,8 @@ describe("eject", () => {
     // and the hosted MCP server.
     await writeFiles(root, {
       "blume.config.ts": `export default {
-        ai: { ask: { enabled: true } },
+        ai: { ask: { enabled: true }, mcp: { enabled: true } },
         deployment: { site: "https://example.com" },
-        mcp: { enabled: true },
         openapi: { enabled: true, renderer: "scalar", spec: "openapi.json" },
         search: { mixedbread: { storeId: "store-1" }, provider: "mixedbread" },
       };\n`,

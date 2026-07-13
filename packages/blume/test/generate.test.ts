@@ -223,8 +223,8 @@ describe("buildRuntimeData", () => {
   banner: { content: "Hello", dismissible: true, id: "promo", link: { href: "/x", text: "Go" } },
   deployment: { site: "https://example.com" },
   github: { owner: "acme", repo: "docs" },
+  ai: { mcp: { enabled: true, name: "Docs MCP" } },
   logo: { href: "/home", image: { alt: "Logo", dark: "/dark.png", light: "/light.png" } },
-  mcp: { enabled: true, name: "Docs MCP" },
 };
 `,
         "docs/index.md": "# Home\n",
@@ -436,12 +436,11 @@ describe("buildRuntimeData", () => {
 
 const KITCHEN_SINK: Record<string, string> = {
   "blume.config.ts": `export default {
-  ai: { ask: { enabled: true } },
+  ai: { ask: { enabled: true }, mcp: { enabled: true } },
   deployment: { site: "https://example.com" },
   export: true,
   github: { dir: "site", owner: "acme", repo: "docs" },
   logo: "/logo.svg",
-  mcp: { enabled: true },
   openapi: { enabled: true, renderer: "scalar", spec: "./openapi.json" },
   redirects: [{ from: "/old", to: "/new" }],
 };
@@ -657,7 +656,8 @@ describe("generateRuntime", () => {
   it("skips the MCP server when a content page owns its route", async () => {
     const project = await scanProject(
       await writeProject({
-        "blume.config.ts": "export default { mcp: { enabled: true } };\n",
+        "blume.config.ts":
+          "export default { ai: { mcp: { enabled: true } } };\n",
         "docs/index.md": "# Home\n",
         "docs/mcp.md": "# MCP\n",
       })
@@ -676,7 +676,8 @@ describe("generateRuntime", () => {
   it("skips the MCP server when a custom .astro page owns its route", async () => {
     const project = await scanProject(
       await writeProject({
-        "blume.config.ts": "export default { mcp: { enabled: true } };\n",
+        "blume.config.ts":
+          "export default { ai: { mcp: { enabled: true } } };\n",
         "docs/index.md": "# Home\n",
         "pages/mcp.astro": "---\n---\n<h1>Custom MCP page</h1>\n",
       })

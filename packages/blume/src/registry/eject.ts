@@ -136,8 +136,8 @@ const hostsMcp = (
   project: BlumeProject,
   userPages: { pattern: string }[]
 ): boolean =>
-  project.config.mcp.enabled &&
-  !routeIsTaken(userPages, project.graph.pages, project.config.mcp.route);
+  project.config.ai.mcp.enabled &&
+  !routeIsTaken(userPages, project.graph.pages, project.config.ai.mcp.route);
 
 /**
  * The `.well-known` MCP discovery routes, injected as prerendered pages
@@ -175,7 +175,7 @@ const mcpFiles = async (
   if (!hostsMcp(project, userPages)) {
     return [];
   }
-  const { route } = project.config.mcp;
+  const { route } = project.config.ai.mcp;
   const data = await buildMcpData(project);
   const discoveryInput = {
     base: data.base,

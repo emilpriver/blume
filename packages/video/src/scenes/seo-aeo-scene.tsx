@@ -36,8 +36,8 @@ const CONFIG = `seo: {
 ai: {
   llmsTxt: true,
   ask: { enabled: true },
-},
-mcp: { enabled: true },`;
+  mcp: { enabled: true },
+},`;
 
 interface Seg {
   text: string;

@@ -74,9 +74,9 @@ import type { Diagnostic } from "./types.ts";
  *   `algolia`, `typesense`, `orama-cloud`, `mixedbread`, or `none`) plus its
  *   credential block.
  * - `ai` — `ask` (the Ask AI chat endpoint and its provider/model), `llmsTxt`
- *   (emit `llms.txt`), and `markdownComponents` (Markdown serializers for
- *   custom components in agent-facing output).
- * - `mcp` — expose the docs as an MCP server for connecting agents.
+ *   (emit `llms.txt`), `mcp` (expose the docs as an MCP server for connecting
+ *   agents), and `markdownComponents` (Markdown serializers for custom
+ *   components in agent-facing output).
  *
  * **SEO, feeds & analytics**
  * - `seo` — `og` images, `sitemap`, `robots`, `rss` feeds, `structuredData`

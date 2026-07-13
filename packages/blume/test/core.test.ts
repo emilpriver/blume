@@ -121,16 +121,17 @@ describe("config schema", () => {
     ).toBeUndefined();
   });
 
-  it("normalizes mcp.route to a leading slash, no trailing slash", () => {
+  it("normalizes ai.mcp.route to a leading slash, no trailing slash", () => {
     // A slash-less route would be string-concatenated onto the site origin
     // (`https://acme.comdocs-mcp`) by the well-known/card/agent URLs.
     expect(
-      blumeConfigSchema.parse({ mcp: { route: "docs-mcp" } }).mcp.route
+      blumeConfigSchema.parse({ ai: { mcp: { route: "docs-mcp" } } }).ai.mcp
+        .route
     ).toBe("/docs-mcp");
-    expect(blumeConfigSchema.parse({ mcp: { route: "/mcp/" } }).mcp.route).toBe(
-      "/mcp"
-    );
-    expect(blumeConfigSchema.parse({}).mcp.route).toBe("/mcp");
+    expect(
+      blumeConfigSchema.parse({ ai: { mcp: { route: "/mcp/" } } }).ai.mcp.route
+    ).toBe("/mcp");
+    expect(blumeConfigSchema.parse({}).ai.mcp.route).toBe("/mcp");
   });
 
   it("accepts a banner string or object, defaulting dismissible to false", () => {
@@ -883,9 +884,8 @@ describe("agent-readability.json", () => {
   it("advertises llms.txt, MCP, Ask AI, feeds, and content usage when configured", () => {
     const manifest = buildAgentReadability(
       makeProject([postPage("changes", "/blog/changes", "blog", {})], {
-        ai: { ask: { enabled: true }, llmsTxt: true },
+        ai: { ask: { enabled: true }, llmsTxt: true, mcp: { enabled: true } },
         github: { owner: "inthhq", repo: "leadtype" },
-        mcp: { enabled: true },
         seo: { contentSignals: { aiTrain: false, search: true } },
       })
     );
@@ -936,9 +936,8 @@ describe("agent-readability.json", () => {
   it("layers deployment.base onto root-relative URLs without a site", () => {
     const manifest = buildAgentReadability(
       makeProject([], {
-        ai: { ask: { enabled: true }, llmsTxt: true },
+        ai: { ask: { enabled: true }, llmsTxt: true, mcp: { enabled: true } },
         deployment: { base: "/docs" },
-        mcp: { enabled: true },
       })
     );
     // Without a site the artifacts are still served under the base subpath, so

@@ -198,9 +198,11 @@ The `POST /api/ask` endpoint is **unauthenticated** — it has to be, so the in-
 Host a [Model Context Protocol](https://modelcontextprotocol.io) server so coding agents (Claude Code, Cursor, VS Code, claude.ai connectors) can search and read your docs directly — no scraping:
 
 ```ts blume.config.ts lineNumbers
-mcp: {
-  enabled: true,
-  route: "/mcp", // where the server is mounted
+ai: {
+  mcp: {
+    enabled: true,
+    route: "/mcp", // where the server is mounted
+  },
 }
 ```
 
@@ -227,7 +229,7 @@ deployment: {
 }
 ```
 
-A static build with `mcp.enabled` fails fast with a message telling you to set `deployment.output` to `server`. See [Deployment](/docs/deployment) for the adapters. Once deployed, connect from Claude Code with:
+A static build with `ai.mcp.enabled` fails fast with a message telling you to set `deployment.output` to `server`. See [Deployment](/docs/deployment) for the adapters. Once deployed, connect from Claude Code with:
 
 ```bash
 claude mcp add --transport http my-docs https://docs.example.com/mcp

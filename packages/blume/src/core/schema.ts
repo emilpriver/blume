@@ -550,6 +550,19 @@ export const askAiProviders = [
   "openai-compatible",
 ] as const;
 
+const mcpConfigSchema = z.strictObject({
+  enabled: z.boolean().default(false),
+  /** Optional system hint passed to connecting agents. */
+  instructions: z.string().optional(),
+  /** Server name shown to clients; defaults to the site title. */
+  name: z.string().optional(),
+  /**
+   * Normalized like `openapi.route`: a slash-less value would otherwise be
+   * string-concatenated onto the site origin (`https://acme.comdocs-mcp`).
+   */
+  route: z.string().default("/mcp").transform(normalizeRoute),
+});
+
 const aiConfigSchema = z.strictObject({
   ask: z
     .strictObject({
@@ -620,6 +633,8 @@ const aiConfigSchema = z.strictObject({
       })
     )
     .default({}),
+  /** Expose the docs as an MCP server for connecting agents. */
+  mcp: mcpConfigSchema.default({}),
 });
 
 /**
@@ -678,19 +693,6 @@ const exportConfigSchema = z
   .transform((value) =>
     typeof value === "boolean" ? { epub: value, pdf: value } : value
   );
-
-const mcpConfigSchema = z.strictObject({
-  enabled: z.boolean().default(false),
-  /** Optional system hint passed to connecting agents. */
-  instructions: z.string().optional(),
-  /** Server name shown to clients; defaults to the site title. */
-  name: z.string().optional(),
-  /**
-   * Normalized like `openapi.route`: a slash-less value would otherwise be
-   * string-concatenated onto the site origin (`https://acme.comdocs-mcp`).
-   */
-  route: z.string().default("/mcp").transform(normalizeRoute),
-});
 
 /** A configured locale: ISO-ish code plus display metadata for the switcher. */
 const localeSchema = z.strictObject({
@@ -1088,7 +1090,6 @@ export const blumeConfigSchema = z.strictObject({
   lastModified: lastModifiedConfigSchema.default(false),
   logo: logoConfigSchema.optional(),
   markdown: markdownConfigSchema.default({}),
-  mcp: mcpConfigSchema.default({}),
   navigation: navigationConfigSchema.default({}),
   openapi: openapiConfigSchema.default({}),
   react: reactConfigSchema.default({}),

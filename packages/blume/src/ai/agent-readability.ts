@@ -62,10 +62,10 @@ export const buildAgentReadability = (
     artifacts.llmsFullTxt = abs("/llms-full.txt");
     artifacts.llmsTxt = abs("/llms.txt");
   }
-  if (config.mcp.enabled) {
+  if (config.ai.mcp.enabled) {
     artifacts.mcp = {
       discovery: abs("/.well-known/mcp.json"),
-      url: abs(config.mcp.route),
+      url: abs(config.ai.mcp.route),
     };
   }
   if (config.ai.ask?.enabled) {
@@ -87,7 +87,7 @@ export const buildAgentReadability = (
     artifacts,
     description: config.description,
     generator: version ? `blume@${version}` : undefined,
-    name: config.mcp.name ?? config.title,
+    name: config.ai.mcp.name ?? config.title,
     site,
   };
 

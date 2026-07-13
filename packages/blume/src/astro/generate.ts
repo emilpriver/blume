@@ -866,8 +866,11 @@ export const buildRuntimeData = (project: BlumeProject): string => {
         : null,
       imageZoom: config.markdown.imageZoom,
       logo: resolveLogo(project),
-      mcp: config.mcp.enabled
-        ? { name: config.mcp.name ?? config.title, route: config.mcp.route }
+      mcp: config.ai.mcp.enabled
+        ? {
+            name: config.ai.mcp.name ?? config.title,
+            route: config.ai.mcp.route,
+          }
         : null,
       // `og.enabled` is resolved to a definite boolean in `loadConfig`; coerce
       // the optional schema type so the serialized shape stays `boolean`.
@@ -940,7 +943,7 @@ const planMcp = (
   userPages: { pattern: string }[]
 ): McpPlan => {
   const { config } = project;
-  const { route } = config.mcp;
+  const { route } = config.ai.mcp;
   const dir = join(srcDir, "blume-mcp");
   const base: McpPlan = {
     dir,
@@ -950,14 +953,14 @@ const planMcp = (
     srcDir,
     warnings: [],
   };
-  if (!config.mcp.enabled) {
+  if (!config.ai.mcp.enabled) {
     return base;
   }
   if (routeIsTaken(userPages, project.graph.pages, route)) {
     return {
       ...base,
       warnings: [
-        `MCP server route "${route}" is already used by a content or custom page; the MCP server was not generated. Set a different "mcp.route" in blume.config.ts.`,
+        `MCP server route "${route}" is already used by a content or custom page; the MCP server was not generated. Set a different "ai.mcp.route" in blume.config.ts.`,
       ],
     };
   }
