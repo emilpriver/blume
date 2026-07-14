@@ -1,7 +1,7 @@
 import { existsSync, readFileSync } from "node:fs";
 import { pathToFileURL } from "node:url";
 
-import { dirname, isAbsolute, join, relative } from "pathe";
+import { basename, dirname, isAbsolute, join, relative } from "pathe";
 
 import { askBackendRuntimeDep } from "../ai/ask.ts";
 import type { AskBackend } from "../ai/ask.ts";
@@ -77,8 +77,30 @@ const ADAPTER_IMPORTS: Record<string, string> = {
 };
 
 const ADAPTER_OPTIONS: Record<string, string> = {
-  cloudflare: '{ prerenderEnvironment: "node" }',
   node: '{ mode: "standalone" }',
+};
+
+const WRANGLER_CONFIG_FILES = [
+  "wrangler.jsonc",
+  "wrangler.json",
+  "wrangler.toml",
+];
+
+const resolveCloudflareAdapterArgs = (context: ProjectContext): string => {
+  const args: string[] = ['prerenderEnvironment: "node"'];
+  const wranglerPath = WRANGLER_CONFIG_FILES.map((file) =>
+    join(context.root, file)
+  ).find((file) => existsSync(file));
+  if (wranglerPath) {
+    let configPath = relative(context.outDir, wranglerPath);
+    if (!configPath.startsWith(".") && !configPath.startsWith("/")) {
+      configPath = `./${configPath}`;
+    } else if (!configPath) {
+      configPath = `./${basename(wranglerPath)}`;
+    }
+    args.push(`configPath: ${JSON.stringify(configPath)}`);
+  }
+  return `{ ${args.join(", ")} }`;
 };
 
 /**
@@ -264,10 +286,15 @@ export const astroConfigTemplate = (options: {
     server && deployment.adapter
       ? `import adapter from "${ADAPTER_IMPORTS[deployment.adapter]}";\n`
       : "";
-  const adapterArgs =
-    server && deployment.adapter
-      ? (ADAPTER_OPTIONS[deployment.adapter] ?? "")
-      : "";
+  const adapterArgs = (() => {
+    if (!server || !deployment.adapter) {
+      return "";
+    }
+    if (deployment.adapter === "cloudflare") {
+      return resolveCloudflareAdapterArgs(context);
+    }
+    return ADAPTER_OPTIONS[deployment.adapter] ?? "";
+  })();
   const adapterOption =
     server && deployment.adapter ? `\n  adapter: adapter(${adapterArgs}),` : "";
 
