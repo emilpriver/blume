@@ -1,7 +1,7 @@
 import { existsSync, readFileSync } from "node:fs";
 import { pathToFileURL } from "node:url";
 
-import { basename, dirname, isAbsolute, join, relative } from "pathe";
+import { dirname, isAbsolute, join, relative } from "pathe";
 
 import { askBackendRuntimeDep } from "../ai/ask.ts";
 import type { AskBackend } from "../ai/ask.ts";
@@ -93,10 +93,11 @@ const resolveCloudflareAdapterArgs = (context: ProjectContext): string => {
   ).find((file) => existsSync(file));
   if (wranglerPath) {
     let configPath = relative(context.outDir, wranglerPath);
+    // The wrangler config always lives at the project root, above the `.blume`
+    // runtime, so `relative` yields a `../…` path; normalize the theoretical
+    // sibling case to an explicit `./` so it reads as a relative import.
     if (!configPath.startsWith(".") && !configPath.startsWith("/")) {
       configPath = `./${configPath}`;
-    } else if (!configPath) {
-      configPath = `./${basename(wranglerPath)}`;
     }
     args.push(`configPath: ${JSON.stringify(configPath)}`);
   }
