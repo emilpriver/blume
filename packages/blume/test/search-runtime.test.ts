@@ -41,6 +41,7 @@ interface HostedRecord {
 }
 interface SaveObjectsArgs {
   indexName: string;
+  maxRetries?: number;
   objects: {
     content: string;
     locale: string;
@@ -138,6 +139,8 @@ let algoliaSearch: (
 let algoliaSave: (args: SaveObjectsArgs) => Promise<void>;
 let algoliaSettings: AlgoliaSettings = {};
 const algoliaSettingsWrites: AlgoliaSettingsWrite[] = [];
+let algoliaIndexMissing = false;
+const algoliaSavedStubs: string[] = [];
 let oramaCloudSearch: (
   query: OramaCloudSearchParams
 ) => Promise<{ hits: { document: HostedRecord }[] }>;
@@ -190,7 +193,13 @@ mock.module("algoliasearch/lite", () => ({
 mockSdk("algoliasearch", () => ({
   algoliasearch: () => ({
     getSettings: () => Promise.resolve(algoliaSettings),
+    indexExists: () => Promise.resolve(!algoliaIndexMissing),
     replaceAllObjects: (args: SaveObjectsArgs) => algoliaSave(args),
+    saveObject: ({ indexName }: { indexName: string }) => {
+      algoliaIndexMissing = false;
+      algoliaSavedStubs.push(indexName);
+      return Promise.resolve({ taskID: 0 });
+    },
     setSettings: (args: AlgoliaSettingsWrite) => {
       algoliaSettingsWrites.push(args);
       return Promise.resolve({ taskID: algoliaSettingsWrites.length });
@@ -660,6 +669,24 @@ describe("hosted sync uploads", () => {
     await syncAlgolia(records, { appId: "app", indexName: "docs" });
     expect(captured.value?.indexName).toBe("docs");
     expect(captured.value?.objects[0]?.objectID).toBe("/a");
+    expect(captured.value?.maxRetries).toBe(40);
+  });
+
+  it("algolia creates a missing index before replacing its records", async () => {
+    process.env.ALGOLIA_ADMIN_API_KEY = "admin";
+    const captured = captureAlgolia();
+    algoliaIndexMissing = true;
+    algoliaSavedStubs.length = 0;
+    const { syncAlgolia } = await import("../src/search/sync/algolia.ts");
+    await syncAlgolia(records, { appId: "app", indexName: "docs" });
+    expect(algoliaSavedStubs).toStrictEqual(["docs"]);
+    expect(captured.value?.indexName).toBe("docs");
+    expect(algoliaIndexMissing).toBe(false);
+
+    algoliaSavedStubs.length = 0;
+    await syncAlgolia(records, { appId: "app", indexName: "docs" });
+    expect(algoliaSavedStubs).toStrictEqual([]);
+    algoliaIndexMissing = false;
   });
 
   const DECLARED: AlgoliaSettings = {

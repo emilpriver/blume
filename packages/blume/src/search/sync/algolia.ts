@@ -38,6 +38,14 @@ type AlgoliaObject = Pick<SearchRecord, keyof SearchRecord> & {
   objectID: string;
 };
 
+/**
+ * How many times `replaceAllObjects` polls a queued task before failing. The
+ * SDK defaults to 800 (about an hour); a task stuck at `notPublished` (a copy
+ * queued from a missing index, the state that never publishes) should fail the
+ * build in about two minutes instead.
+ */
+const MAX_TASK_RETRIES = 40;
+
 /** A string's or record's size as Algolia measures it: UTF-8 bytes of its JSON. */
 const jsonBytes = (value: string | AlgoliaObject): number =>
   Buffer.byteLength(JSON.stringify(value), "utf-8");
@@ -132,7 +140,14 @@ export const syncAlgolia = async (
   const client = algoliasearch(config.appId, adminKey);
   const { indexName } = config;
   const objects = records.flatMap(toObjects);
-  await client.replaceAllObjects({ indexName, objects });
+  if (!(await client.indexExists({ indexName }))) {
+    await client.saveObject({ body: { objectID: "__ensure__" }, indexName });
+  }
+  await client.replaceAllObjects({
+    indexName,
+    maxRetries: MAX_TASK_RETRIES,
+    objects,
+  });
   const {
     attributeForDistinct,
     attributesForFaceting = [],
