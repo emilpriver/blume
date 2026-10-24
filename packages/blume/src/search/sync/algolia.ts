@@ -148,11 +148,10 @@ export const syncAlgolia = async (
     maxRetries: MAX_TASK_RETRIES,
     objects,
   });
-  const {
-    attributeForDistinct,
-    attributesForFaceting = [],
-    customRanking = [],
-  } = await client.getSettings({ indexName });
+  const settings = await client.getSettings({ indexName });
+  const attributeForDistinct = settings.attributeForDistinct ?? undefined;
+  const attributesForFaceting = settings.attributesForFaceting ?? [];
+  const customRanking = settings.customRanking ?? [];
   const declared = new Set(attributesForFaceting.map(facetAttribute));
   const missing = FILTER_ATTRIBUTES.filter((name) => !declared.has(name));
   // Every record carries `boost` (search.boost, 1 by default): ranking by it

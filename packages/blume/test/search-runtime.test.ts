@@ -52,9 +52,9 @@ interface SaveObjectsArgs {
 }
 /** The slice of an Algolia index's settings the sync reads and writes. */
 interface AlgoliaSettings {
-  attributeForDistinct?: string;
-  attributesForFaceting?: string[];
-  customRanking?: string[];
+  attributeForDistinct?: string | null;
+  attributesForFaceting?: string[] | null;
+  customRanking?: string[] | null;
   distinct?: boolean;
 }
 /** One `setSettings` call the Algolia sync made, and whether it was awaited. */
@@ -807,6 +807,19 @@ describe("hosted sync uploads", () => {
     expect(
       algoliaSettingsWrites[0]?.indexSettings.attributesForFaceting
     ).toStrictEqual(["filterOnly(locale)", "filterOnly(version)"]);
+
+    // Never-set settings answer null, not undefined.
+    algoliaSettings = {
+      attributeForDistinct: null,
+      attributesForFaceting: null,
+      customRanking: null,
+    };
+    algoliaSettingsWrites.length = 0;
+    await syncAlgolia(records, { appId: "app", indexName: "docs" });
+    expect(algoliaSettingsWrites[0]?.indexSettings).toStrictEqual({
+      attributesForFaceting: ["filterOnly(locale)", "filterOnly(version)"],
+      customRanking: ["desc(boost)"],
+    });
 
     // The site's own ranking keeps its place ahead of the boost.
     algoliaSettings = {
