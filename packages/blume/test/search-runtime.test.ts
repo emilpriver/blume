@@ -42,6 +42,7 @@ interface HostedRecord {
 interface SaveObjectsArgs {
   indexName: string;
   maxRetries?: number;
+  waitForTasks?: boolean;
   objects: {
     content: string;
     locale: string;
@@ -139,8 +140,12 @@ let algoliaSearch: (
 let algoliaSave: (args: SaveObjectsArgs) => Promise<void>;
 let algoliaSettings: AlgoliaSettings = {};
 const algoliaSettingsWrites: AlgoliaSettingsWrite[] = [];
+/** The index doesn't exist: reading its settings fails with the SDK's 404. */
 let algoliaIndexMissing = false;
-const algoliaSavedStubs: string[] = [];
+/** Reading the settings fails for another reason (an unreachable host). */
+let algoliaSettingsError: Error | undefined;
+/** Each Algolia call the sync made, in order, with the retries it allowed. */
+const algoliaCalls: string[] = [];
 let oramaCloudSearch: (
   query: OramaCloudSearchParams
 ) => Promise<{ hits: { document: HostedRecord }[] }>;
@@ -192,19 +197,42 @@ mock.module("algoliasearch/lite", () => ({
 }));
 mockSdk("algoliasearch", () => ({
   algoliasearch: () => ({
-    getSettings: () => Promise.resolve(algoliaSettings),
-    indexExists: () => Promise.resolve(!algoliaIndexMissing),
-    replaceAllObjects: (args: SaveObjectsArgs) => algoliaSave(args),
-    saveObject: ({ indexName }: { indexName: string }) => {
-      algoliaIndexMissing = false;
-      algoliaSavedStubs.push(indexName);
-      return Promise.resolve({ taskID: 0 });
+    getSettings: () => {
+      algoliaCalls.push("getSettings");
+      if (algoliaIndexMissing) {
+        return Promise.reject(new Error("Index docs does not exist"));
+      }
+      return algoliaSettingsError
+        ? Promise.reject(algoliaSettingsError)
+        : Promise.resolve(algoliaSettings);
+    },
+    indexExists: () => {
+      algoliaCalls.push("indexExists");
+      return Promise.resolve(!algoliaIndexMissing);
+    },
+    replaceAllObjects: (args: SaveObjectsArgs) => {
+      algoliaCalls.push(`replaceAllObjects ${args.maxRetries}`);
+      return algoliaSave(args);
+    },
+    saveObjects: (args: SaveObjectsArgs) => {
+      algoliaCalls.push(
+        `saveObjects ${args.maxRetries} waitForTasks=${args.waitForTasks}`
+      );
+      return algoliaSave(args);
     },
     setSettings: (args: AlgoliaSettingsWrite) => {
+      algoliaCalls.push("setSettings");
       algoliaSettingsWrites.push(args);
       return Promise.resolve({ taskID: algoliaSettingsWrites.length });
     },
-    waitForTask: ({ taskID }: { taskID: number }) => {
+    waitForTask: ({
+      maxRetries,
+      taskID,
+    }: {
+      maxRetries?: number;
+      taskID: number;
+    }) => {
+      algoliaCalls.push(`waitForTask ${maxRetries}`);
       const write = algoliaSettingsWrites[taskID - 1];
       if (write) {
         write.waited = true;
@@ -299,6 +327,9 @@ beforeAll(() => {
 
 afterEach(() => {
   globalThis.fetch = originalFetch;
+  algoliaIndexMissing = false;
+  algoliaSettingsError = undefined;
+  algoliaCalls.length = 0;
 });
 
 /** An Orama Cloud hit for `url` with its score and page boost. */
@@ -665,28 +696,55 @@ describe("hosted sync uploads", () => {
       captured.value = args;
       return Promise.resolve();
     };
+    algoliaSettings = {};
     const { syncAlgolia } = await import("../src/search/sync/algolia.ts");
     await syncAlgolia(records, { appId: "app", indexName: "docs" });
     expect(captured.value?.indexName).toBe("docs");
     expect(captured.value?.objects[0]?.objectID).toBe("/a");
-    expect(captured.value?.maxRetries).toBe(40);
+    // One settings read, and every task wait bounded (the SDK's own 800 for
+    // `replaceAllObjects` polls a stuck task for about an hour).
+    expect(algoliaCalls).toStrictEqual([
+      "getSettings",
+      "replaceAllObjects 100",
+      "setSettings",
+      "waitForTask 100",
+    ]);
   });
 
-  it("algolia creates a missing index before replacing its records", async () => {
+  it("algolia uploads straight into a missing index, then declares its settings", async () => {
     process.env.ALGOLIA_ADMIN_API_KEY = "admin";
     const captured = captureAlgolia();
     algoliaIndexMissing = true;
-    algoliaSavedStubs.length = 0;
+    algoliaSettingsWrites.length = 0;
     const { syncAlgolia } = await import("../src/search/sync/algolia.ts");
     await syncAlgolia(records, { appId: "app", indexName: "docs" });
-    expect(algoliaSavedStubs).toStrictEqual(["docs"]);
-    expect(captured.value?.indexName).toBe("docs");
-    expect(algoliaIndexMissing).toBe(false);
+    // No `replaceAllObjects`: its copy from a missing index never publishes.
+    // The upload waits for each batch before the settings go on.
+    expect(algoliaCalls).toStrictEqual([
+      "getSettings",
+      "indexExists",
+      "saveObjects 100 waitForTasks=true",
+      "setSettings",
+      "waitForTask 100",
+    ]);
+    expect(
+      captured.value?.objects.map((object) => object.objectID)
+    ).toStrictEqual(["/a"]);
+    expect(algoliaSettingsWrites[0]?.indexSettings).toStrictEqual({
+      attributesForFaceting: ["filterOnly(locale)", "filterOnly(version)"],
+      customRanking: ["desc(boost)"],
+    });
+  });
 
-    algoliaSavedStubs.length = 0;
-    await syncAlgolia(records, { appId: "app", indexName: "docs" });
-    expect(algoliaSavedStubs).toStrictEqual([]);
-    algoliaIndexMissing = false;
+  it("algolia uploads nothing when the settings read fails on an index that exists", async () => {
+    process.env.ALGOLIA_ADMIN_API_KEY = "admin";
+    captureAlgolia();
+    algoliaSettingsError = new Error("Unreachable hosts");
+    const { syncAlgolia } = await import("../src/search/sync/algolia.ts");
+    await expect(
+      syncAlgolia(records, { appId: "app", indexName: "docs" })
+    ).rejects.toThrow("Unreachable hosts");
+    expect(algoliaCalls).toStrictEqual(["getSettings", "indexExists"]);
   });
 
   const DECLARED: AlgoliaSettings = {
@@ -808,17 +866,23 @@ describe("hosted sync uploads", () => {
       algoliaSettingsWrites[0]?.indexSettings.attributesForFaceting
     ).toStrictEqual(["filterOnly(locale)", "filterOnly(version)"]);
 
-    // Never-set settings answer null, not undefined.
+    // Never-set settings answer null, not undefined: a null distinct
+    // attribute counts as unset, so a split page still lists once.
     algoliaSettings = {
       attributeForDistinct: null,
       attributesForFaceting: null,
       customRanking: null,
     };
     algoliaSettingsWrites.length = 0;
-    await syncAlgolia(records, { appId: "app", indexName: "docs" });
+    await syncAlgolia([{ ...page, content: "word ".repeat(3000) }], {
+      appId: "app",
+      indexName: "docs",
+    });
     expect(algoliaSettingsWrites[0]?.indexSettings).toStrictEqual({
+      attributeForDistinct: "url",
       attributesForFaceting: ["filterOnly(locale)", "filterOnly(version)"],
       customRanking: ["desc(boost)"],
+      distinct: true,
     });
 
     // The site's own ranking keeps its place ahead of the boost.
